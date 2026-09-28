@@ -86,13 +86,13 @@
 
 **Interfaces:**
 - Produces: `successResponse<T>(data: T, options?: { status?: 200 | 201; meta?: Record<string, unknown> }): Response`.
-- Produces: `AppError(code, message, details = [])` with codes `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `BUSINESS_RULE_ERROR`, `DATABASE_ERROR`, and `INTERNAL_SERVER_ERROR`; HTTP status is mapped centrally from the code.
+- Produces: `AppError(code, message, details = [])` with codes `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `BUSINESS_RULE_ERROR`, `DATABASE_ERROR`, and `INTERNAL_SERVER_ERROR`; map these centrally to HTTP 400, 401, 403, 404, 409, 400, 500, and 500 respectively.
 - Produces: `errorResponse(error: unknown, production = process.env.NODE_ENV === 'production'): Response`.
 
-- [ ] Write tests for success response shape/status, known `AppError` mapping/details, and unknown error handling in production.
+- [ ] Write tests for success response shape/status, each known `AppError` status/details mapping, and unknown plus database error handling in production.
 - [ ] Run `npm test -- src/utils/api-response.test.ts` and confirm the new tests fail before implementation.
 - [ ] Implement response helpers with JSON content type and README-compatible envelopes; success defaults to status 200 and permits status 201 for created resources.
-- [ ] Ensure production unknown errors return generic `INTERNAL_SERVER_ERROR` text and never include the original message or stack; keep detailed server-side logging out of response bodies.
+- [ ] Ensure production unknown and database errors return generic safe messages and never include the original message or stack; keep detailed server-side logging out of response bodies.
 - [ ] Run focused tests, then `npm run lint`, `npm run typecheck`, and `npm test`.
 - [ ] Commit only task files with `feat: add shared API response and error handling`.
 
