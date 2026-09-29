@@ -13,7 +13,7 @@ describe("demo seed configuration", () => {
     );
   });
 
-  it("defines deterministic demo properties and rooms matching schema constraints", () => {
+  it("defines deterministic demo properties and rooms matching schema constraints and dashboard expectations", () => {
     expect(DEMO_SEED_DATA.owner.email).toBe("owner.demo@example.com");
     expect(DEMO_SEED_DATA.properties).toHaveLength(2);
 

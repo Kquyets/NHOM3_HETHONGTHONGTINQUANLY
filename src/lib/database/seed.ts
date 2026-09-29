@@ -1,7 +1,7 @@
-import { scryptSync } from "node:crypto";
 import { Pool } from "pg";
 
 import { getDatabaseUrl } from "../../config/env";
+import { hashPassword } from "../auth/password";
 import { assertLocalDatabaseUrl } from "./migration";
 
 export function assertLocalSeedUrl(databaseUrl: string): void {
@@ -10,12 +10,6 @@ export function assertLocalSeedUrl(databaseUrl: string): void {
   } catch {
     throw new Error("Database seeding is restricted to localhost");
   }
-}
-
-function getDeterministicPasswordHash(password: string): string {
-  const salt = "0123456789abcdef0123456789abcdef";
-  const key = scryptSync(password, Buffer.from(salt, "hex"), 64, { N: 16384, r: 8, p: 1 });
-  return `scrypt$16384$8$1$${salt}$${key.toString("hex")}`;
 }
 
 export const DEMO_SEED_DATA = {
@@ -96,8 +90,8 @@ export async function seedLocalDatabase(customUrl?: string): Promise<{
   try {
     await client.query("BEGIN");
 
-    // 1. Seed or update demo users
-    const passwordHash = getDeterministicPasswordHash("DemoPassword123!");
+    // 1. Seed or reuse demo users
+    const passwordHash = await hashPassword("DemoPassword123!");
 
     const ownerRes = await client.query<{ id: string }>(
       `INSERT INTO users (email, password_hash, role, status)
@@ -191,6 +185,7 @@ export async function seedLocalDatabase(customUrl?: string): Promise<{
       const roomId = roomIdMap.get(c.roomNumber);
       if (!roomId) continue;
 
+      // Check if an active contract already exists for this room
       const existing = await client.query<{ id: string }>(
         `SELECT id FROM contracts WHERE room_id = $1 AND status = 'active' LIMIT 1`,
         [roomId],
