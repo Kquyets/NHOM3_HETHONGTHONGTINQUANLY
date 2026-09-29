@@ -182,3 +182,66 @@ CREATE TABLE meter_readings (
 
 CREATE INDEX meter_readings_utility_rate_id_idx
   ON meter_readings USING btree (utility_rate_id);
+
+CREATE TYPE invoice_status AS ENUM ('draft', 'issued', 'partially_paid', 'paid', 'cancelled');
+CREATE TYPE invoice_item_type AS ENUM ('rent', 'electricity', 'water', 'service', 'adjustment');
+CREATE TYPE payment_method AS ENUM ('cash', 'bank_transfer', 'other');
+
+CREATE TABLE invoices (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  contract_id uuid NOT NULL,
+  billing_period_start date NOT NULL,
+  issue_date date,
+  due_date date,
+  status invoice_status DEFAULT 'draft' NOT NULL,
+  total_amount integer DEFAULT 0 NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT invoices_contract_id_contracts_id_fk
+    FOREIGN KEY (contract_id) REFERENCES contracts(id) ON DELETE RESTRICT,
+  CONSTRAINT invoices_contract_period_unique UNIQUE (contract_id, billing_period_start),
+  CONSTRAINT invoices_period_first_day CHECK (EXTRACT(DAY FROM billing_period_start) = 1),
+  CONSTRAINT invoices_total_nonnegative CHECK (total_amount >= 0),
+  CONSTRAINT invoices_due_date_valid
+    CHECK (due_date IS NULL OR issue_date IS NULL OR due_date >= issue_date)
+);
+
+CREATE INDEX invoices_contract_id_idx ON invoices USING btree (contract_id);
+
+CREATE TABLE invoice_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  invoice_id uuid NOT NULL,
+  meter_reading_id uuid,
+  item_type invoice_item_type NOT NULL,
+  description text NOT NULL,
+  quantity numeric(12, 3) NOT NULL,
+  unit_price_snapshot integer NOT NULL,
+  amount integer NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT invoice_items_invoice_id_invoices_id_fk
+    FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE RESTRICT,
+  CONSTRAINT invoice_items_meter_reading_id_meter_readings_id_fk
+    FOREIGN KEY (meter_reading_id) REFERENCES meter_readings(id) ON DELETE RESTRICT,
+  CONSTRAINT invoice_items_meter_reading_id_unique UNIQUE (meter_reading_id),
+  CONSTRAINT invoice_items_quantity_nonnegative CHECK (quantity >= 0),
+  CONSTRAINT invoice_items_unit_price_nonnegative CHECK (unit_price_snapshot >= 0),
+  CONSTRAINT invoice_items_amount_nonnegative CHECK (amount >= 0)
+);
+
+CREATE INDEX invoice_items_invoice_id_idx ON invoice_items USING btree (invoice_id);
+
+CREATE TABLE payments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  invoice_id uuid NOT NULL,
+  amount integer NOT NULL,
+  paid_at timestamptz NOT NULL,
+  method payment_method NOT NULL,
+  reference text,
+  note text,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT payments_invoice_id_invoices_id_fk
+    FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE RESTRICT,
+  CONSTRAINT payments_amount_positive CHECK (amount > 0)
+);
+
+CREATE INDEX payments_invoice_id_idx ON payments USING btree (invoice_id);

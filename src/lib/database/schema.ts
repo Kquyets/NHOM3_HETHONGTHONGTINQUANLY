@@ -21,6 +21,21 @@ export const propertyMemberStatus = pgEnum("property_member_status", ["active", 
 export const roomStatus = pgEnum("room_status", ["ready", "maintenance"]);
 export const contractStatus = pgEnum("contract_status", ["draft", "active", "ended", "cancelled"]);
 export const utilityType = pgEnum("utility_type", ["electricity", "water"]);
+export const invoiceStatus = pgEnum("invoice_status", [
+  "draft",
+  "issued",
+  "partially_paid",
+  "paid",
+  "cancelled",
+]);
+export const invoiceItemType = pgEnum("invoice_item_type", [
+  "rent",
+  "electricity",
+  "water",
+  "service",
+  "adjustment",
+]);
+export const paymentMethod = pgEnum("payment_method", ["cash", "bank_transfer", "other"]);
 
 export const users = pgTable(
   "users",
@@ -239,5 +254,81 @@ export const meterReadings = pgTable(
     ),
     check("meter_readings_unit_price_nonnegative", sql`${table.unitPriceSnapshot} >= 0`),
     index("meter_readings_utility_rate_id_idx").on(table.utilityRateId),
+  ],
+);
+
+export const invoices = pgTable(
+  "invoices",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    contractId: uuid("contract_id")
+      .notNull()
+      .references(() => contracts.id, { onDelete: "restrict" }),
+    billingPeriodStart: date("billing_period_start").notNull(),
+    issueDate: date("issue_date"),
+    dueDate: date("due_date"),
+    status: invoiceStatus("status").default("draft").notNull(),
+    totalAmount: integer("total_amount").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique("invoices_contract_period_unique").on(table.contractId, table.billingPeriodStart),
+    check(
+      "invoices_period_first_day",
+      sql`EXTRACT(DAY FROM ${table.billingPeriodStart}) = 1`,
+    ),
+    check("invoices_total_nonnegative", sql`${table.totalAmount} >= 0`),
+    check(
+      "invoices_due_date_valid",
+      sql`${table.dueDate} IS NULL OR ${table.issueDate} IS NULL OR ${table.dueDate} >= ${table.issueDate}`,
+    ),
+    index("invoices_contract_id_idx").on(table.contractId),
+  ],
+);
+
+export const invoiceItems = pgTable(
+  "invoice_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "restrict" }),
+    meterReadingId: uuid("meter_reading_id").references(() => meterReadings.id, {
+      onDelete: "restrict",
+    }),
+    itemType: invoiceItemType("item_type").notNull(),
+    description: text("description").notNull(),
+    quantity: numeric("quantity", { precision: 12, scale: 3 }).notNull(),
+    unitPriceSnapshot: integer("unit_price_snapshot").notNull(),
+    amount: integer("amount").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique("invoice_items_meter_reading_id_unique").on(table.meterReadingId),
+    check("invoice_items_quantity_nonnegative", sql`${table.quantity} >= 0`),
+    check("invoice_items_unit_price_nonnegative", sql`${table.unitPriceSnapshot} >= 0`),
+    check("invoice_items_amount_nonnegative", sql`${table.amount} >= 0`),
+    index("invoice_items_invoice_id_idx").on(table.invoiceId),
+  ],
+);
+
+export const payments = pgTable(
+  "payments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "restrict" }),
+    amount: integer("amount").notNull(),
+    paidAt: timestamp("paid_at", { withTimezone: true }).notNull(),
+    method: paymentMethod("method").notNull(),
+    reference: text("reference"),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check("payments_amount_positive", sql`${table.amount} > 0`),
+    index("payments_invoice_id_idx").on(table.invoiceId),
   ],
 );

@@ -7,6 +7,12 @@ import {
   contractTenants,
   contractStatus,
   contracts,
+  invoiceItemType,
+  invoiceItems,
+  invoiceStatus,
+  invoices,
+  paymentMethod,
+  payments,
   properties,
   propertyMembers,
   refreshTokens,
@@ -201,6 +207,62 @@ describe("core database schema", () => {
     ]);
   });
 
+  it("creates one invoice per contract and period with explicit lifecycle and total snapshot", () => {
+    expect(invoiceStatus.enumValues).toEqual([
+      "draft",
+      "issued",
+      "partially_paid",
+      "paid",
+      "cancelled",
+    ]);
+    const config = getTableConfig(invoices);
+    expect(config.uniqueConstraints.map(({ columns }) => columns.map(({ name }) => name))).toContainEqual([
+      "contract_id",
+      "billing_period_start",
+    ]);
+    expect(config.checks.map(({ name }) => name)).toEqual(
+      expect.arrayContaining([
+        "invoices_period_first_day",
+        "invoices_total_nonnegative",
+        "invoices_due_date_valid",
+      ]),
+    );
+  });
+
+  it("stores invoice line-item snapshots and bills each meter reading at most once", () => {
+    expect(invoiceItemType.enumValues).toEqual([
+      "rent",
+      "electricity",
+      "water",
+      "service",
+      "adjustment",
+    ]);
+    const config = getTableConfig(invoiceItems);
+    expect(config.columns.map(({ name }) => name)).toEqual(
+      expect.arrayContaining(["invoice_id", "meter_reading_id", "unit_price_snapshot", "amount"]),
+    );
+    expect(config.uniqueConstraints.map(({ columns }) => columns.map(({ name }) => name))).toContainEqual([
+      "meter_reading_id",
+    ]);
+    expect(config.checks.map(({ name }) => name)).toEqual(
+      expect.arrayContaining([
+        "invoice_items_quantity_nonnegative",
+        "invoice_items_unit_price_nonnegative",
+        "invoice_items_amount_nonnegative",
+      ]),
+    );
+  });
+
+  it("supports multiple positive VND payments per invoice", () => {
+    expect(paymentMethod.enumValues).toEqual(["cash", "bank_transfer", "other"]);
+    const config = getTableConfig(payments);
+    expect(config.columns.map(({ name }) => name)).toContain("amount");
+    expect(config.checks.map(({ name }) => name)).toContain("payments_amount_positive");
+    expect(config.uniqueConstraints.some(({ columns }) => columns.some(({ name }) => name === "invoice_id"))).toBe(
+      false,
+    );
+  });
+
   it("ships PostgreSQL DDL for account access and property-room schema", () => {
     const migration = readFileSync(
       new URL("../../../drizzle/0000_property_room_demo.sql", import.meta.url),
@@ -225,6 +287,13 @@ describe("core database schema", () => {
     expect(migration).toContain("daterange(effective_from, effective_to, '[)') WITH &&");
     expect(migration).toContain("CREATE TABLE meter_readings");
     expect(migration).toContain("meter_readings_current_not_decreased");
+    expect(migration).toContain("CREATE TYPE invoice_status AS ENUM");
+    expect(migration).toContain("CREATE TABLE invoices");
+    expect(migration).toContain("CREATE TABLE invoice_items");
+    expect(migration).toContain("CREATE TABLE payments");
+    expect(migration).toContain("invoices_contract_period_unique");
+    expect(migration).toContain("invoice_items_meter_reading_id_unique");
+    expect(migration).toContain("payments_amount_positive");
     expect(migration).toContain("users_email_normalized");
     expect(migration).toContain("refresh_tokens_token_hash_unique");
     expect(migration).toContain("REFERENCES properties(id) ON DELETE CASCADE");
