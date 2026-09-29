@@ -65,6 +65,87 @@ td { color: #526276; }
 .status-pill.maintenance { background: #fbf2e4; color: var(--amber); }
 .status-pill .status-dot { width: 6px; height: 6px; flex-basis: 6px; }
 
+.demo-badge.live {
+  border-color: #c3e6cb;
+  background: #eaf5f0;
+  color: var(--green);
+}
+
+.state-card {
+  margin: 20px 0;
+  padding: 20px 24px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.state-card.loading {
+  color: var(--blue);
+  background: #edf4fd;
+  border-color: #d6e3f5;
+}
+
+.state-card.error {
+  color: var(--red);
+  background: #fdf2f2;
+  border-color: #f7d4d4;
+}
+
+.state-card.empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.state-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.state-message {
+  margin: 4px 0 0;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.state-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.btn-retry, .btn-fallback {
+  cursor: pointer;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.btn-retry {
+  background: var(--blue);
+  color: #fff;
+}
+
+.btn-retry:hover {
+  opacity: 0.9;
+}
+
+.btn-fallback {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.btn-fallback:hover {
+  background: var(--canvas);
+}
+
 @media (max-width: 760px) {
   .dashboard { width: min(100% - 32px, 560px); padding: 32px 0 48px; }
   .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
