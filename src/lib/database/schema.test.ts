@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 
@@ -42,5 +43,19 @@ describe("property and room demo schema", () => {
         index.columns.map((column) => ("name" in column ? column.name : undefined)),
       ),
     ).toContainEqual(["property_id"]);
+  });
+
+  it("ships PostgreSQL DDL matching the demo schema", () => {
+    const migration = readFileSync(
+      new URL("../../../drizzle/0000_property_room_demo.sql", import.meta.url),
+      "utf8",
+    );
+    expect(migration).toContain("CREATE TYPE room_status AS ENUM ('vacant', 'occupied', 'maintenance')");
+    expect(migration).toContain("CREATE TABLE properties");
+    expect(migration).toContain("CREATE TABLE rooms");
+    expect(migration).toContain("REFERENCES properties(id) ON DELETE CASCADE");
+    expect(migration).toContain("rooms_property_room_number_unique");
+    expect(migration).toContain("rooms_monthly_rent_nonnegative");
+    expect(migration).toContain("rooms_property_id_idx");
   });
 });
