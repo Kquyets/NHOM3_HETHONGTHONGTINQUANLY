@@ -11,6 +11,7 @@ CREATE TABLE users (
   status account_status DEFAULT 'active' NOT NULL,
   created_at timestamptz DEFAULT now() NOT NULL,
   updated_at timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT users_id_role_unique UNIQUE (id, role),
   CONSTRAINT users_email_unique UNIQUE (email),
   CONSTRAINT users_email_normalized CHECK (email = lower(btrim(email)))
 );
@@ -36,12 +37,14 @@ CREATE INDEX refresh_tokens_user_id_idx ON refresh_tokens USING btree (user_id);
 CREATE TABLE properties (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   owner_id uuid NOT NULL,
+  owner_role user_role DEFAULT 'owner' NOT NULL,
   name text NOT NULL,
   address text,
   created_at timestamptz DEFAULT now() NOT NULL,
   updated_at timestamptz DEFAULT now() NOT NULL,
-  CONSTRAINT properties_owner_id_users_id_fk
-    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT
+  CONSTRAINT properties_owner_role_fk
+    FOREIGN KEY (owner_id, owner_role) REFERENCES users(id, role) ON DELETE RESTRICT,
+  CONSTRAINT properties_owner_role_check CHECK (owner_role = 'owner')
 );
 
 CREATE INDEX properties_owner_id_idx ON properties USING btree (owner_id);
@@ -50,12 +53,14 @@ CREATE TABLE property_members (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   property_id uuid NOT NULL,
   user_id uuid NOT NULL,
+  manager_role user_role DEFAULT 'manager' NOT NULL,
   status property_member_status DEFAULT 'active' NOT NULL,
   created_at timestamptz DEFAULT now() NOT NULL,
   CONSTRAINT property_members_property_id_properties_id_fk
     FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
-  CONSTRAINT property_members_user_id_users_id_fk
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT property_members_manager_role_fk
+    FOREIGN KEY (user_id, manager_role) REFERENCES users(id, role) ON DELETE CASCADE,
+  CONSTRAINT property_members_manager_role_check CHECK (manager_role = 'manager'),
   CONSTRAINT property_members_property_user_unique UNIQUE (property_id, user_id)
 );
 
@@ -64,14 +69,16 @@ CREATE INDEX property_members_user_id_idx ON property_members USING btree (user_
 CREATE TABLE tenants (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   user_id uuid,
+  linked_user_role user_role DEFAULT 'tenant' NOT NULL,
   full_name text NOT NULL,
   national_id_encrypted text,
   phone text,
   birth_date date,
   created_at timestamptz DEFAULT now() NOT NULL,
   updated_at timestamptz DEFAULT now() NOT NULL,
-  CONSTRAINT tenants_user_id_users_id_fk
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT tenants_linked_user_role_fk
+    FOREIGN KEY (user_id, linked_user_role) REFERENCES users(id, role) ON DELETE RESTRICT,
+  CONSTRAINT tenants_linked_user_role_check CHECK (linked_user_role = 'tenant'),
   CONSTRAINT tenants_user_id_unique UNIQUE (user_id)
 );
 
@@ -90,7 +97,8 @@ CREATE TABLE rooms (
     FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
   CONSTRAINT rooms_monthly_rent_nonnegative CHECK (monthly_rent >= 0),
   CONSTRAINT rooms_area_positive CHECK (area_m2 IS NULL OR area_m2 > 0),
-  CONSTRAINT rooms_property_room_number_unique UNIQUE (property_id, room_number)
+  CONSTRAINT rooms_property_room_number_unique UNIQUE (property_id, room_number),
+  CONSTRAINT rooms_id_property_id_unique UNIQUE (id, property_id)
 );
 
 CREATE INDEX rooms_property_id_idx ON rooms USING btree (property_id);
@@ -145,6 +153,7 @@ CREATE TABLE utility_rates (
   created_at timestamptz DEFAULT now() NOT NULL,
   CONSTRAINT utility_rates_property_id_properties_id_fk
     FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE RESTRICT,
+  CONSTRAINT utility_rates_id_property_type_unique UNIQUE (id, property_id, utility_type),
   CONSTRAINT utility_rates_unit_price_nonnegative CHECK (unit_price >= 0),
   CONSTRAINT utility_rates_effective_range_valid
     CHECK (effective_to IS NULL OR effective_to > effective_from),
@@ -161,6 +170,7 @@ CREATE INDEX utility_rates_property_utility_idx
 CREATE TABLE meter_readings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   room_id uuid NOT NULL,
+  property_id uuid NOT NULL,
   utility_type utility_type NOT NULL,
   billing_period date NOT NULL,
   previous_value numeric(12, 3) NOT NULL,
@@ -168,10 +178,11 @@ CREATE TABLE meter_readings (
   utility_rate_id uuid NOT NULL,
   unit_price_snapshot integer NOT NULL,
   created_at timestamptz DEFAULT now() NOT NULL,
-  CONSTRAINT meter_readings_room_id_rooms_id_fk
-    FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE RESTRICT,
-  CONSTRAINT meter_readings_utility_rate_id_utility_rates_id_fk
-    FOREIGN KEY (utility_rate_id) REFERENCES utility_rates(id) ON DELETE RESTRICT,
+  CONSTRAINT meter_readings_room_property_fk
+    FOREIGN KEY (room_id, property_id) REFERENCES rooms(id, property_id) ON DELETE RESTRICT,
+  CONSTRAINT meter_readings_rate_property_type_fk
+    FOREIGN KEY (utility_rate_id, property_id, utility_type)
+    REFERENCES utility_rates(id, property_id, utility_type) ON DELETE RESTRICT,
   CONSTRAINT meter_readings_period_first_day CHECK (EXTRACT(DAY FROM billing_period) = 1),
   CONSTRAINT meter_readings_previous_nonnegative CHECK (previous_value >= 0),
   CONSTRAINT meter_readings_current_not_decreased CHECK (current_value >= previous_value),
@@ -245,3 +256,30 @@ CREATE TABLE payments (
 );
 
 CREATE INDEX payments_invoice_id_idx ON payments USING btree (invoice_id);
+
+
+CREATE FUNCTION validate_meter_reading_rate() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM utility_rates r WHERE r.id = NEW.utility_rate_id AND r.property_id = NEW.property_id AND r.utility_type = NEW.utility_type AND r.effective_from <= NEW.billing_period AND (r.effective_to IS NULL OR NEW.billing_period < r.effective_to)) THEN
+    RAISE EXCEPTION 'meter reading rate must cover its property, utility, and billing period';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER meter_readings_validate_rate BEFORE INSERT OR UPDATE ON meter_readings FOR EACH ROW EXECUTE FUNCTION validate_meter_reading_rate();
+
+CREATE FUNCTION validate_invoice_meter_item() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+  reading meter_readings%ROWTYPE;
+  invoice_contract_room uuid;
+  invoice_period date;
+BEGIN
+  IF NEW.item_type IN ('electricity', 'water') AND NEW.meter_reading_id IS NULL THEN RAISE EXCEPTION 'utility invoice item requires a meter reading'; END IF;
+  IF NEW.meter_reading_id IS NULL THEN RETURN NEW; END IF;
+  SELECT * INTO reading FROM meter_readings WHERE id = NEW.meter_reading_id;
+  SELECT c.room_id, i.billing_period_start INTO invoice_contract_room, invoice_period FROM invoices i JOIN contracts c ON c.id = i.contract_id WHERE i.id = NEW.invoice_id;
+  IF invoice_contract_room IS NULL OR reading.room_id <> invoice_contract_room OR reading.billing_period <> invoice_period OR NEW.item_type::text <> reading.utility_type::text THEN RAISE EXCEPTION 'meter reading must match invoice contract room, period, and utility item'; END IF;
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER invoice_items_validate_meter BEFORE INSERT OR UPDATE ON invoice_items FOR EACH ROW EXECUTE FUNCTION validate_invoice_meter_item();

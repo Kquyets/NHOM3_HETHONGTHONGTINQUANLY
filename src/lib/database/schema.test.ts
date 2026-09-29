@@ -31,6 +31,7 @@ describe("core database schema", () => {
     expect(userRole.enumValues).toEqual(["owner", "manager", "tenant"]);
     expect(accountStatus.enumValues).toEqual(["active", "disabled"]);
     const userConfig = getTableConfig(users);
+    expect(userConfig.uniqueConstraints.map(({ columns }) => columns.map(({ name }) => name))).toContainEqual(["id", "role"]);
     expect(userConfig.columns.map(({ name }) => name)).toContain("password_hash");
     expect(userConfig.checks.map(({ name }) => name)).toContain("users_email_normalized");
     expect(userConfig.uniqueConstraints.map(({ columns }) => columns.map(({ name }) => name))).toContainEqual([
@@ -64,6 +65,7 @@ describe("core database schema", () => {
       "user_id",
     ]);
     expect(config.foreignKeys.some((key) => key.reference().foreignTable === users)).toBe(true);
+    expect(config.foreignKeys.some((key) => key.reference().columns.map(({ name }) => name).join(",") === "user_id,linked_user_role")).toBe(true);
   });
 
   it("defines property and room tables with the expected columns", () => {
@@ -72,6 +74,7 @@ describe("core database schema", () => {
     expect(getTableConfig(properties).columns.map(({ name }) => name)).toEqual([
       "id",
       "owner_id",
+      "owner_role",
       "name",
       "address",
       "created_at",
@@ -114,12 +117,13 @@ describe("core database schema", () => {
   it("assigns each property to an owner and supports unique manager memberships", () => {
     const propertyConfig = getTableConfig(properties);
     expect(propertyConfig.columns.map(({ name }) => name)).toContain("owner_id");
-    expect(propertyConfig.foreignKeys.some((key) => key.reference().foreignTable === users)).toBe(true);
+    expect(propertyConfig.foreignKeys.some((key) => key.reference().columns.map(({ name }) => name).join(",") === "owner_id,owner_role")).toBe(true);
     const membershipConfig = getTableConfig(propertyMembers);
     expect(membershipConfig.uniqueConstraints.map(({ columns }) => columns.map(({ name }) => name))).toContainEqual([
       "property_id",
       "user_id",
     ]);
+    expect(membershipConfig.foreignKeys.some((key) => key.reference().columns.map(({ name }) => name).join(",") === "user_id,manager_role")).toBe(true);
   });
 
   it("keeps contract rent and deposit snapshots and permits only one active contract per room", () => {
@@ -171,6 +175,7 @@ describe("core database schema", () => {
       "effective_to",
       "created_at",
     ]);
+    expect(config.uniqueConstraints.map(({ columns }) => columns.map(({ name }) => name))).toContainEqual(["id", "property_id", "utility_type"]);
     expect(config.checks.map(({ name }) => name)).toEqual(
       expect.arrayContaining([
         "utility_rates_unit_price_nonnegative",
@@ -184,6 +189,7 @@ describe("core database schema", () => {
     expect(config.columns.map(({ name }) => name)).toEqual([
       "id",
       "room_id",
+      "property_id",
       "utility_type",
       "billing_period",
       "previous_value",
@@ -205,6 +211,8 @@ describe("core database schema", () => {
       "utility_type",
       "billing_period",
     ]);
+    expect(config.foreignKeys.some((key) => key.reference().columns.map(({ name }) => name).join(",") === "room_id,property_id")).toBe(true);
+    expect(config.foreignKeys.some((key) => key.reference().columns.map(({ name }) => name).join(",") === "utility_rate_id,property_id,utility_type")).toBe(true);
   });
 
   it("creates one invoice per contract and period with explicit lifecycle and total snapshot", () => {
@@ -302,17 +310,22 @@ describe("core database schema", () => {
       "refresh_tokens_token_hash_unique",
       "refresh_tokens_expiry_after_creation",
       "refresh_tokens_user_id_idx",
-      "properties_owner_id_users_id_fk",
+      "users_id_role_unique",
+      "properties_owner_role_fk",
+      "properties_owner_role_check",
       "properties_owner_id_idx",
       "property_members_property_id_properties_id_fk",
-      "property_members_user_id_users_id_fk",
+      "property_members_manager_role_fk",
+      "property_members_manager_role_check",
       "property_members_property_user_unique",
       "property_members_user_id_idx",
-      "tenants_user_id_users_id_fk",
+      "tenants_linked_user_role_fk",
+      "tenants_linked_user_role_check",
       "tenants_user_id_unique",
       "tenants_full_name_idx",
       "rooms_property_id_properties_id_fk",
       "rooms_property_room_number_unique",
+      "rooms_id_property_id_unique",
       "rooms_monthly_rent_nonnegative",
       "rooms_area_positive",
       "contracts_room_id_rooms_id_fk",
@@ -327,11 +340,12 @@ describe("core database schema", () => {
       "contract_tenants_tenant_id_idx",
       "utility_rates_property_id_properties_id_fk",
       "utility_rates_unit_price_nonnegative",
+      "utility_rates_id_property_type_unique",
       "utility_rates_effective_range_valid",
       "utility_rates_period_no_overlap",
       "utility_rates_property_utility_idx",
-      "meter_readings_room_id_rooms_id_fk",
-      "meter_readings_utility_rate_id_utility_rates_id_fk",
+      "meter_readings_room_property_fk",
+      "meter_readings_rate_property_type_fk",
       "meter_readings_room_utility_period_unique",
       "meter_readings_period_first_day",
       "meter_readings_previous_nonnegative",
@@ -369,5 +383,7 @@ describe("core database schema", () => {
     expect(migration).toContain("daterange(effective_from, effective_to, '[)') WITH &&");
     expect(migration).toContain("REFERENCES properties(id) ON DELETE CASCADE");
     expect(migration).toContain("REFERENCES invoices(id) ON DELETE RESTRICT");
+    expect(migration).toContain("CREATE FUNCTION validate_meter_reading_rate()");
+    expect(migration).toContain("CREATE FUNCTION validate_invoice_meter_item()");
   });
 });
