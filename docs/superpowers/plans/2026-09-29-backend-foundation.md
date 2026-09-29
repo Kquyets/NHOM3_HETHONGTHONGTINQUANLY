@@ -41,11 +41,11 @@
 **Interfaces:**
 - Produces: npm scripts `dev`, `build`, `start`, `lint`, `typecheck`, and `test`; a minimal App Router root layout with no frontend page/UI.
 
-- [ ] Create a minimal Next.js TypeScript package manifest and install the current stable Next.js, React, TypeScript, ESLint, and Vitest packages. Keep the package manager as npm.
+- [ ] Create a minimal Next.js TypeScript package manifest and install the current stable Next.js, React, and Vitest packages. Use TypeScript 5.9 and ESLint 9 because the selected `eslint-config-next` peer dependencies exclude TypeScript 7 and ESLint 10. Keep the package manager as npm.
 - [ ] Add the App Router root layout only; do not add a frontend page or business API endpoint.
 - [ ] Add scripts: `dev` → `next dev`, `build` → `next build`, `start` → `next start`, `lint` → `eslint .`, `typecheck` → `tsc --noEmit`, and `test` → `vitest run`.
 - [ ] Ignore `.env*` and allowlist `.env.example`; preserve existing ignore rules.
-- [ ] Run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build`.
+- [ ] Run `npm run lint`, `npm run typecheck`, `npm test -- --passWithNoTests` (Task 1 has no behavior tests yet), and `npm run build`.
 - [ ] Commit only these task files with `chore: scaffold Next.js API foundation`.
 
 ### Task 2: Add local PostgreSQL and lazy Drizzle connection configuration
