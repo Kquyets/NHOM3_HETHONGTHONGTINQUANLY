@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "db:check": "tsx src/scripts/check-database.ts"
+    "db:check": "tsx --env-file-if-exists=.env.local src/scripts/check-database.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.3",
