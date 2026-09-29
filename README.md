@@ -565,6 +565,12 @@ Compose cấu hình health check cho PostgreSQL. Khi container ở trạng thái
 npm run db:check
 ```
 
+Khởi tạo schema Core trên PostgreSQL local (migration từ chối host bên ngoài máy local và ghi nhận lần chạy để không áp dụng lặp):
+
+```bash
+npm run db:migrate
+```
+
 Chạy API backend ở chế độ phát triển:
 
 ```bash
