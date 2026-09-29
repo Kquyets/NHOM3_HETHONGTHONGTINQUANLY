@@ -94,3 +94,40 @@ CREATE TABLE rooms (
 );
 
 CREATE INDEX rooms_property_id_idx ON rooms USING btree (property_id);
+
+CREATE TYPE contract_status AS ENUM ('draft', 'active', 'ended', 'cancelled');
+
+CREATE TABLE contracts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  room_id uuid NOT NULL,
+  start_date date NOT NULL,
+  end_date date,
+  status contract_status DEFAULT 'draft' NOT NULL,
+  monthly_rent_snapshot integer NOT NULL,
+  deposit_snapshot integer NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT contracts_room_id_rooms_id_fk
+    FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE RESTRICT,
+  CONSTRAINT contracts_date_range_valid CHECK (end_date IS NULL OR end_date > start_date),
+  CONSTRAINT contracts_monthly_rent_nonnegative CHECK (monthly_rent_snapshot >= 0),
+  CONSTRAINT contracts_deposit_nonnegative CHECK (deposit_snapshot >= 0)
+);
+
+CREATE UNIQUE INDEX contracts_one_active_per_room_unique
+  ON contracts USING btree (room_id) WHERE status = 'active';
+CREATE INDEX contracts_room_id_idx ON contracts USING btree (room_id);
+
+CREATE TABLE contract_tenants (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  contract_id uuid NOT NULL,
+  tenant_id uuid NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT contract_tenants_contract_id_contracts_id_fk
+    FOREIGN KEY (contract_id) REFERENCES contracts(id) ON DELETE CASCADE,
+  CONSTRAINT contract_tenants_tenant_id_tenants_id_fk
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+  CONSTRAINT contract_tenants_contract_tenant_unique UNIQUE (contract_id, tenant_id)
+);
+
+CREATE INDEX contract_tenants_tenant_id_idx ON contract_tenants USING btree (tenant_id);

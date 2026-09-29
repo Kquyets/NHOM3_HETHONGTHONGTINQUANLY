@@ -4,6 +4,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   accountStatus,
+  contractTenants,
+  contractStatus,
+  contracts,
   properties,
   propertyMembers,
   refreshTokens,
@@ -110,6 +113,43 @@ describe("core database schema", () => {
     ]);
   });
 
+  it("keeps contract rent and deposit snapshots and permits only one active contract per room", () => {
+    expect(contractStatus.enumValues).toEqual(["draft", "active", "ended", "cancelled"]);
+    const config = getTableConfig(contracts);
+    expect(config.columns.map(({ name }) => name)).toEqual([
+      "id",
+      "room_id",
+      "start_date",
+      "end_date",
+      "status",
+      "monthly_rent_snapshot",
+      "deposit_snapshot",
+      "created_at",
+      "updated_at",
+    ]);
+    expect(config.checks.map(({ name }) => name)).toEqual(
+      expect.arrayContaining([
+        "contracts_date_range_valid",
+        "contracts_monthly_rent_nonnegative",
+        "contracts_deposit_nonnegative",
+      ]),
+    );
+    const activeContractIndex = config.indexes.find(
+      ({ config: index }) => index.name === "contracts_one_active_per_room_unique",
+    );
+    expect(activeContractIndex?.config.unique).toBe(true);
+    expect(activeContractIndex?.config.where).toBeDefined();
+  });
+
+  it("allows multiple tenants per contract while preventing duplicate links", () => {
+    const config = getTableConfig(contractTenants);
+    expect(config.uniqueConstraints.map(({ columns }) => columns.map(({ name }) => name))).toContainEqual([
+      "contract_id",
+      "tenant_id",
+    ]);
+    expect(config.foreignKeys).toHaveLength(2);
+  });
+
   it("ships PostgreSQL DDL for account access and property-room schema", () => {
     const migration = readFileSync(
       new URL("../../../drizzle/0000_property_room_demo.sql", import.meta.url),
@@ -123,6 +163,11 @@ describe("core database schema", () => {
     expect(migration).toContain("CREATE TABLE tenants");
     expect(migration).toContain("CREATE TABLE properties");
     expect(migration).toContain("CREATE TABLE rooms");
+    expect(migration).toContain("CREATE TYPE contract_status AS ENUM ('draft', 'active', 'ended', 'cancelled')");
+    expect(migration).toContain("CREATE TABLE contracts");
+    expect(migration).toContain("CREATE TABLE contract_tenants");
+    expect(migration).toContain("contracts_one_active_per_room_unique");
+    expect(migration).toContain("contracts_date_range_valid");
     expect(migration).toContain("users_email_normalized");
     expect(migration).toContain("refresh_tokens_token_hash_unique");
     expect(migration).toContain("REFERENCES properties(id) ON DELETE CASCADE");

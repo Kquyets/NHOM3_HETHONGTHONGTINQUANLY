@@ -11,6 +11,7 @@ import {
   timestamp,
   type AnyPgColumn,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -18,6 +19,7 @@ export const userRole = pgEnum("user_role", ["owner", "manager", "tenant"]);
 export const accountStatus = pgEnum("account_status", ["active", "disabled"]);
 export const propertyMemberStatus = pgEnum("property_member_status", ["active", "revoked"]);
 export const roomStatus = pgEnum("room_status", ["ready", "maintenance"]);
+export const contractStatus = pgEnum("contract_status", ["draft", "active", "ended", "cancelled"]);
 
 export const users = pgTable(
   "users",
@@ -129,5 +131,52 @@ export const rooms = pgTable(
     check("rooms_monthly_rent_nonnegative", sql`${table.monthlyRent} >= 0`),
     check("rooms_area_positive", sql`${table.areaM2} IS NULL OR ${table.areaM2} > 0`),
     index("rooms_property_id_idx").on(table.propertyId),
+  ],
+);
+
+export const contracts = pgTable(
+  "contracts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "restrict" }),
+    startDate: date("start_date").notNull(),
+    endDate: date("end_date"),
+    status: contractStatus("status").default("draft").notNull(),
+    monthlyRentSnapshot: integer("monthly_rent_snapshot").notNull(),
+    depositSnapshot: integer("deposit_snapshot").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      "contracts_date_range_valid",
+      sql`${table.endDate} IS NULL OR ${table.endDate} > ${table.startDate}`,
+    ),
+    check("contracts_monthly_rent_nonnegative", sql`${table.monthlyRentSnapshot} >= 0`),
+    check("contracts_deposit_nonnegative", sql`${table.depositSnapshot} >= 0`),
+    uniqueIndex("contracts_one_active_per_room_unique")
+      .on(table.roomId)
+      .where(sql`${table.status} = 'active'`),
+    index("contracts_room_id_idx").on(table.roomId),
+  ],
+);
+
+export const contractTenants = pgTable(
+  "contract_tenants",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    contractId: uuid("contract_id")
+      .notNull()
+      .references(() => contracts.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique("contract_tenants_contract_tenant_unique").on(table.contractId, table.tenantId),
+    index("contract_tenants_tenant_id_idx").on(table.tenantId),
   ],
 );
