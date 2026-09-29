@@ -137,7 +137,7 @@ Nhà trọ → Phòng → Khách thuê → Hợp đồng → Điện/Nước →
 | `invoices`     | Hóa đơn tổng (phòng, tháng, tổng tiền, trạng thái)        |
 | `payments`     | Lịch sử thanh toán (hóa đơn, ngày, số tiền, phương thức)  |
 
-> Khi thay đổi schema, thống nhất trong nhóm và cập nhật cả schema Drizzle lẫn file SQL tương ứng. Hiện chưa có lệnh migration tự động; cơ sở dữ liệu mới cần nạp file SQL như hướng dẫn bên dưới.
+> Khi thay đổi schema, thống nhất trong nhóm và cập nhật cả schema Drizzle lẫn file SQL tương ứng. Sử dụng lệnh `npm run db:migrate` để áp dụng tạo bảng cho cơ sở dữ liệu local.
 
 **MongoDB Atlas** chỉ dùng cho dữ liệu thực sự phù hợp với mô hình document:
 
@@ -579,33 +579,35 @@ Giữ user, password và tên database nhất quán giữa `DATABASE_URL` và c�
 docker compose --env-file .env.local up -d postgres
 ```
 
-Compose có health check để chờ PostgreSQL sẵn sàng. Nếu đây là database mới, nạp schema khởi tạo một lần.
+Compose có health check để chờ PostgreSQL sẵn sàng. Khi PostgreSQL báo `healthy`, thực hiện các bước tạo bảng và dữ liệu mẫu:
 
-Kiểm tra trạng thái container và chờ đến khi PostgreSQL báo `healthy`:
+Kiểm tra trạng thái container:
 
 ```bash
 docker compose --env-file .env.local ps
 ```
 
-PowerShell:
-
-```powershell
-Get-Content -Raw drizzle/0000_core_schema.sql | docker compose --env-file .env.local exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
-```
-
-macOS / Linux / Git Bash:
+5. Tạo bảng và di trú cơ sở dữ liệu (Migration):
 
 ```bash
-docker compose --env-file .env.local exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < drizzle/0000_core_schema.sql
+npm run db:migrate
 ```
 
-5. Kiểm tra kết nối database:
+Lệnh này sẽ tự động nạp `drizzle/0000_core_schema.sql` vào database local được cấu hình trong `.env.local` và lưu lịch sử vào bảng `schema_migrations`.
+
+6. Nạp dữ liệu mẫu cho demo (Seeding - tuỳ chọn):
+
+```bash
+npm run db:seed
+```
+
+7. Kiểm tra kết nối database:
 
 ```bash
 npm run db:check
 ```
 
-6. Chạy ứng dụng ở chế độ phát triển:
+8. Chạy ứng dụng ở chế độ phát triển:
 
 ```bash
 npm run dev

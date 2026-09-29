@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "db:check": "tsx --env-file-if-exists=.env.local src/scripts/check-database.ts"
+    "db:check": "tsx --env-file-if-exists=.env.local src/scripts/check-database.ts",
+    "db:migrate": "tsx --env-file-if-exists=.env.local src/scripts/migrate-database.ts",
+    "db:seed": "tsx --env-file-if-exists=.env.local src/scripts/seed-demo-data.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.3",
