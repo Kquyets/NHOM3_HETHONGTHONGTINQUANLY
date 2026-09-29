@@ -13,8 +13,8 @@ export function assertLocalDatabaseUrl(databaseUrl: string): void {
   }
 }
 
-export async function migrateLocalDatabase(): Promise<boolean> {
-  const databaseUrl = getDatabaseUrl();
+export async function migrateLocalDatabase(customUrl?: string): Promise<boolean> {
+  const databaseUrl = customUrl ?? getDatabaseUrl();
   assertLocalDatabaseUrl(databaseUrl);
 
   const migrationSql = await readFile(resolve(process.cwd(), "drizzle", migrationName), "utf8");

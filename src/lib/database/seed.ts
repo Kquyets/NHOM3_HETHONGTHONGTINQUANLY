@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+
 import { getDatabaseUrl } from "../../config/env";
 import { hashPassword } from "../auth/password";
 import { assertLocalDatabaseUrl } from "./migration";
