@@ -20,6 +20,7 @@ export const accountStatus = pgEnum("account_status", ["active", "disabled"]);
 export const propertyMemberStatus = pgEnum("property_member_status", ["active", "revoked"]);
 export const roomStatus = pgEnum("room_status", ["ready", "maintenance"]);
 export const contractStatus = pgEnum("contract_status", ["draft", "active", "ended", "cancelled"]);
+export const utilityType = pgEnum("utility_type", ["electricity", "water"]);
 
 export const users = pgTable(
   "users",
@@ -178,5 +179,65 @@ export const contractTenants = pgTable(
   (table) => [
     unique("contract_tenants_contract_tenant_unique").on(table.contractId, table.tenantId),
     index("contract_tenants_tenant_id_idx").on(table.tenantId),
+  ],
+);
+
+export const utilityRates = pgTable(
+  "utility_rates",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    propertyId: uuid("property_id")
+      .notNull()
+      .references(() => properties.id, { onDelete: "restrict" }),
+    utilityType: utilityType("utility_type").notNull(),
+    unitPrice: integer("unit_price").notNull(),
+    effectiveFrom: date("effective_from").notNull(),
+    effectiveTo: date("effective_to"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check("utility_rates_unit_price_nonnegative", sql`${table.unitPrice} >= 0`),
+    check(
+      "utility_rates_effective_range_valid",
+      sql`${table.effectiveTo} IS NULL OR ${table.effectiveTo} > ${table.effectiveFrom}`,
+    ),
+    index("utility_rates_property_utility_idx").on(table.propertyId, table.utilityType),
+  ],
+);
+
+export const meterReadings = pgTable(
+  "meter_readings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "restrict" }),
+    utilityType: utilityType("utility_type").notNull(),
+    billingPeriod: date("billing_period").notNull(),
+    previousValue: numeric("previous_value", { precision: 12, scale: 3 }).notNull(),
+    currentValue: numeric("current_value", { precision: 12, scale: 3 }).notNull(),
+    utilityRateId: uuid("utility_rate_id")
+      .notNull()
+      .references(() => utilityRates.id, { onDelete: "restrict" }),
+    unitPriceSnapshot: integer("unit_price_snapshot").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique("meter_readings_room_utility_period_unique").on(
+      table.roomId,
+      table.utilityType,
+      table.billingPeriod,
+    ),
+    check(
+      "meter_readings_period_first_day",
+      sql`EXTRACT(DAY FROM ${table.billingPeriod}) = 1`,
+    ),
+    check("meter_readings_previous_nonnegative", sql`${table.previousValue} >= 0`),
+    check(
+      "meter_readings_current_not_decreased",
+      sql`${table.currentValue} >= ${table.previousValue}`,
+    ),
+    check("meter_readings_unit_price_nonnegative", sql`${table.unitPriceSnapshot} >= 0`),
+    index("meter_readings_utility_rate_id_idx").on(table.utilityRateId),
   ],
 );

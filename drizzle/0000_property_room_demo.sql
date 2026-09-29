@@ -131,3 +131,54 @@ CREATE TABLE contract_tenants (
 );
 
 CREATE INDEX contract_tenants_tenant_id_idx ON contract_tenants USING btree (tenant_id);
+
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+CREATE TYPE utility_type AS ENUM ('electricity', 'water');
+
+CREATE TABLE utility_rates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  property_id uuid NOT NULL,
+  utility_type utility_type NOT NULL,
+  unit_price integer NOT NULL,
+  effective_from date NOT NULL,
+  effective_to date,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT utility_rates_property_id_properties_id_fk
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE RESTRICT,
+  CONSTRAINT utility_rates_unit_price_nonnegative CHECK (unit_price >= 0),
+  CONSTRAINT utility_rates_effective_range_valid
+    CHECK (effective_to IS NULL OR effective_to > effective_from),
+  CONSTRAINT utility_rates_period_no_overlap EXCLUDE USING gist (
+    property_id WITH =,
+    utility_type WITH =,
+    daterange(effective_from, effective_to, '[)') WITH &&
+  )
+);
+
+CREATE INDEX utility_rates_property_utility_idx
+  ON utility_rates USING btree (property_id, utility_type);
+
+CREATE TABLE meter_readings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  room_id uuid NOT NULL,
+  utility_type utility_type NOT NULL,
+  billing_period date NOT NULL,
+  previous_value numeric(12, 3) NOT NULL,
+  current_value numeric(12, 3) NOT NULL,
+  utility_rate_id uuid NOT NULL,
+  unit_price_snapshot integer NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT meter_readings_room_id_rooms_id_fk
+    FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE RESTRICT,
+  CONSTRAINT meter_readings_utility_rate_id_utility_rates_id_fk
+    FOREIGN KEY (utility_rate_id) REFERENCES utility_rates(id) ON DELETE RESTRICT,
+  CONSTRAINT meter_readings_period_first_day CHECK (EXTRACT(DAY FROM billing_period) = 1),
+  CONSTRAINT meter_readings_previous_nonnegative CHECK (previous_value >= 0),
+  CONSTRAINT meter_readings_current_not_decreased CHECK (current_value >= previous_value),
+  CONSTRAINT meter_readings_unit_price_nonnegative CHECK (unit_price_snapshot >= 0),
+  CONSTRAINT meter_readings_room_utility_period_unique
+    UNIQUE (room_id, utility_type, billing_period)
+);
+
+CREATE INDEX meter_readings_utility_rate_id_idx
+  ON meter_readings USING btree (utility_rate_id);

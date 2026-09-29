@@ -13,6 +13,9 @@ import {
   roomStatus,
   rooms,
   tenants,
+  utilityRates,
+  utilityType,
+  meterReadings,
   userRole,
   users,
 } from "./schema";
@@ -150,6 +153,54 @@ describe("core database schema", () => {
     expect(config.foreignKeys).toHaveLength(2);
   });
 
+  it("keeps utility prices in effective date ranges and rejects overlapping rates", () => {
+    expect(utilityType.enumValues).toEqual(["electricity", "water"]);
+    const config = getTableConfig(utilityRates);
+    expect(config.columns.map(({ name }) => name)).toEqual([
+      "id",
+      "property_id",
+      "utility_type",
+      "unit_price",
+      "effective_from",
+      "effective_to",
+      "created_at",
+    ]);
+    expect(config.checks.map(({ name }) => name)).toEqual(
+      expect.arrayContaining([
+        "utility_rates_unit_price_nonnegative",
+        "utility_rates_effective_range_valid",
+      ]),
+    );
+  });
+
+  it("stores one nondecreasing monthly reading per room and utility with its rate snapshot", () => {
+    const config = getTableConfig(meterReadings);
+    expect(config.columns.map(({ name }) => name)).toEqual([
+      "id",
+      "room_id",
+      "utility_type",
+      "billing_period",
+      "previous_value",
+      "current_value",
+      "utility_rate_id",
+      "unit_price_snapshot",
+      "created_at",
+    ]);
+    expect(config.checks.map(({ name }) => name)).toEqual(
+      expect.arrayContaining([
+        "meter_readings_period_first_day",
+        "meter_readings_previous_nonnegative",
+        "meter_readings_current_not_decreased",
+        "meter_readings_unit_price_nonnegative",
+      ]),
+    );
+    expect(config.uniqueConstraints.map(({ columns }) => columns.map(({ name }) => name))).toContainEqual([
+      "room_id",
+      "utility_type",
+      "billing_period",
+    ]);
+  });
+
   it("ships PostgreSQL DDL for account access and property-room schema", () => {
     const migration = readFileSync(
       new URL("../../../drizzle/0000_property_room_demo.sql", import.meta.url),
@@ -168,6 +219,12 @@ describe("core database schema", () => {
     expect(migration).toContain("CREATE TABLE contract_tenants");
     expect(migration).toContain("contracts_one_active_per_room_unique");
     expect(migration).toContain("contracts_date_range_valid");
+    expect(migration).toContain("CREATE EXTENSION IF NOT EXISTS btree_gist");
+    expect(migration).toContain("CREATE TABLE utility_rates");
+    expect(migration).toContain("utility_rates_period_no_overlap EXCLUDE USING gist");
+    expect(migration).toContain("daterange(effective_from, effective_to, '[)') WITH &&");
+    expect(migration).toContain("CREATE TABLE meter_readings");
+    expect(migration).toContain("meter_readings_current_not_decreased");
     expect(migration).toContain("users_email_normalized");
     expect(migration).toContain("refresh_tokens_token_hash_unique");
     expect(migration).toContain("REFERENCES properties(id) ON DELETE CASCADE");
