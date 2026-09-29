@@ -263,42 +263,111 @@ describe("core database schema", () => {
     );
   });
 
-  it("ships PostgreSQL DDL for account access and property-room schema", () => {
+  it("ships PostgreSQL DDL for the full Core schema with matching named objects", () => {
     const migration = readFileSync(
-      new URL("../../../drizzle/0000_property_room_demo.sql", import.meta.url),
+      new URL("../../../drizzle/0000_core_schema.sql", import.meta.url),
       "utf8",
     );
-    expect(migration).toContain("CREATE TYPE user_role AS ENUM ('owner', 'manager', 'tenant')");
-    expect(migration).toContain("CREATE TYPE room_status AS ENUM ('ready', 'maintenance')");
-    expect(migration).toContain("CREATE TABLE users");
-    expect(migration).toContain("CREATE TABLE refresh_tokens");
-    expect(migration).toContain("CREATE TABLE property_members");
-    expect(migration).toContain("CREATE TABLE tenants");
-    expect(migration).toContain("CREATE TABLE properties");
-    expect(migration).toContain("CREATE TABLE rooms");
-    expect(migration).toContain("CREATE TYPE contract_status AS ENUM ('draft', 'active', 'ended', 'cancelled')");
-    expect(migration).toContain("CREATE TABLE contracts");
-    expect(migration).toContain("CREATE TABLE contract_tenants");
-    expect(migration).toContain("contracts_one_active_per_room_unique");
-    expect(migration).toContain("contracts_date_range_valid");
+    const tableNames = [
+      "users",
+      "refresh_tokens",
+      "properties",
+      "property_members",
+      "tenants",
+      "rooms",
+      "contracts",
+      "contract_tenants",
+      "utility_rates",
+      "meter_readings",
+      "invoices",
+      "invoice_items",
+      "payments",
+    ];
+    const enumDefinitions = [
+      "CREATE TYPE user_role AS ENUM ('owner', 'manager', 'tenant')",
+      "CREATE TYPE account_status AS ENUM ('active', 'disabled')",
+      "CREATE TYPE property_member_status AS ENUM ('active', 'revoked')",
+      "CREATE TYPE room_status AS ENUM ('ready', 'maintenance')",
+      "CREATE TYPE contract_status AS ENUM ('draft', 'active', 'ended', 'cancelled')",
+      "CREATE TYPE utility_type AS ENUM ('electricity', 'water')",
+      "CREATE TYPE invoice_status AS ENUM ('draft', 'issued', 'partially_paid', 'paid', 'cancelled')",
+      "CREATE TYPE invoice_item_type AS ENUM ('rent', 'electricity', 'water', 'service', 'adjustment')",
+      "CREATE TYPE payment_method AS ENUM ('cash', 'bank_transfer', 'other')",
+    ];
+    const constraintsAndIndexes = [
+      "users_email_unique",
+      "users_email_normalized",
+      "refresh_tokens_user_id_users_id_fk",
+      "refresh_tokens_replaced_by_token_id_refresh_tokens_id_fk",
+      "refresh_tokens_token_hash_unique",
+      "refresh_tokens_expiry_after_creation",
+      "refresh_tokens_user_id_idx",
+      "properties_owner_id_users_id_fk",
+      "properties_owner_id_idx",
+      "property_members_property_id_properties_id_fk",
+      "property_members_user_id_users_id_fk",
+      "property_members_property_user_unique",
+      "property_members_user_id_idx",
+      "tenants_user_id_users_id_fk",
+      "tenants_user_id_unique",
+      "tenants_full_name_idx",
+      "rooms_property_id_properties_id_fk",
+      "rooms_property_room_number_unique",
+      "rooms_monthly_rent_nonnegative",
+      "rooms_area_positive",
+      "contracts_room_id_rooms_id_fk",
+      "contracts_date_range_valid",
+      "contracts_monthly_rent_nonnegative",
+      "contracts_deposit_nonnegative",
+      "contracts_one_active_per_room_unique",
+      "contracts_room_id_idx",
+      "contract_tenants_contract_id_contracts_id_fk",
+      "contract_tenants_tenant_id_tenants_id_fk",
+      "contract_tenants_contract_tenant_unique",
+      "contract_tenants_tenant_id_idx",
+      "utility_rates_property_id_properties_id_fk",
+      "utility_rates_unit_price_nonnegative",
+      "utility_rates_effective_range_valid",
+      "utility_rates_period_no_overlap",
+      "utility_rates_property_utility_idx",
+      "meter_readings_room_id_rooms_id_fk",
+      "meter_readings_utility_rate_id_utility_rates_id_fk",
+      "meter_readings_room_utility_period_unique",
+      "meter_readings_period_first_day",
+      "meter_readings_previous_nonnegative",
+      "meter_readings_current_not_decreased",
+      "meter_readings_unit_price_nonnegative",
+      "meter_readings_utility_rate_id_idx",
+      "invoices_contract_id_contracts_id_fk",
+      "invoices_contract_period_unique",
+      "invoices_period_first_day",
+      "invoices_total_nonnegative",
+      "invoices_due_date_valid",
+      "invoices_contract_id_idx",
+      "invoice_items_invoice_id_invoices_id_fk",
+      "invoice_items_meter_reading_id_meter_readings_id_fk",
+      "invoice_items_meter_reading_id_unique",
+      "invoice_items_quantity_nonnegative",
+      "invoice_items_unit_price_nonnegative",
+      "invoice_items_amount_nonnegative",
+      "invoice_items_invoice_id_idx",
+      "payments_invoice_id_invoices_id_fk",
+      "payments_amount_positive",
+      "payments_invoice_id_idx",
+      "rooms_property_id_idx",
+    ];
+    for (const table of tableNames) {
+      expect(migration).toContain(`CREATE TABLE ${table} (`);
+    }
+    for (const enumDefinition of enumDefinitions) {
+      expect(migration).toContain(enumDefinition);
+    }
+    for (const objectName of constraintsAndIndexes) {
+      expect(migration).toContain(objectName);
+    }
     expect(migration).toContain("CREATE EXTENSION IF NOT EXISTS btree_gist");
-    expect(migration).toContain("CREATE TABLE utility_rates");
-    expect(migration).toContain("utility_rates_period_no_overlap EXCLUDE USING gist");
     expect(migration).toContain("daterange(effective_from, effective_to, '[)') WITH &&");
-    expect(migration).toContain("CREATE TABLE meter_readings");
-    expect(migration).toContain("meter_readings_current_not_decreased");
-    expect(migration).toContain("CREATE TYPE invoice_status AS ENUM");
-    expect(migration).toContain("CREATE TABLE invoices");
-    expect(migration).toContain("CREATE TABLE invoice_items");
-    expect(migration).toContain("CREATE TABLE payments");
-    expect(migration).toContain("invoices_contract_period_unique");
-    expect(migration).toContain("invoice_items_meter_reading_id_unique");
-    expect(migration).toContain("payments_amount_positive");
-    expect(migration).toContain("users_email_normalized");
-    expect(migration).toContain("refresh_tokens_token_hash_unique");
     expect(migration).toContain("REFERENCES properties(id) ON DELETE CASCADE");
-    expect(migration).toContain("rooms_property_room_number_unique");
-    expect(migration).toContain("rooms_monthly_rent_nonnegative");
-    expect(migration).toContain("rooms_property_id_idx");
+    expect(migration).toContain("REFERENCES invoices(id) ON DELETE RESTRICT");
   });
 });

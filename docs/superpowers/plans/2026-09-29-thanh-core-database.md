@@ -36,7 +36,7 @@
 **Files:**
 - Modify: `src/lib/database/schema.ts`
 - Test: `src/lib/database/schema.test.ts`
-- Modify: `drizzle/0000_property_room_demo.sql`
+- Replace: `drizzle/0000_property_room_demo.sql` with `drizzle/0000_core_schema.sql`
 
 **Interfaces:**
 - Produces Drizzle exports `users`, `refreshTokens`, `properties`, `propertyMembers`, `tenants`, `rooms`, and enums for `user_role` and `room_status`.
@@ -53,7 +53,7 @@
 **Files:**
 - Modify: `src/lib/database/schema.ts`
 - Test: `src/lib/database/schema.test.ts`
-- Modify: `drizzle/0000_property_room_demo.sql`
+- Modify: `drizzle/0000_core_schema.sql`
 
 **Interfaces:**
 - Produces Drizzle exports `contracts` and `contractTenants`.
@@ -69,7 +69,7 @@
 **Files:**
 - Modify: `src/lib/database/schema.ts`
 - Test: `src/lib/database/schema.test.ts`
-- Modify: `drizzle/0000_property_room_demo.sql`
+- Modify: `drizzle/0000_core_schema.sql`
 
 **Interfaces:**
 - Produces Drizzle exports `utilityRates`, `meterReadings`, and enum `utility_type` (`electricity | water`).
@@ -84,7 +84,7 @@
 **Files:**
 - Modify: `src/lib/database/schema.ts`
 - Test: `src/lib/database/schema.test.ts`
-- Modify: `drizzle/0000_property_room_demo.sql`
+- Modify: `drizzle/0000_core_schema.sql`
 
 **Interfaces:**
 - Produces Drizzle exports `invoices`, `invoiceItems`, `payments`, plus enums for invoice status, invoice item type, and payment method.
@@ -100,7 +100,7 @@
 **Files:**
 - Modify: `src/lib/database/schema.test.ts`
 - Modify: `docs/database/property-room-demo.md`
-- Verify: `src/lib/database/schema.ts`, `drizzle/0000_property_room_demo.sql`
+- Verify: `src/lib/database/schema.ts`, `drizzle/0000_core_schema.sql`
 
 **Interfaces:**
 - Schema test verifies the initial SQL migration includes every modeled table and the schema's named enums, unique constraints, checks, indexes, and foreign-key policies.
