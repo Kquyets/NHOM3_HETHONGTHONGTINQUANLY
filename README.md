@@ -529,92 +529,73 @@ Một module chỉ được xem là **hoàn thành** khi đủ tất cả điề
 
 ## 15. Cách chạy project
 
-> TODO: Cập nhật khi project structure được khởi tạo.
-
 **Yêu cầu môi trường:**
 
 ```
-Node.js >= 18
+Node.js >= 20.9
 Docker Desktop
 Git
+npm
 ```
 
-**Bước 1: Clone repository**
+**Bước 1: Cài dependencies**
 
 ```bash
-git clone https://github.com/Kquyets/NHOM3_HETHONGTHONGTINQUANLY.git
-cd NHOM3_HETHONGTHONGTINQUANLY
+npm ci
 ```
 
-**Bước 2: Cài dependencies**
-
-```bash
-npm install
-# hoặc
-pnpm install
-```
-
-**Bước 3: Cấu hình environment**
+**Bước 2: Tạo cấu hình local**
 
 ```bash
 cp .env.example .env.local
-# Điền các giá trị thực vào .env.local
 ```
 
-**Bước 4: Chạy database (Docker)**
+Điền `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` và `DATABASE_URL` trong `.env.local`. Dùng cùng user, password và database trong cả `DATABASE_URL` lẫn ba biến `POSTGRES_*`.
+
+**Bước 3: Khởi động PostgreSQL**
 
 ```bash
-docker-compose up -d
+docker compose --env-file .env.local config
+docker compose --env-file .env.local up -d postgres
 ```
 
-**Bước 5: Migration database**
+Compose cấu hình health check cho PostgreSQL. Khi container ở trạng thái `healthy`, kiểm tra kết nối Drizzle:
 
 ```bash
-# TODO: Cập nhật lệnh migration theo ORM được chọn
+npm run db:check
 ```
 
-**Bước 6: Chạy development server**
+Chạy API backend ở chế độ phát triển:
 
 ```bash
 npm run dev
 ```
 
+Các lệnh kiểm tra trước khi bàn giao:
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+Foundation hiện chỉ cấu hình kết nối PostgreSQL/Drizzle và định dạng response API. Chưa có bảng, migration hay endpoint nghiệp vụ; cần thống nhất schema với Thanh trước. Tích hợp Auth.js là bước riêng tiếp theo.
+
 ---
 
 ## 16. Environment Variables
 
-Sao chép `.env.example` thành `.env.local` và điền giá trị thực. Không commit `.env.local`.
+Sao chép `.env.example` thành `.env.local` và điền giá trị local. Không commit `.env.local`.
 
 ```env
-# Database
+POSTGRES_USER=
+POSTGRES_PASSWORD=
+POSTGRES_DB=
 DATABASE_URL=
-MONGODB_URI=
-
-# Authentication
-JWT_SECRET=
-NEXTAUTH_SECRET=
-NEXTAUTH_URL=
-
-# AI Agent
-AI_API_KEY=
-
-# Notification (Phase 5)
-TELEGRAM_BOT_TOKEN=
-EMAIL_HOST=
-EMAIL_PORT=
-EMAIL_USER=
-EMAIL_PASS=
-
-# Payment (Phase 5)
-MOMO_PARTNER_CODE=
-MOMO_ACCESS_KEY=
-MOMO_SECRET_KEY=
-VNPAY_TMN_CODE=
-VNPAY_HASH_SECRET=
-VNPAY_URL=
 ```
 
-> Các biến chưa được sử dụng (Phase 5 trở đi) có thể để trống. Không giả vờ đã tích hợp.
+Các biến xác thực, MongoDB, AI và thanh toán sẽ được bổ sung khi triển khai các phần tương ứng.
 
 ---
 
