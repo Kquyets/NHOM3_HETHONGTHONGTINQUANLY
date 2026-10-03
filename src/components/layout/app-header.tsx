@@ -13,6 +13,8 @@ import {
   SignOut,
   Sun,
   Moon,
+  Sparkle,
+  CheckCircle,
 } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
@@ -25,6 +27,13 @@ const navItems = [
   { href: "/contracts",  label: "Hợp đồng",       Icon: FileText,  match: (p: string) => p.startsWith("/contracts") },
   { href: "/meters",     label: "Điện & Nước",    Icon: Lightning, match: (p: string) => p.startsWith("/meters") },
   { href: "/invoices",   label: "Hóa đơn",        Icon: Receipt,   match: (p: string) => p.startsWith("/invoices") },
+];
+
+const guestNavItems = [
+  { href: "/",           label: "Trang chủ",      Icon: House,       match: (p: string) => p === "/" },
+  { href: "/#features",  label: "Tính năng",      Icon: Sparkle,     match: () => false },
+  { href: "/#comparison",label: "So sánh giải pháp",Icon: CheckCircle,match: () => false },
+  { href: "/#benefits",  label: "3 Bước bắt đầu", Icon: FileText,    match: () => false },
 ];
 
 function BrandLogo() {
@@ -64,7 +73,7 @@ export function AppHeader() {
         {/* Nav */}
         <nav aria-label="Điều hướng chính">
           <ul className="nav-links">
-            {navItems.map(({ href, label, Icon, match }, i) => {
+            {(user ? navItems : guestNavItems).map(({ href, label, Icon, match }, i) => {
               const isActive = match(pathname);
               return (
                 <motion.li
@@ -154,13 +163,25 @@ export function AppHeader() {
             ) : (
               <motion.div
                 key="guest"
+                style={{ display: "flex", alignItems: "center", gap: 6 }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <Link href="/login" className="btn-primary" style={{ padding: "5px 14px", fontSize: 13 }}>
+                <Link
+                  href="/login"
+                  className="btn-secondary"
+                  style={{ padding: "5px 11px", fontSize: 13 }}
+                >
                   Đăng nhập
+                </Link>
+                <Link
+                  href="/register"
+                  className="btn-primary"
+                  style={{ padding: "5px 13px", fontSize: 13 }}
+                >
+                  Dùng thử
                 </Link>
               </motion.div>
             )}

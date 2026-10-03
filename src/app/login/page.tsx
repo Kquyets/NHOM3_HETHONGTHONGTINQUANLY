@@ -4,17 +4,17 @@ import { useEffect, useState, useRef, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import { Eye, EyeSlash, EnvelopeSimple, LockSimple, House, ArrowRight } from "@phosphor-icons/react";
+import {
+  Eye,
+  EyeSlash,
+  EnvelopeSimple,
+  LockSimple,
+  ArrowRight,
+  House,
+} from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
-
-function LogoIcon() {
-  return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="white" aria-hidden="true">
-      <path d="M12 2L2 8.5V20a1 1 0 001 1h5v-6h8v6h5a1 1 0 001-1V8.5L12 2z" />
-    </svg>
-  );
-}
+import { AuthShowcase } from "../../components/auth/auth-showcase";
 
 export default function LoginPage() {
   const { user, isLoading, login } = useAuth();
@@ -54,7 +54,7 @@ export default function LoginPage() {
 
   if (isLoading) {
     return (
-      <div className="auth-wrapper">
+      <div className="auth-wrapper" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <motion.div
           className="loading-indicator"
           initial={{ opacity: 0 }}
@@ -68,182 +68,199 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="auth-wrapper">
-      <motion.div
-        className="auth-card"
-        initial={{ opacity: 0, y: 24, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      >
-        {/* Header */}
-        <div className="auth-header">
+    <div className="auth-split-wrapper">
+      {/* ── Left Showcase Panel ──────────────────────────────── */}
+      <AuthShowcase />
+
+      {/* ── Right Form Panel ─────────────────────────────────── */}
+      <main className="auth-form-side">
+        <div className="auth-form-container">
           <motion.div
-            className="auth-logo"
-            initial={{ scale: 0.7, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <LogoIcon />
-          </motion.div>
-          <motion.h1
-            initial={{ opacity: 0, y: 8 }}
+            className="auth-form-box"
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.18 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           >
-            Chào mừng trở lại
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.24 }}
-          >
-            Đăng nhập vào hệ thống quản lý nhà trọ
-          </motion.p>
-        </div>
-
-        {/* Error */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              className="alert-error"
-              role="alert"
-              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-              animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
-              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-              transition={{ duration: 0.25 }}
-            >
-              {error}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Form */}
-        <motion.form
-          onSubmit={handleSubmit}
-          noValidate
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.4 }}
-        >
-          {/* Email */}
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <div className="input-wrapper" style={{ position: "relative" }}>
-              <span style={{
-                position: "absolute",
-                left: 12,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "var(--color-fg-3)",
-                display: "flex",
-                pointerEvents: "none",
-              }}>
-                <EnvelopeSimple size={16} />
-              </span>
-              <input
-                ref={emailRef}
-                id="email"
-                type="email"
-                className="form-control"
-                style={{ paddingLeft: 36 }}
-                placeholder="chu-nha@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
-            </div>
-          </div>
-
-          {/* Password */}
-          <div className="form-group">
-            <label htmlFor="password">Mật khẩu</label>
-            <div className="input-wrapper" style={{ position: "relative" }}>
-              <span style={{
-                position: "absolute",
-                left: 12,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "var(--color-fg-3)",
-                display: "flex",
-                pointerEvents: "none",
-              }}>
-                <LockSimple size={16} />
-              </span>
-              <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                className="form-control"
-                style={{ paddingLeft: 36, paddingRight: 44 }}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
-              <button
-                type="button"
-                className="input-icon-btn"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+            {/* Header */}
+            <div className="auth-header" style={{ textAlign: "left", marginBottom: 24 }}>
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  background: "var(--color-primary)",
+                  borderRadius: "var(--radius-md)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  marginBottom: 16,
+                  boxShadow: "0 2px 6px rgba(37, 99, 235, 0.3)",
+                }}
               >
-                {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
-              </button>
+                <House size={20} weight="fill" />
+              </div>
+              <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 6 }}>
+                Đăng nhập hệ thống
+              </h1>
+              <p style={{ color: "var(--color-fg-2)", fontSize: 14 }}>
+                Chào mừng trở lại! Vui lòng nhập email và mật khẩu của bạn.
+              </p>
             </div>
-          </div>
 
-          {/* Submit */}
-          <motion.button
-            type="submit"
-            className="btn-primary"
-            style={{ width: "100%", marginTop: 8, justifyContent: "center", gap: 8 }}
-            disabled={submitting}
-            aria-busy={submitting}
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            {submitting ? (
-              <>
-                <span className="spinner" aria-hidden="true" />
-                Đang đăng nhập...
-              </>
-            ) : (
-              <>
-                Đăng nhập
-                <ArrowRight size={15} weight="bold" />
-              </>
-            )}
-          </motion.button>
-        </motion.form>
+            {/* Error Message */}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  className="alert-error"
+                  role="alert"
+                  initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
+                  exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {error}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-        <div className="auth-divider">
-          <span>hoặc</span>
+            {/* Form */}
+            <form onSubmit={handleSubmit} noValidate>
+              {/* Email */}
+              <div className="form-group">
+                <label htmlFor="email">Địa chỉ Email</label>
+                <div style={{ position: "relative" }}>
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 12,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "var(--color-fg-3)",
+                      display: "flex",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <EnvelopeSimple size={17} />
+                  </span>
+                  <input
+                    ref={emailRef}
+                    id="email"
+                    type="email"
+                    className="form-control"
+                    style={{ paddingLeft: 38 }}
+                    placeholder="chu-nha@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="form-group">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <label htmlFor="password">Mật khẩu</label>
+                </div>
+                <div style={{ position: "relative" }}>
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 12,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "var(--color-fg-3)",
+                      display: "flex",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <LockSimple size={17} />
+                  </span>
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    className="form-control"
+                    style={{ paddingLeft: 38, paddingRight: 44 }}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    className="input-icon-btn"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  >
+                    {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <motion.button
+                type="submit"
+                className="btn-primary"
+                style={{
+                  width: "100%",
+                  marginTop: 12,
+                  padding: "11px 16px",
+                  fontSize: 14.5,
+                  justifyContent: "center",
+                  gap: 8,
+                }}
+                disabled={submitting}
+                aria-busy={submitting}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {submitting ? (
+                  <>
+                    <span className="spinner" aria-hidden="true" />
+                    Đang đăng nhập...
+                  </>
+                ) : (
+                  <>
+                    Đăng nhập vào tài khoản
+                    <ArrowRight size={15} weight="bold" />
+                  </>
+                )}
+              </motion.button>
+            </form>
+
+            <div className="auth-divider" style={{ margin: "24px 0 20px" }}>
+              <span>hoặc</span>
+            </div>
+
+            <div style={{ textAlign: "center", fontSize: 14, color: "var(--color-fg-2)" }}>
+              Chưa có tài khoản quản lý?{" "}
+              <Link
+                href="/register"
+                style={{ color: "var(--color-primary)", fontWeight: 700 }}
+              >
+                Đăng ký dùng thử ngay
+              </Link>
+            </div>
+
+            {/* Back to Home */}
+            <div style={{ textAlign: "center", marginTop: 24, paddingTop: 16, borderTop: "1px solid var(--color-border)" }}>
+              <Link
+                href="/"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 13,
+                  color: "var(--color-fg-3)",
+                }}
+              >
+                ← Quay lại trang chủ
+              </Link>
+            </div>
+          </motion.div>
         </div>
-
-        <div className="auth-footer">
-          Chưa có tài khoản?{" "}
-          <Link href="/register" style={{ color: "var(--color-primary)", fontWeight: 600 }}>
-            Đăng ký ngay
-          </Link>
-        </div>
-
-        {/* Back to home */}
-        <div style={{ textAlign: "center", marginTop: 16 }}>
-          <Link
-            href="/"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-              fontSize: "var(--text-xs)",
-              color: "var(--color-fg-3)",
-            }}
-          >
-            <House size={12} />
-            Về trang chủ
-          </Link>
-        </div>
-      </motion.div>
+      </main>
     </div>
   );
 }

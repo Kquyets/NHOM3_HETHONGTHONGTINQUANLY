@@ -18,6 +18,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../components/layout/app-header";
+import { LandingPage } from "../components/landing/landing-page";
 import { apiClient } from "../lib/api-client";
 import { useAuth } from "../lib/auth-context";
 import type { PropertyRow } from "../modules/properties/property.service";
@@ -137,83 +138,11 @@ export default function HomePage() {
     <div className="app-shell">
       <AppHeader />
 
-      <main className="main-container">
-        {!user && !authLoading ? (
-          /* ── Hero / Welcome ─────────────────────── */
-          <motion.section
-            className="card"
-            style={{ margin: "var(--space-6) auto", maxWidth: 700 }}
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <div className="hero-section">
-              {/* Badge */}
-              <motion.div
-                className="hero-badge"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1, duration: 0.4 }}
-              >
-                <Lightning size={12} weight="fill" />
-                Quản lý thông minh
-              </motion.div>
-
-              <motion.h1
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.18, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              >
-                Nhà Trọ Thông Minh
-              </motion.h1>
-
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.28, duration: 0.4 }}
-              >
-                Giải pháp toàn diện giúp chủ nhà theo dõi phòng trọ,
-                khách thuê, chỉ số điện nước và hóa đơn tự động.
-              </motion.p>
-
-              <motion.div
-                className="hero-actions"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.38, duration: 0.4 }}
-              >
-                <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                  <Link href="/login" className="btn-primary">
-                    Đăng nhập ngay
-                    <ArrowRight size={14} weight="bold" />
-                  </Link>
-                </motion.div>
-                <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                  <Link href="/register" className="btn-secondary">
-                    Tạo tài khoản
-                  </Link>
-                </motion.div>
-              </motion.div>
-
-              {/* Feature pills */}
-              <motion.div
-                className="feature-pills"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5, duration: 0.4 }}
-              >
-                {["Quản lý phòng", "Theo dõi điện nước", "Hóa đơn tự động", "Hợp đồng số"].map((f) => (
-                  <span key={f} className="feature-pill">
-                    <CheckCircle size={10} weight="fill" style={{ color: "var(--color-primary)" }} />
-                    {f}
-                  </span>
-                ))}
-              </motion.div>
-            </div>
-          </motion.section>
-        ) : (
-          <>
-            {/* ── Dashboard Header ─────────────────────── */}
+      {!user && !authLoading ? (
+        <LandingPage />
+      ) : (
+        <main className="main-container">
+          {/* ── Dashboard Header ─────────────────────── */}
             <motion.div
               className="page-title-row"
               initial={{ opacity: 0, y: -8 }}
@@ -389,9 +318,8 @@ export default function HomePage() {
                 )}
               </>
             )}
-          </>
-        )}
-      </main>
+        </main>
+      )}
     </div>
   );
 }

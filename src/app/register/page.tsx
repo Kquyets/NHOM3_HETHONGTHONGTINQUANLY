@@ -13,17 +13,11 @@ import {
   UserCircle,
   ArrowRight,
   ShieldCheck,
+  Buildings,
 } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
-
-function LogoIcon() {
-  return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="white" aria-hidden="true">
-      <path d="M12 2L2 8.5V20a1 1 0 001 1h5v-6h8v6h5a1 1 0 001-1V8.5L12 2z" />
-    </svg>
-  );
-}
+import { AuthShowcase } from "../../components/auth/auth-showcase";
 
 export default function RegisterPage() {
   const { user, isLoading, register } = useAuth();
@@ -39,12 +33,21 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Password strength
-  const pwStrength = password.length === 0 ? 0
-    : password.length < 6 ? 1
-    : password.length < 10 ? 2
-    : 3;
+  const pwStrength =
+    password.length === 0
+      ? 0
+      : password.length < 6
+      ? 1
+      : password.length < 10
+      ? 2
+      : 3;
   const pwStrengthLabel = ["", "Yếu", "Trung bình", "Mạnh"][pwStrength];
-  const pwStrengthColor = ["", "var(--color-danger)", "var(--color-warning)", "var(--color-success)"][pwStrength];
+  const pwStrengthColor = [
+    "",
+    "var(--color-danger)",
+    "var(--color-warning)",
+    "var(--color-success)",
+  ][pwStrength];
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -79,7 +82,7 @@ export default function RegisterPage() {
 
   if (isLoading) {
     return (
-      <div className="auth-wrapper">
+      <div className="auth-wrapper" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div className="loading-indicator">
           <span className="spinner" role="status" aria-label="Đang tải" />
           Đang tải thông tin...
@@ -89,276 +92,319 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="auth-wrapper">
-      <motion.div
-        className="auth-card"
-        style={{ maxWidth: 480 }}
-        initial={{ opacity: 0, y: 28, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      >
-        {/* Header */}
-        <div className="auth-header">
+    <div className="auth-split-wrapper">
+      {/* ── Left Showcase Panel ──────────────────────────────── */}
+      <AuthShowcase />
+
+      {/* ── Right Form Panel ─────────────────────────────────── */}
+      <main className="auth-form-side">
+        <div className="auth-form-container" style={{ maxWidth: 480 }}>
           <motion.div
-            className="auth-logo"
-            initial={{ scale: 0.7, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <LogoIcon />
-          </motion.div>
-          <motion.h1
-            initial={{ opacity: 0, y: 8 }}
+            className="auth-form-box"
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.18 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           >
-            Tạo tài khoản
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.24 }}
-          >
-            Bắt đầu quản lý dãy phòng trọ dễ dàng
-          </motion.p>
-        </div>
-
-        {/* Error */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              className="alert-error"
-              role="alert"
-              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-              animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
-              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-              transition={{ duration: 0.25 }}
-            >
-              {error}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <motion.form
-          onSubmit={handleSubmit}
-          noValidate
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.4 }}
-        >
-          {/* Role selector */}
-          <div className="form-group">
-            <label id="role-label">Vai trò của bạn</label>
-            <div className="role-selector" role="radiogroup" aria-labelledby="role-label">
-              {/* Owner */}
-              <label className={`role-option ${role === "owner" ? "selected" : ""}`}>
-                <input
-                  type="radio"
-                  name="role"
-                  value="owner"
-                  checked={role === "owner"}
-                  onChange={() => setRole("owner")}
-                />
-                <House size={22} weight={role === "owner" ? "fill" : "regular"} />
-                <span>Chủ nhà</span>
-                <span style={{ fontSize: "var(--text-xs)", color: "inherit", opacity: 0.7 }}>
-                  Toàn quyền quản lý
-                </span>
-              </label>
-
-              {/* Manager */}
-              <label className={`role-option ${role === "manager" ? "selected" : ""}`}>
-                <input
-                  type="radio"
-                  name="role"
-                  value="manager"
-                  checked={role === "manager"}
-                  onChange={() => setRole("manager")}
-                />
-                <UserCircle size={22} weight={role === "manager" ? "fill" : "regular"} />
-                <span>Quản lý</span>
-                <span style={{ fontSize: "var(--text-xs)", color: "inherit", opacity: 0.7 }}>
-                  Quản lý theo nhà trọ
-                </span>
-              </label>
-            </div>
-          </div>
-
-          {/* Email */}
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <div style={{ position: "relative" }}>
-              <span style={{
-                position: "absolute", left: 12, top: "50%",
-                transform: "translateY(-50%)",
-                color: "var(--color-fg-3)", display: "flex", pointerEvents: "none",
-              }}>
-                <EnvelopeSimple size={16} />
-              </span>
-              <input
-                id="email"
-                type="email"
-                className="form-control"
-                style={{ paddingLeft: 36 }}
-                placeholder="chu-nha@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                autoFocus
-              />
-            </div>
-          </div>
-
-          {/* Password */}
-          <div className="form-group">
-            <label htmlFor="password">
-              Mật khẩu{" "}
-              <span style={{ fontWeight: 400, color: "var(--color-fg-3)" }}>(ít nhất 8 ký tự)</span>
-            </label>
-            <div style={{ position: "relative" }}>
-              <span style={{
-                position: "absolute", left: 12, top: "50%",
-                transform: "translateY(-50%)",
-                color: "var(--color-fg-3)", display: "flex", pointerEvents: "none",
-              }}>
-                <LockSimple size={16} />
-              </span>
-              <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                className="form-control"
-                style={{ paddingLeft: 36, paddingRight: 44 }}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={8}
-                autoComplete="new-password"
-              />
-              <button
-                type="button"
-                className="input-icon-btn"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+            {/* Header */}
+            <div className="auth-header" style={{ textAlign: "left", marginBottom: 20 }}>
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  background: "var(--color-primary)",
+                  borderRadius: "var(--radius-md)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  marginBottom: 14,
+                  boxShadow: "0 2px 6px rgba(37, 99, 235, 0.3)",
+                }}
               >
-                {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
-              </button>
+                <Buildings size={20} weight="fill" />
+              </div>
+              <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 6 }}>
+                Tạo tài khoản quản lý
+              </h1>
+              <p style={{ color: "var(--color-fg-2)", fontSize: 14 }}>
+                Bắt đầu số hóa dãy trọ của bạn hoàn toàn miễn phí.
+              </p>
             </div>
 
-            {/* Password strength bar */}
+            {/* Error */}
             <AnimatePresence>
-              {password.length > 0 && (
+              {error && (
                 <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  style={{ marginTop: 8 }}
+                  className="alert-error"
+                  role="alert"
+                  initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
+                  exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  transition={{ duration: 0.2 }}
                 >
-                  <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
-                    {[1, 2, 3].map((level) => (
-                      <motion.div
-                        key={level}
-                        style={{
-                          flex: 1,
-                          height: 3,
-                          borderRadius: 99,
-                          background: pwStrength >= level ? pwStrengthColor : "var(--color-border)",
-                        }}
-                        animate={{ background: pwStrength >= level ? pwStrengthColor : "var(--color-border)" }}
-                        transition={{ duration: 0.3 }}
-                      />
-                    ))}
-                  </div>
-                  <span style={{ fontSize: "var(--text-xs)", color: pwStrengthColor }}>
-                    {pwStrengthLabel}
-                  </span>
+                  {error}
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
 
-          {/* Confirm password */}
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Xác nhận mật khẩu</label>
-            <div style={{ position: "relative" }}>
-              <span style={{
-                position: "absolute", left: 12, top: "50%",
-                transform: "translateY(-50%)",
-                color: "var(--color-fg-3)", display: "flex", pointerEvents: "none",
-              }}>
-                <ShieldCheck size={16} />
-              </span>
-              <input
-                id="confirmPassword"
-                type={showConfirm ? "text" : "password"}
-                className="form-control"
+            <form onSubmit={handleSubmit} noValidate>
+              {/* Role selector */}
+              <div className="form-group" style={{ marginBottom: 16 }}>
+                <label id="role-label" style={{ fontWeight: 600 }}>Vai trò của bạn</label>
+                <div className="role-selector" role="radiogroup" aria-labelledby="role-label">
+                  <label className={`role-option ${role === "owner" ? "selected" : ""}`}>
+                    <input
+                      type="radio"
+                      name="role"
+                      value="owner"
+                      checked={role === "owner"}
+                      onChange={() => setRole("owner")}
+                    />
+                    <House size={20} weight={role === "owner" ? "fill" : "regular"} />
+                    <span style={{ fontWeight: 600 }}>Chủ nhà</span>
+                    <span style={{ fontSize: 11.5, opacity: 0.75 }}>Toàn quyền quản trị</span>
+                  </label>
+
+                  <label className={`role-option ${role === "manager" ? "selected" : ""}`}>
+                    <input
+                      type="radio"
+                      name="role"
+                      value="manager"
+                      checked={role === "manager"}
+                      onChange={() => setRole("manager")}
+                    />
+                    <UserCircle size={20} weight={role === "manager" ? "fill" : "regular"} />
+                    <span style={{ fontWeight: 600 }}>Quản lý phòng</span>
+                    <span style={{ fontSize: 11.5, opacity: 0.75 }}>Theo cơ sở phân công</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="form-group">
+                <label htmlFor="email">Email đăng ký</label>
+                <div style={{ position: "relative" }}>
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 12,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "var(--color-fg-3)",
+                      display: "flex",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <EnvelopeSimple size={17} />
+                  </span>
+                  <input
+                    id="email"
+                    type="email"
+                    className="form-control"
+                    style={{ paddingLeft: 38 }}
+                    placeholder="chu-nha@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="form-group">
+                <label htmlFor="password">
+                  Mật khẩu <span style={{ fontWeight: 400, color: "var(--color-fg-3)" }}>(tối thiểu 8 ký tự)</span>
+                </label>
+                <div style={{ position: "relative" }}>
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 12,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "var(--color-fg-3)",
+                      display: "flex",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <LockSimple size={17} />
+                  </span>
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    className="form-control"
+                    style={{ paddingLeft: 38, paddingRight: 44 }}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="input-icon-btn"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  >
+                    {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+
+                {/* Password strength bar */}
+                <AnimatePresence>
+                  {password.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      style={{ marginTop: 8 }}
+                    >
+                      <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+                        {[1, 2, 3].map((level) => (
+                          <div
+                            key={level}
+                            style={{
+                              flex: 1,
+                              height: 3,
+                              borderRadius: 99,
+                              background:
+                                pwStrength >= level
+                                  ? pwStrengthColor
+                                  : "var(--color-border)",
+                              transition: "background 0.25s ease",
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <span style={{ fontSize: 12, color: pwStrengthColor, fontWeight: 500 }}>
+                        Độ mạnh mật khẩu: {pwStrengthLabel}
+                      </span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Confirm password */}
+              <div className="form-group">
+                <label htmlFor="confirmPassword">Xác nhận mật khẩu</label>
+                <div style={{ position: "relative" }}>
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 12,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "var(--color-fg-3)",
+                      display: "flex",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <ShieldCheck size={17} />
+                  </span>
+                  <input
+                    id="confirmPassword"
+                    type={showConfirm ? "text" : "password"}
+                    className="form-control"
+                    style={{
+                      paddingLeft: 38,
+                      paddingRight: 44,
+                      borderColor:
+                        confirmPassword.length > 0 && confirmPassword !== password
+                          ? "var(--color-danger)"
+                          : undefined,
+                    }}
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="input-icon-btn"
+                    onClick={() => setShowConfirm((v) => !v)}
+                    aria-label={showConfirm ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  >
+                    {showConfirm ? <EyeSlash size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                <AnimatePresence>
+                  {confirmPassword.length > 0 && confirmPassword !== password && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      style={{
+                        marginTop: 6,
+                        fontSize: 12,
+                        color: "var(--color-danger)",
+                        marginBottom: 0,
+                      }}
+                    >
+                      Mật khẩu xác nhận không trùng khớp
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Submit */}
+              <motion.button
+                type="submit"
+                className="btn-primary"
                 style={{
-                  paddingLeft: 36,
-                  paddingRight: 44,
-                  borderColor: confirmPassword.length > 0 && confirmPassword !== password
-                    ? "rgba(248,113,113,0.5)" : undefined,
+                  width: "100%",
+                  marginTop: 10,
+                  padding: "11px 16px",
+                  fontSize: 14.5,
+                  justifyContent: "center",
+                  gap: 8,
                 }}
-                placeholder="••••••••"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                autoComplete="new-password"
-              />
-              <button
-                type="button"
-                className="input-icon-btn"
-                onClick={() => setShowConfirm((v) => !v)}
-                aria-label={showConfirm ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                disabled={submitting}
+                aria-busy={submitting}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
               >
-                {showConfirm ? <EyeSlash size={16} /> : <Eye size={16} />}
-              </button>
+                {submitting ? (
+                  <>
+                    <span className="spinner" aria-hidden="true" />
+                    Đang tạo tài khoản...
+                  </>
+                ) : (
+                  <>
+                    Đăng ký tài khoản miễn phí
+                    <ArrowRight size={15} weight="bold" />
+                  </>
+                )}
+              </motion.button>
+            </form>
+
+            <div className="auth-footer" style={{ marginTop: 22 }}>
+              Đã có tài khoản quản lý?{" "}
+              <Link href="/login" style={{ color: "var(--color-primary)", fontWeight: 700 }}>
+                Đăng nhập ngay
+              </Link>
             </div>
-            <AnimatePresence>
-              {confirmPassword.length > 0 && confirmPassword !== password && (
-                <motion.p
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  style={{ marginTop: 6, fontSize: "var(--text-xs)", color: "var(--color-danger)", marginBottom: 0 }}
-                >
-                  Mật khẩu không khớp
-                </motion.p>
-              )}
-            </AnimatePresence>
-          </div>
 
-          {/* Submit */}
-          <motion.button
-            type="submit"
-            className="btn-primary"
-            style={{ width: "100%", marginTop: 8, justifyContent: "center", gap: 8 }}
-            disabled={submitting}
-            aria-busy={submitting}
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            {submitting ? (
-              <>
-                <span className="spinner" aria-hidden="true" />
-                Đang tạo tài khoản...
-              </>
-            ) : (
-              <>
-                Đăng ký tài khoản
-                <ArrowRight size={15} weight="bold" />
-              </>
-            )}
-          </motion.button>
-        </motion.form>
-
-        <div className="auth-footer" style={{ marginTop: 20 }}>
-          Đã có tài khoản?{" "}
-          <Link href="/login" style={{ color: "var(--color-primary)", fontWeight: 600 }}>
-            Đăng nhập
-          </Link>
+            {/* Back to Home */}
+            <div style={{ textAlign: "center", marginTop: 20, paddingTop: 14, borderTop: "1px solid var(--color-border)" }}>
+              <Link
+                href="/"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 13,
+                  color: "var(--color-fg-3)",
+                }}
+              >
+                ← Quay lại trang chủ
+              </Link>
+            </div>
+          </motion.div>
         </div>
-      </motion.div>
+      </main>
     </div>
   );
 }

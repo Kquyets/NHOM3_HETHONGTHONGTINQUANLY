@@ -978,3 +978,592 @@ table.data-table tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 }
+
+/* --------------------------------------------------------------------------
+   16. Landing Page (quanlynhatro.com inspired)
+   -------------------------------------------------------------------------- */
+.landing-wrapper {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.landing-hero {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 48px 16px 24px;
+  text-align: center;
+}
+
+.landing-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: var(--radius-full);
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.landing-hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4.2vw, 46px);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  color: var(--color-fg);
+  max-width: 860px;
+  margin: 0 auto 16px;
+}
+
+.landing-hero-desc {
+  font-size: clamp(15px, 1.6vw, 17.5px);
+  line-height: 1.6;
+  color: var(--color-fg-2);
+  max-width: 720px;
+  margin: 0 auto 28px;
+}
+
+.landing-cta-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.landing-trust-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--color-fg-2);
+  margin-bottom: 40px;
+}
+
+.landing-trust-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* App Mockup Preview Frame */
+.landing-preview-frame {
+  max-width: 1040px;
+  margin: 0 auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 20px 45px -15px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+  text-align: left;
+}
+
+.preview-window-header {
+  height: 40px;
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 8px;
+}
+
+.preview-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+.preview-dot.red    { background: #ef4444; }
+.preview-dot.yellow { background: #f59e0b; }
+.preview-dot.green  { background: #10b981; }
+
+.preview-window-title {
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-fg-3);
+  font-family: var(--font-mono);
+}
+
+.preview-window-body {
+  padding: 24px;
+  background: var(--color-bg);
+}
+
+.preview-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.preview-metric-box {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.preview-metric-box .label {
+  font-size: 11.5px;
+  color: var(--color-fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.preview-metric-box .val {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-fg);
+  margin-top: 2px;
+}
+
+.preview-rooms-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.preview-room-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+/* Metric Counter Strip */
+.landing-metrics-bar {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  max-width: 1200px;
+  margin: 48px auto;
+  padding: 32px 24px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.landing-metric-stat {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 3.5vw, 40px);
+  font-weight: 800;
+  color: var(--color-primary);
+  line-height: 1.1;
+  margin-bottom: 4px;
+  letter-spacing: -0.02em;
+}
+
+.landing-metric-label {
+  font-size: 13.5px;
+  color: var(--color-fg-2);
+  font-weight: 500;
+}
+
+/* General Landing Sections */
+.landing-section {
+  max-width: 1200px;
+  margin: 72px auto;
+  padding: 0 16px;
+}
+
+.landing-section-header {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 40px;
+}
+
+.landing-section-tag {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-primary);
+  margin-bottom: 6px;
+}
+
+.landing-section-title {
+  font-family: var(--font-display);
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 700;
+  color: var(--color-fg);
+  line-height: 1.25;
+  margin-bottom: 10px;
+}
+
+.landing-section-desc {
+  font-size: 15px;
+  color: var(--color-fg-2);
+  line-height: 1.6;
+}
+
+/* Feature Cards Grid */
+.landing-features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.landing-feature-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 26px 22px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.landing-feature-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(37, 99, 235, 0.4);
+  box-shadow: var(--shadow-md);
+}
+
+.landing-feature-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.landing-feature-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--color-fg);
+}
+
+.landing-feature-text {
+  font-size: 13.5px;
+  color: var(--color-fg-2);
+  line-height: 1.55;
+  margin-bottom: 16px;
+  flex: 1;
+}
+
+.landing-feature-bullets {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--color-fg);
+}
+.landing-feature-bullets li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Comparison Grid */
+.landing-comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+.comparison-card {
+  border-radius: var(--radius-xl);
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+}
+.comparison-card.traditional {
+  background: var(--color-surface);
+  border: 1px dashed var(--color-danger-border);
+}
+.comparison-card.modern {
+  background: var(--color-surface);
+  border: 2px solid var(--color-primary);
+  box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.15);
+  position: relative;
+}
+.comparison-badge {
+  position: absolute;
+  top: -12px;
+  right: 24px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.comparison-list {
+  list-style: none;
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.comparison-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Steps Grid */
+.landing-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.landing-step-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 26px 20px;
+  position: relative;
+}
+
+.landing-step-number {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+/* CTA Banner Box */
+.landing-cta-banner {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  color: #ffffff;
+  border-radius: var(--radius-xl);
+  padding: 48px 32px;
+  text-align: center;
+  margin: 64px auto;
+  max-width: 1200px;
+  box-shadow: 0 16px 36px -10px rgba(37, 99, 235, 0.4);
+}
+.landing-cta-banner h2 {
+  color: #ffffff;
+  font-size: clamp(24px, 3.5vw, 34px);
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+.landing-cta-banner p {
+  color: #e0e7ff;
+  font-size: 16px;
+  max-width: 600px;
+  margin: 0 auto 28px;
+}
+
+/* Landing Footer */
+.landing-footer {
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: 40px 16px;
+}
+.landing-footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+/* --------------------------------------------------------------------------
+   17. Split Auth Layout (resident.vn inspired)
+   -------------------------------------------------------------------------- */
+.auth-split-wrapper {
+  min-height: 100dvh;
+  display: flex;
+  width: 100%;
+  background: var(--color-bg);
+}
+
+.auth-showcase-side {
+  flex: 1;
+  background: #090d16;
+  color: #ffffff;
+  padding: 56px 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-showcase-glow {
+  position: absolute;
+  top: -10%;
+  left: -10%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.22) 0%, rgba(0, 0, 0, 0) 70%);
+  pointer-events: none;
+}
+
+.auth-showcase-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.auth-showcase-content {
+  margin: 40px 0;
+  position: relative;
+  z-index: 1;
+}
+
+.auth-showcase-title {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 2.5vw, 34px);
+  font-weight: 800;
+  line-height: 1.25;
+  color: #ffffff;
+  margin-bottom: 14px;
+  letter-spacing: -0.02em;
+}
+
+.auth-showcase-desc {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #94a3b8;
+  margin-bottom: 32px;
+}
+
+.auth-showcase-checklist {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-showcase-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #e2e8f0;
+  font-weight: 500;
+}
+
+.auth-check-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.25);
+  color: #60a5fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.auth-showcase-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+/* Form Side */
+.auth-form-side {
+  flex: 1.15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  background: var(--color-bg);
+}
+
+.auth-form-container {
+  width: 100%;
+  max-width: 440px;
+}
+
+.auth-form-box {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: 36px 32px;
+  box-shadow: var(--shadow-md);
+}
+
+/* Responsive adjustments for Landing & Auth */
+@media (max-width: 960px) {
+  .auth-split-wrapper {
+    flex-direction: column;
+  }
+  .auth-showcase-side {
+    padding: 32px 20px;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .auth-showcase-title {
+    font-size: 22px;
+  }
+  .auth-showcase-content {
+    margin: 20px 0;
+  }
+  .auth-showcase-checklist {
+    gap: 10px;
+  }
+  .landing-comparison-grid {
+    grid-template-columns: 1fr;
+  }
+  .landing-steps-grid {
+    grid-template-columns: 1fr;
+  }
+  .landing-metrics-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .preview-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 540px) {
+  .landing-metrics-bar {
+    grid-template-columns: 1fr;
+  }
+  .preview-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+  .auth-form-box {
+    padding: 24px 18px;
+  }
+}
