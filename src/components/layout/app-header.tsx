@@ -21,7 +21,7 @@ import { useAuth } from "../../lib/auth-context";
 import { useTheme } from "../../lib/theme-context";
 
 const navItems = [
-  { href: "/",           label: "Tổng quan",      Icon: House,     match: (p: string) => p === "/" },
+  { href: "/",           label: "Tổng quan",      Icon: House,     match: (p: string) => p === "/" || p.startsWith("/dashboard") },
   { href: "/properties", label: "Nhà & Phòng",    Icon: Buildings, match: (p: string) => p.startsWith("/properties") },
   { href: "/tenants",    label: "Khách thuê",     Icon: Users,     match: (p: string) => p.startsWith("/tenants") },
   { href: "/contracts",  label: "Hợp đồng",       Icon: FileText,  match: (p: string) => p.startsWith("/contracts") },

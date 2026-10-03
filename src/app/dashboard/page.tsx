@@ -1,19 +1,25 @@
 "use client";
 
-import { AppHeader } from "../components/layout/app-header";
-import { LandingPage } from "../components/landing/landing-page";
-import { DashboardView } from "../components/dashboard/dashboard-view";
-import { useAuth } from "../lib/auth-context";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { AppHeader } from "../../components/layout/app-header";
+import { DashboardView } from "../../components/dashboard/dashboard-view";
+import { useAuth } from "../../lib/auth-context";
 
-export default function HomePage() {
-  const { user, isLoading: authLoading } = useAuth();
+export default function DashboardPage() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
 
-  return (
-    <div className="app-shell">
-      <AppHeader />
-      {!user && !authLoading ? (
-        <LandingPage />
-      ) : authLoading ? (
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/login");
+    }
+  }, [user, isLoading, router]);
+
+  if (isLoading || !user) {
+    return (
+      <div className="app-shell">
+        <AppHeader />
         <main className="main-container">
           <div className="stats-grid" aria-busy="true">
             {[0, 1, 2, 3, 4].map((i) => (
@@ -33,9 +39,14 @@ export default function HomePage() {
             ))}
           </div>
         </main>
-      ) : (
-        <DashboardView />
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="app-shell">
+      <AppHeader />
+      <DashboardView />
     </div>
   );
 }
