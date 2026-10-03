@@ -18,7 +18,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../components/layout/app-header";
-import { SuperdesignLanding } from "../components/landing/superdesign-landing";
+import { LandingPage } from "../components/landing/landing-page";
 import { apiClient } from "../lib/api-client";
 import { useAuth } from "../lib/auth-context";
 import type { PropertyRow } from "../modules/properties/property.service";
@@ -134,16 +134,15 @@ export default function HomePage() {
   const readyRooms = allRooms.filter((r) => r.status === "ready").length;
   const maintenanceRooms = allRooms.filter((r) => r.status === "maintenance").length;
 
-  if (!user && !authLoading) {
-    return <SuperdesignLanding />;
-  }
-
   return (
     <div className="app-shell">
       <AppHeader />
 
-      <main className="main-container">
-        {/* ── Dashboard Header ─────────────────────── */}
+      {!user && !authLoading ? (
+        <LandingPage />
+      ) : (
+        <main className="main-container">
+          {/* ── Dashboard Header ─────────────────────── */}
             <motion.div
               className="page-title-row"
               initial={{ opacity: 0, y: -8 }}
@@ -320,6 +319,7 @@ export default function HomePage() {
               </>
             )}
         </main>
+      )}
     </div>
   );
 }
