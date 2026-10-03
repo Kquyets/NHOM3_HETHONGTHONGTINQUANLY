@@ -1636,3 +1636,62 @@ table.data-table tbody tr:last-child td {
     padding: 24px 18px;
   }
 }
+
+/* --------------------------------------------------------------------------
+   18. Superdesign Landing Styles & Animations
+   -------------------------------------------------------------------------- */
+.font-serif {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+/* Reveal Animation Styles */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Custom Floating Animations */
+@keyframes float-hand-left {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-20px) rotate(2deg); }
+}
+
+@keyframes float-hand-right {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(20px) rotate(-2deg); }
+}
+
+.animate-float-left {
+  animation: float-hand-left 12s ease-in-out infinite;
+}
+
+.animate-float-right {
+  animation: float-hand-right 14s ease-in-out infinite;
+}
+
+/* Noise Texture Overlay */
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+}
+
+/* Parallax Container Effect */
+.parallax-card-up {
+  transform: translateY(var(--scroll-offset-up, 0px));
+}
+
+.parallax-card-down {
+  transform: translateY(var(--scroll-offset-down, 0px));
+}
+
