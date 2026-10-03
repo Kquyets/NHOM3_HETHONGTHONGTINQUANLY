@@ -111,6 +111,53 @@
 }
 
 /* --------------------------------------------------------------------------
+   1-B. Light Theme Token Overrides
+   -------------------------------------------------------------------------- */
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Surfaces */
+  --color-bg:            #f0fdfa;
+  --color-surface:       #ffffff;
+  --color-surface-2:     #f8fffe;
+  --color-surface-3:     #e8faf8;
+
+  /* Foreground */
+  --color-fg:            #134e4a;
+  --color-fg-2:          #3d7d78;
+  --color-fg-3:          #7aaeaa;
+
+  /* Borders */
+  --color-border:        rgba(15, 118, 110, 0.20);
+  --color-border-soft:   rgba(15, 118, 110, 0.10);
+  --color-ring:          rgba(15, 118, 110, 0.45);
+
+  /* Semantic */
+  --color-success:       #0f766e;
+  --color-success-bg:    rgba(15, 118, 110, 0.08);
+  --color-warning:       #b45309;
+  --color-warning-bg:    rgba(180, 83, 9, 0.08);
+  --color-danger:        #dc2626;
+  --color-danger-bg:     rgba(220, 38, 38, 0.08);
+  --color-info:          #1d4ed8;
+  --color-info-bg:       rgba(29, 78, 216, 0.08);
+
+  /* Glass (light variant) */
+  --glass-bg:         rgba(255, 255, 255, 0.75);
+  --glass-bg-light:   rgba(248, 255, 254, 0.70);
+  --glass-border:     1px solid rgba(15, 118, 110, 0.15);
+  --glass-border-top: 1px solid rgba(255, 255, 255, 0.80);
+  --glass-shadow:     0 4px 24px rgba(15, 118, 110, 0.10), 0 1px 4px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.90);
+  --glass-shadow-lg:  0 12px 48px rgba(15, 118, 110, 0.14), 0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.95);
+
+  /* Shadows */
+  --shadow-glow:  0 0 32px rgba(15, 118, 110, 0.15);
+  --shadow-sm:    0 1px 4px rgba(0, 0, 0, 0.08);
+  --shadow-md:    0 4px 20px rgba(0, 0, 0, 0.10);
+  --shadow-lg:    0 12px 48px rgba(0, 0, 0, 0.12);
+}
+
+/* --------------------------------------------------------------------------
    2. Reset & Base
    -------------------------------------------------------------------------- */
 *, *::before, *::after {
@@ -123,6 +170,7 @@ html {
   scroll-behavior: smooth;
   color-scheme: dark;
 }
+[data-theme="light"] { color-scheme: light; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -141,7 +189,8 @@ body {
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Subtle noise mesh background */
+  transition: background-color 0.3s ease, color 0.3s ease;
+  /* Subtle noise mesh background — dark mode */
   background-image:
     radial-gradient(ellipse 80% 60% at 10% 0%, rgba(20,184,166,0.08) 0%, transparent 60%),
     radial-gradient(ellipse 60% 50% at 90% 100%, rgba(52,211,153,0.05) 0%, transparent 60%),
@@ -1220,3 +1269,90 @@ table.data-table tbody tr:last-child td {
 .anim-fade-in-up { animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .anim-fade-in    { animation: fade-in 0.4s ease both; }
 .anim-scale-in   { animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* --------------------------------------------------------------------------
+   21. Light Mode Overrides (component-level tweaks)
+   -------------------------------------------------------------------------- */
+
+/* Body background in light mode */
+[data-theme="light"] body {
+  background-image:
+    radial-gradient(ellipse 80% 60% at 10% 0%, rgba(15,118,110,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 100%, rgba(52,211,153,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 50% 50%, rgba(15,118,110,0.02) 0%, transparent 70%);
+}
+
+/* Header in light mode */
+[data-theme="light"] .app-header {
+  background: rgba(255, 255, 255, 0.82);
+  border-bottom: 1px solid rgba(15, 118, 110, 0.10);
+  box-shadow: 0 1px 0 rgba(15,118,110,0.05), 0 2px 12px rgba(0,0,0,0.06);
+}
+
+/* Auth wrapper in light mode */
+[data-theme="light"] .auth-wrapper {
+  background:
+    radial-gradient(ellipse 70% 60% at 15% 20%, rgba(15,118,110,0.10) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 50% at 85% 80%, rgba(52,211,153,0.06) 0%, transparent 60%),
+    var(--color-bg);
+}
+
+/* Auth card in light mode */
+[data-theme="light"] .auth-card {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(15, 118, 110, 0.15);
+}
+
+/* Form inputs in light mode */
+[data-theme="light"] .form-control {
+  background: rgba(255, 255, 255, 0.90);
+  border-color: rgba(15, 118, 110, 0.18);
+  color: var(--color-fg);
+}
+[data-theme="light"] .form-control::placeholder {
+  color: var(--color-fg-3);
+}
+[data-theme="light"] .form-control:focus {
+  background: #ffffff;
+  border-color: var(--color-primary-dim);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+}
+
+/* Table in light mode */
+[data-theme="light"] table.data-table th {
+  background: rgba(15, 118, 110, 0.04);
+  color: var(--color-fg-2);
+}
+[data-theme="light"] table.data-table td {
+  border-bottom-color: rgba(15, 118, 110, 0.08);
+}
+[data-theme="light"] table.data-table tbody tr:hover td {
+  background: rgba(15, 118, 110, 0.04);
+}
+
+/* Panel in light mode */
+[data-theme="light"] .panel {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(15, 118, 110, 0.15);
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-soft);
+  background: transparent;
+  color: var(--color-fg-2);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+.theme-toggle:hover {
+  background: var(--color-primary-glow);
+  border-color: var(--color-border);
+  color: var(--color-primary);
+}

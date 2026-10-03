@@ -11,9 +11,12 @@ import {
   Lightning,
   Receipt,
   SignOut,
+  Sun,
+  Moon,
 } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
+import { useTheme } from "../../lib/theme-context";
 
 const navItems = [
   { href: "/",           label: "Tổng quan",      Icon: House,     match: (p: string) => p === "/" },
@@ -34,6 +37,7 @@ function BrandLogo() {
 
 export function AppHeader() {
   const { user, logout } = useAuth();
+  const { theme, toggle } = useTheme();
   const pathname = usePathname();
 
   const roleText =
@@ -47,7 +51,7 @@ export function AppHeader() {
         <motion.div
           initial={{ opacity: 0, x: -12 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
         >
           <Link href="/" className="brand">
             <div className="brand-icon">
@@ -68,7 +72,7 @@ export function AppHeader() {
                   className={`nav-item ${isActive ? "active" : ""}`}
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: i * 0.04, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ duration: 0.35, delay: i * 0.04, ease: "easeOut" }}
                 >
                   <Link href={href} aria-current={isActive ? "page" : undefined}>
                     <Icon size={15} weight={isActive ? "fill" : "regular"} />
@@ -81,48 +85,87 @@ export function AppHeader() {
         </nav>
 
         {/* User controls */}
-        <AnimatePresence mode="wait">
-          {user ? (
-            <motion.div
-              key="user"
-              className="user-controls"
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 12 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <div className="user-badge">
-                <span style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {user.email}
-                </span>
-                <span className={`role-tag ${user.role}`}>{roleText}</span>
-              </div>
-              <motion.button
-                type="button"
-                className="btn-ghost"
-                onClick={() => void logout()}
-                aria-label="Đăng xuất khỏi hệ thống"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.96 }}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          {/* Theme Toggle */}
+          <motion.button
+            type="button"
+            className="theme-toggle"
+            onClick={toggle}
+            aria-label={theme === "dark" ? "Chuyển sang chế độ sáng" : "Chuyển sang chế độ tối"}
+            title={theme === "dark" ? "Light mode" : "Dark mode"}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.9, rotate: 15 }}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {theme === "dark" ? (
+                <motion.span
+                  key="sun"
+                  initial={{ opacity: 0, rotate: -45, scale: 0.7 }}
+                  animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                  exit={{ opacity: 0, rotate: 45, scale: 0.7 }}
+                  transition={{ duration: 0.2 }}
+                  style={{ display: "flex" }}
+                >
+                  <Sun size={16} weight="fill" />
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="moon"
+                  initial={{ opacity: 0, rotate: 45, scale: 0.7 }}
+                  animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                  exit={{ opacity: 0, rotate: -45, scale: 0.7 }}
+                  transition={{ duration: 0.2 }}
+                  style={{ display: "flex" }}
+                >
+                  <Moon size={16} weight="fill" />
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
+
+          <AnimatePresence mode="wait">
+            {user ? (
+              <motion.div
+                key="user"
+                className="user-controls"
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 12 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
               >
-                <SignOut size={14} />
-                Đăng xuất
-              </motion.button>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="guest"
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 12 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <Link href="/login" className="btn-primary" style={{ padding: "6px 16px" }}>
-                Đăng nhập
-              </Link>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                <div className="user-badge">
+                  <span style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {user.email}
+                  </span>
+                  <span className={`role-tag ${user.role}`}>{roleText}</span>
+                </div>
+                <motion.button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => void logout()}
+                  aria-label="Đăng xuất khỏi hệ thống"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.96 }}
+                >
+                  <SignOut size={14} />
+                  Đăng xuất
+                </motion.button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="guest"
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 12 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+              >
+                <Link href="/login" className="btn-primary" style={{ padding: "6px 16px" }}>
+                  Đăng nhập
+                </Link>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </header>
   );
