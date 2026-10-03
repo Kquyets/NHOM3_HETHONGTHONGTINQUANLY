@@ -630,7 +630,7 @@ export default function InvoicesPage() {
                   <div>
                     <h3 style={{ fontSize: "var(--text-sm)", fontWeight: 600, marginBottom: 8 }}>Lịch sử thanh toán</h3>
                     {selectedInvoice.payments.map((p) => (
-                      <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: "var(--text-xs)" }}>
+                      <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--color-border)", fontSize: "var(--text-xs)" }}>
                         <span>
                           {p.method === "bank_transfer" ? "Chuyển khoản" : p.method === "cash" ? "Tiền mặt" : "Khác"}{" "}
                           {p.reference ? `(${p.reference})` : ""}

@@ -485,7 +485,7 @@ export default function ContractsPage() {
             </div>
 
             {/* Footer */}
-            <div style={{ padding: "10px var(--space-3)", borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", gap: 16, fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>
+            <div style={{ padding: "10px var(--space-3)", borderTop: "1px solid var(--color-border)", display: "flex", gap: 16, fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <FileText size={11} />
                 {filtered.length} / {contracts.length} hợp đồng

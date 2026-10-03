@@ -474,10 +474,10 @@ export default function TenantsPage() {
                       <td style={{ fontWeight: 600 }}>
                         <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
                           <span style={{
-                            width: 30, height: 30, borderRadius: "50%",
-                            background: "linear-gradient(135deg, var(--color-primary), var(--color-accent))",
+                            width: 28, height: 28, borderRadius: "var(--radius-md)",
+                            background: "var(--color-primary-light)",
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: "var(--text-xs)", fontWeight: 700, color: "#fff",
+                            fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--color-primary)",
                             flexShrink: 0,
                           }}>
                             {tenant.fullName.charAt(0).toUpperCase()}
@@ -531,7 +531,7 @@ export default function TenantsPage() {
             {/* Footer stats */}
             <div style={{
               padding: "10px var(--space-3)",
-              borderTop: "1px solid rgba(255,255,255,0.04)",
+              borderTop: "1px solid var(--color-border)",
               display: "flex",
               gap: 16,
               fontSize: "var(--text-xs)",

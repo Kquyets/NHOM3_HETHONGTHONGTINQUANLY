@@ -263,9 +263,9 @@ export default function RegisterPage() {
                           flex: 1,
                           height: 3,
                           borderRadius: 99,
-                          background: pwStrength >= level ? pwStrengthColor : "rgba(255,255,255,0.08)",
+                          background: pwStrength >= level ? pwStrengthColor : "var(--color-border)",
                         }}
-                        animate={{ background: pwStrength >= level ? pwStrengthColor : "rgba(255,255,255,0.08)" }}
+                        animate={{ background: pwStrength >= level ? pwStrengthColor : "var(--color-border)" }}
                         transition={{ duration: 0.3 }}
                       />
                     ))}

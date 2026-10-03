@@ -423,7 +423,7 @@ export default function PropertiesPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {[0, 1].map((i) => (
               <div key={i} className="card" style={{ padding: 0, minHeight: 200 }}>
-                <div className="card-header" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                <div className="card-header" style={{ borderBottom: "1px solid var(--color-border)" }}>
                   <div>
                     <div className="skeleton" style={{ width: 180, height: 20, marginBottom: 8 }} />
                     <div className="skeleton" style={{ width: 120, height: 13 }} />
@@ -605,7 +605,7 @@ export default function PropertiesPage() {
                 {/* Room count footer */}
                 <div style={{
                   padding: "10px var(--space-3)",
-                  borderTop: "1px solid rgba(255,255,255,0.04)",
+                  borderTop: "1px solid var(--color-border)",
                   display: "flex",
                   gap: 16,
                   fontSize: "var(--text-xs)",
