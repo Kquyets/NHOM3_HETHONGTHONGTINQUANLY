@@ -29,3 +29,19 @@ export function getDatabaseUrl(env: DatabaseEnvironment = process.env): string {
 
   return databaseUrl;
 }
+
+export function getJwtSecret(env: DatabaseEnvironment = process.env): string {
+  const secret = env.JWT_SECRET?.trim();
+  if (!secret || secret.length < 32) {
+    throw new Error("JWT_SECRET is required and must be at least 32 characters.");
+  }
+  return secret;
+}
+
+export function getJwtRefreshSecret(env: DatabaseEnvironment = process.env): string {
+  const secret = env.JWT_REFRESH_SECRET?.trim();
+  if (!secret || secret.length < 32) {
+    throw new Error("JWT_REFRESH_SECRET is required and must be at least 32 characters.");
+  }
+  return secret;
+}

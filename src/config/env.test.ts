@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getDatabaseUrl } from "./env";
+import { getDatabaseUrl, getJwtSecret, getJwtRefreshSecret } from "./env";
 
 describe("getDatabaseUrl", () => {
   it("requires a database URL", () => {
@@ -31,5 +31,31 @@ describe("getDatabaseUrl", () => {
     const url = "postgresql://owner:password@localhost:5432/housing";
 
     expect(getDatabaseUrl({ DATABASE_URL: url })).toBe(url);
+  });
+});
+
+describe("getJwtSecret", () => {
+  it("throws when JWT_SECRET is missing", () => {
+    expect(() => getJwtSecret({})).toThrow("JWT_SECRET is required");
+  });
+
+  it("throws when JWT_SECRET is too short", () => {
+    expect(() => getJwtSecret({ JWT_SECRET: "tooshort" })).toThrow("JWT_SECRET is required");
+  });
+
+  it("returns secret when valid", () => {
+    const secret = "a".repeat(32);
+    expect(getJwtSecret({ JWT_SECRET: secret })).toBe(secret);
+  });
+});
+
+describe("getJwtRefreshSecret", () => {
+  it("throws when JWT_REFRESH_SECRET is missing", () => {
+    expect(() => getJwtRefreshSecret({})).toThrow("JWT_REFRESH_SECRET is required");
+  });
+
+  it("returns secret when valid", () => {
+    const secret = "b".repeat(32);
+    expect(getJwtRefreshSecret({ JWT_REFRESH_SECRET: secret })).toBe(secret);
   });
 });
