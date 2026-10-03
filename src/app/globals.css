@@ -1060,22 +1060,22 @@ table.data-table tbody tr:last-child td {
 /* Ambient Home Background with Subtle Blur */
 .landing-bg-layer {
   position: fixed;
-  inset: -20px;
+  inset: -10px;
   background-image: url('/images/image_e148c7f8.jpg');
   background-size: cover;
   background-position: center 25%;
   background-repeat: no-repeat;
-  filter: blur(12px);
-  transform: scale(1.04);
-  opacity: 0.16;
+  filter: blur(4px);
+  transform: scale(1.02);
+  opacity: 0.22;
   pointer-events: none;
   z-index: 0;
   transition: opacity 0.3s ease;
 }
 
 [data-theme="dark"] .landing-bg-layer {
-  opacity: 0.10;
-  filter: blur(14px) brightness(0.65);
+  opacity: 0.14;
+  filter: blur(4px) brightness(0.7);
 }
 
 .landing-content-layer {
@@ -1096,15 +1096,15 @@ table.data-table tbody tr:last-child td {
   position: absolute;
   top: -10px;
   left: 50%;
-  transform: translateX(-50%) scale(1.03);
+  transform: translateX(-50%) scale(1.02);
   width: 100vw;
   max-width: 1300px;
   height: 520px;
   background-image: url('/images/image_e148c7f8.jpg');
   background-size: cover;
   background-position: center 30%;
-  filter: blur(8px);
-  opacity: 0.22;
+  filter: blur(4px);
+  opacity: 0.28;
   mask-image: radial-gradient(ellipse at center 35%, black 25%, transparent 75%);
   -webkit-mask-image: radial-gradient(ellipse at center 35%, black 25%, transparent 75%);
   pointer-events: none;
@@ -1112,8 +1112,8 @@ table.data-table tbody tr:last-child td {
 }
 
 [data-theme="dark"] .landing-hero-backdrop {
-  opacity: 0.13;
-  filter: blur(10px) brightness(0.65);
+  opacity: 0.16;
+  filter: blur(4px) brightness(0.7);
 }
 
 .landing-pill {
