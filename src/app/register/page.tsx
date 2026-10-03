@@ -14,6 +14,7 @@ import {
   ArrowRight,
   ShieldCheck,
   Buildings,
+  Check,
 } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
@@ -149,8 +150,10 @@ export default function RegisterPage() {
 
             <form onSubmit={handleSubmit} noValidate>
               {/* Role selector */}
-              <div className="form-group" style={{ marginBottom: 16 }}>
-                <label id="role-label" style={{ fontWeight: 600 }}>Vai trò của bạn</label>
+              <div className="form-group" style={{ marginBottom: 18 }}>
+                <label id="role-label" style={{ fontWeight: 600, marginBottom: 8, display: "block" }}>
+                  Vai trò của bạn
+                </label>
                 <div className="role-selector" role="radiogroup" aria-labelledby="role-label">
                   <label className={`role-option ${role === "owner" ? "selected" : ""}`}>
                     <input
@@ -160,9 +163,14 @@ export default function RegisterPage() {
                       checked={role === "owner"}
                       onChange={() => setRole("owner")}
                     />
-                    <House size={20} weight={role === "owner" ? "fill" : "regular"} />
-                    <span style={{ fontWeight: 600 }}>Chủ nhà</span>
-                    <span style={{ fontSize: 11.5, opacity: 0.75 }}>Toàn quyền quản trị</span>
+                    <div className="role-option-check">
+                      {role === "owner" && <Check size={11} weight="bold" />}
+                    </div>
+                    <div className="role-option-icon">
+                      <House size={20} weight={role === "owner" ? "fill" : "regular"} />
+                    </div>
+                    <span className="role-option-title">Chủ nhà</span>
+                    <span className="role-option-desc">Toàn quyền quản trị</span>
                   </label>
 
                   <label className={`role-option ${role === "manager" ? "selected" : ""}`}>
@@ -173,9 +181,14 @@ export default function RegisterPage() {
                       checked={role === "manager"}
                       onChange={() => setRole("manager")}
                     />
-                    <UserCircle size={20} weight={role === "manager" ? "fill" : "regular"} />
-                    <span style={{ fontWeight: 600 }}>Quản lý phòng</span>
-                    <span style={{ fontSize: 11.5, opacity: 0.75 }}>Theo cơ sở phân công</span>
+                    <div className="role-option-check">
+                      {role === "manager" && <Check size={11} weight="bold" />}
+                    </div>
+                    <div className="role-option-icon">
+                      <UserCircle size={20} weight={role === "manager" ? "fill" : "regular"} />
+                    </div>
+                    <span className="role-option-title">Quản lý phòng</span>
+                    <span className="role-option-desc">Theo cơ sở phân công</span>
                   </label>
                 </div>
               </div>
