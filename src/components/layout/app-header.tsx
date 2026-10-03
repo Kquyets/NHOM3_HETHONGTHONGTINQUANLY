@@ -75,8 +75,8 @@ export function AppHeader() {
                   transition={{ duration: 0.35, delay: i * 0.04, ease: "easeOut" }}
                 >
                   <Link href={href} aria-current={isActive ? "page" : undefined}>
-                    <Icon size={15} weight={isActive ? "fill" : "regular"} />
-                    {label}
+                    <Icon size={14} weight={isActive ? "fill" : "regular"} />
+                    <span>{label}</span>
                   </Link>
                 </motion.li>
               );
@@ -85,16 +85,16 @@ export function AppHeader() {
         </nav>
 
         {/* User controls */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        <div className="user-controls">
           {/* Theme Toggle */}
           <motion.button
             type="button"
             className="theme-toggle"
             onClick={toggle}
             aria-label={theme === "dark" ? "Chuyển sang chế độ sáng" : "Chuyển sang chế độ tối"}
-            title={theme === "dark" ? "Light mode" : "Dark mode"}
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.9, rotate: 15 }}
+            title={theme === "dark" ? "Chế độ sáng" : "Chế độ tối"}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
             <AnimatePresence mode="wait" initial={false}>
               {theme === "dark" ? (
@@ -103,10 +103,10 @@ export function AppHeader() {
                   initial={{ opacity: 0, rotate: -45, scale: 0.7 }}
                   animate={{ opacity: 1, rotate: 0, scale: 1 }}
                   exit={{ opacity: 0, rotate: 45, scale: 0.7 }}
-                  transition={{ duration: 0.2 }}
+                  transition={{ duration: 0.15 }}
                   style={{ display: "flex" }}
                 >
-                  <Sun size={16} weight="fill" />
+                  <Sun size={15} weight="fill" />
                 </motion.span>
               ) : (
                 <motion.span
@@ -114,10 +114,10 @@ export function AppHeader() {
                   initial={{ opacity: 0, rotate: 45, scale: 0.7 }}
                   animate={{ opacity: 1, rotate: 0, scale: 1 }}
                   exit={{ opacity: 0, rotate: -45, scale: 0.7 }}
-                  transition={{ duration: 0.2 }}
+                  transition={{ duration: 0.15 }}
                   style={{ display: "flex" }}
                 >
-                  <Moon size={16} weight="fill" />
+                  <Moon size={15} weight="fill" />
                 </motion.span>
               )}
             </AnimatePresence>
@@ -127,39 +127,39 @@ export function AppHeader() {
             {user ? (
               <motion.div
                 key="user"
-                className="user-controls"
-                initial={{ opacity: 0, x: 12 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 12 }}
-                transition={{ duration: 0.35, ease: "easeOut" }}
+                style={{ display: "flex", alignItems: "center", gap: 6 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
               >
                 <div className="user-badge">
-                  <span style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span className="user-badge-email" title={user.email}>
                     {user.email}
                   </span>
                   <span className={`role-tag ${user.role}`}>{roleText}</span>
                 </div>
                 <motion.button
                   type="button"
-                  className="btn-ghost"
+                  className="btn-ghost btn-logout"
                   onClick={() => void logout()}
                   aria-label="Đăng xuất khỏi hệ thống"
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.96 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <SignOut size={14} />
-                  Đăng xuất
+                  <SignOut size={13} />
+                  <span>Đăng xuất</span>
                 </motion.button>
               </motion.div>
             ) : (
               <motion.div
                 key="guest"
-                initial={{ opacity: 0, x: 12 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 12 }}
-                transition={{ duration: 0.35, ease: "easeOut" }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
               >
-                <Link href="/login" className="btn-primary" style={{ padding: "6px 16px" }}>
+                <Link href="/login" className="btn-primary" style={{ padding: "5px 14px", fontSize: 13 }}>
                   Đăng nhập
                 </Link>
               </motion.div>
