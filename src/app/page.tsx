@@ -2,6 +2,18 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { motion } from "motion/react";
+import {
+  Buildings,
+  Door,
+  CheckCircle,
+  Wrench,
+  Plus,
+  ArrowRight,
+  ChartBar,
+  Lightning,
+  FileText,
+} from "@phosphor-icons/react";
 
 import { AppHeader } from "../components/layout/app-header";
 import { apiClient } from "../lib/api-client";
@@ -19,49 +31,56 @@ const money = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 0,
 });
 
-/* ── Inline SVG icons ─────────────────────────────────────────────── */
-function IconBuilding() {
+/* ── Fade-in-up animation variant ─────────────────────────────── */
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (i = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, delay: i * 0.08, ease: "easeOut" as const },
+  }),
+};
+
+/* ── Stat Card ──────────────────────────────────────────────────── */
+function StatCard({
+  label,
+  value,
+  sub,
+  icon: Icon,
+  iconClass,
+  valueClass,
+  index,
+}: {
+  label: string;
+  value: number | string;
+  sub: string;
+  icon: React.ElementType;
+  iconClass: string;
+  valueClass?: string;
+  index: number;
+}) {
   return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="3" width="18" height="18" rx="2"/>
-      <path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>
-    </svg>
+    <motion.article
+      className="stat-card"
+      custom={index}
+      initial="hidden"
+      animate="visible"
+      variants={fadeUp}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+    >
+      <div className={`stat-icon ${iconClass}`}>
+        <Icon size={20} weight="fill" />
+      </div>
+      <span className="stat-label">{label}</span>
+      <div className={`stat-value ${valueClass ?? ""}`} aria-live="polite" aria-atomic="true">
+        {value}
+      </div>
+      <span className="stat-sub">{sub}</span>
+    </motion.article>
   );
 }
 
-function IconCheckCircle() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm-1.5 14.5l-4-4 1.41-1.41L10.5 13.67l5.59-5.59L17.5 9.5l-7 7z"/>
-    </svg>
-  );
-}
-
-function IconTool() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/>
-    </svg>
-  );
-}
-
-function IconLogo() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12 2L2 8.5V20a1 1 0 001 1h5v-6h8v6h5a1 1 0 001-1V8.5L12 2z"/>
-    </svg>
-  );
-}
-
-function IconPlus() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
-      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-    </svg>
-  );
-}
-
-/* ── Component ───────────────────────────────────────────────────────── */
+/* ── Component ───────────────────────────────────────────────────── */
 export default function HomePage() {
   const { user, isLoading: authLoading } = useAuth();
 
@@ -70,9 +89,7 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (authLoading || !user) {
-      return;
-    }
+    if (authLoading || !user) return;
 
     let isMounted = true;
 
@@ -97,25 +114,16 @@ export default function HomePage() {
           }),
         );
 
-        if (isMounted) {
-          setProperties(withRooms);
-        }
+        if (isMounted) setProperties(withRooms);
       } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : "Không thể tải dữ liệu.");
-        }
+        if (isMounted) setError(err instanceof Error ? err.message : "Không thể tải dữ liệu.");
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     }
 
     void loadData();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [user, authLoading]);
 
   const allRooms = properties.flatMap((p) => p.rooms);
@@ -129,184 +137,252 @@ export default function HomePage() {
 
       <main className="main-container">
         {!user && !authLoading ? (
-          /* ── Hero / Welcome ─────────────────────────────────── */
-          <section className="card" style={{ margin: "var(--space-6) auto", maxWidth: "680px" }}>
+          /* ── Hero / Welcome ─────────────────────── */
+          <motion.section
+            className="card"
+            style={{ margin: "var(--space-6) auto", maxWidth: 700 }}
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          >
             <div className="hero-section">
-              <div style={{
-                width: 64,
-                height: 64,
-                background: "var(--color-primary)",
-                borderRadius: "var(--radius-lg)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto var(--space-3)",
-                boxShadow: "0 8px 24px rgba(15, 118, 110, 0.25)",
-                color: "white",
-              }}>
-                <IconLogo />
-              </div>
+              {/* Badge */}
+              <motion.div
+                className="hero-badge"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1, duration: 0.4 }}
+              >
+                <Lightning size={12} weight="fill" />
+                Quản lý thông minh
+              </motion.div>
 
-              <h1>Nhà Trọ Thông Minh</h1>
-              <p>
-                Giải pháp toàn diện giúp chủ nhà và quản lý theo dõi phòng trọ,
+              <motion.h1
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.18, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              >
+                Nhà Trọ Thông Minh
+              </motion.h1>
+
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.28, duration: 0.4 }}
+              >
+                Giải pháp toàn diện giúp chủ nhà theo dõi phòng trọ,
                 khách thuê, chỉ số điện nước và hóa đơn tự động.
-              </p>
+              </motion.p>
 
-              <div className="hero-actions">
-                <Link href="/login" className="btn-primary">
-                  Đăng nhập ngay
-                </Link>
-                <Link href="/register" className="btn-secondary">
-                  Tạo tài khoản miễn phí
-                </Link>
-              </div>
+              <motion.div
+                className="hero-actions"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.38, duration: 0.4 }}
+              >
+                <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                  <Link href="/login" className="btn-primary">
+                    Đăng nhập ngay
+                    <ArrowRight size={14} weight="bold" />
+                  </Link>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                  <Link href="/register" className="btn-secondary">
+                    Tạo tài khoản
+                  </Link>
+                </motion.div>
+              </motion.div>
+
+              {/* Feature pills */}
+              <motion.div
+                className="feature-pills"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5, duration: 0.4 }}
+              >
+                {["Quản lý phòng", "Theo dõi điện nước", "Hóa đơn tự động", "Hợp đồng số"].map((f) => (
+                  <span key={f} className="feature-pill">
+                    <CheckCircle size={10} weight="fill" style={{ color: "var(--color-primary)" }} />
+                    {f}
+                  </span>
+                ))}
+              </motion.div>
             </div>
-          </section>
+          </motion.section>
         ) : (
           <>
-            {/* ── Dashboard Header ─────────────────────────── */}
-            <div className="page-title-row">
+            {/* ── Dashboard Header ─────────────────────── */}
+            <motion.div
+              className="page-title-row"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            >
               <div>
                 <h1 className="page-title">Tổng quan hệ thống</h1>
                 <p className="page-desc">Theo dõi tình trạng các nhà trọ và phòng đang quản lý.</p>
               </div>
-              <Link
-                href="/properties"
-                className="btn-primary"
-                style={{ padding: "8px 16px" }}
-              >
-                <IconPlus />
-                Quản lý nhà &amp; phòng
-              </Link>
-            </div>
+              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                <Link href="/properties" className="btn-primary" style={{ padding: "9px 18px" }}>
+                  <Plus size={14} weight="bold" />
+                  Quản lý nhà &amp; phòng
+                </Link>
+              </motion.div>
+            </motion.div>
 
+            {/* Error */}
             {error && (
-              <div className="alert-error" role="alert">{error}</div>
+              <motion.div
+                className="alert-error"
+                role="alert"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                {error}
+              </motion.div>
             )}
 
             {loading ? (
-              <div className="loading-indicator">
-                <span className="spinner" role="status" aria-label="Đang tải" />
-                Đang tải dữ liệu tổng quan...
+              /* Skeleton loader */
+              <div className="stats-grid" aria-busy="true">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="stat-card" style={{ minHeight: 130 }}>
+                    <div className="skeleton" style={{ width: 36, height: 36, borderRadius: "var(--radius-md)", marginBottom: 12 }} />
+                    <div className="skeleton" style={{ width: "60%", height: 11, marginBottom: 8 }} />
+                    <div className="skeleton" style={{ width: "40%", height: 34, marginBottom: 6 }} />
+                    <div className="skeleton" style={{ width: "70%", height: 11 }} />
+                  </div>
+                ))}
               </div>
             ) : (
               <>
                 {/* ── Stat Cards ─────────────────────────── */}
                 <section className="stats-grid" aria-label="Thống kê tổng quan">
-                  <article className="stat-card">
-                    <span className="stat-label">Nhà trọ</span>
-                    <div className="stat-value" aria-live="polite" aria-atomic="true">
-                      {properties.length}
-                    </div>
-                    <span className="stat-sub">địa điểm đang quản lý</span>
-                  </article>
-
-                  <article className="stat-card">
-                    <span className="stat-label">Tổng số phòng</span>
-                    <div className="stat-value" aria-live="polite" aria-atomic="true">
-                      {totalRooms}
-                    </div>
-                    <span className="stat-sub">trên toàn bộ hệ thống</span>
-                  </article>
-
-                  <article className="stat-card vacant">
-                    <span className="stat-label">Sẵn sàng đón khách</span>
-                    <div className="stat-value" aria-live="polite" aria-atomic="true">
-                      {readyRooms}
-                    </div>
-                    <span className="stat-sub">phòng đạt tiêu chuẩn</span>
-                  </article>
-
-                  <article className="stat-card maintenance">
-                    <span className="stat-label">Đang bảo trì</span>
-                    <div className="stat-value" aria-live="polite" aria-atomic="true">
-                      {maintenanceRooms}
-                    </div>
-                    <span className="stat-sub">chưa thể cho thuê</span>
-                  </article>
+                  <StatCard label="Nhà trọ" value={properties.length} sub="địa điểm đang quản lý" icon={Buildings} iconClass="teal" index={0} />
+                  <StatCard label="Tổng số phòng" value={totalRooms} sub="trên toàn bộ hệ thống" icon={Door} iconClass="teal" index={1} />
+                  <StatCard label="Sẵn sàng đón khách" value={readyRooms} sub="phòng đạt tiêu chuẩn" icon={CheckCircle} iconClass="emerald" valueClass="vacant" index={2} />
+                  <StatCard label="Đang bảo trì" value={maintenanceRooms} sub="chưa thể cho thuê" icon={Wrench} iconClass="amber" valueClass="maintenance" index={3} />
                 </section>
+
+                {/* Quick actions strip */}
+                <motion.div
+                  style={{ display: "flex", gap: 10, marginBottom: "var(--space-4)", flexWrap: "wrap" }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  {[
+                    { href: "/properties", label: "Quản lý phòng", Icon: Buildings },
+                    { href: "/meters", label: "Điện & Nước", Icon: Lightning },
+                    { href: "/invoices", label: "Hóa đơn", Icon: FileText },
+                    { href: "/", label: "Báo cáo", Icon: ChartBar },
+                  ].map(({ href, label, Icon }, i) => (
+                    <motion.div
+                      key={label}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.4 + i * 0.06 }}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.96 }}
+                    >
+                      <Link
+                        href={href}
+                        className="btn-secondary"
+                        style={{ fontSize: "var(--text-xs)", padding: "6px 14px", gap: 6 }}
+                      >
+                        <Icon size={13} />
+                        {label}
+                      </Link>
+                    </motion.div>
+                  ))}
+                </motion.div>
 
                 {/* ── Property List ──────────────────────── */}
                 {properties.length === 0 ? (
-                  <div className="card">
-                    <div className="card-body" style={{ textAlign: "center", padding: "var(--space-6) var(--space-3)" }}>
-                      <div style={{ color: "var(--color-border)", marginBottom: "var(--space-2)" }}>
-                        <IconBuilding />
+                  <motion.div
+                    className="card"
+                    initial={{ opacity: 0, scale: 0.97 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <div className="empty-state">
+                      <div className="empty-icon">
+                        <Buildings size={28} />
                       </div>
-                      <p style={{ color: "var(--color-muted-fg)", marginBottom: "var(--space-2)" }}>
+                      <p className="text-muted" style={{ margin: 0 }}>
                         Bạn chưa có nhà trọ nào trong hệ thống.
                       </p>
-                      <Link
-                        href="/properties"
-                        className="btn-primary"
-                        style={{ display: "inline-flex" }}
-                      >
-                        <IconPlus />
+                      <Link href="/properties" className="btn-primary">
+                        <Plus size={14} weight="bold" />
                         Tạo nhà trọ đầu tiên
                       </Link>
                     </div>
-                  </div>
+                  </motion.div>
                 ) : (
-                  properties.map((prop) => (
-                    <article className="card" key={prop.id}>
-                      <header className="card-header">
-                        <div>
-                          <h2 className="card-title">{prop.name}</h2>
-                          <p className="text-muted text-sm" style={{ marginTop: 4 }}>
-                            {prop.address ?? "Chưa cập nhật địa chỉ"}
-                          </p>
-                        </div>
-                        <span
-                          className="badge ready"
-                          role="status"
-                          aria-label={`${prop.rooms.length} phòng`}
-                        >
-                          <IconCheckCircle />
-                          {prop.rooms.length} phòng
-                        </span>
-                      </header>
-
-                      <div className="table-responsive">
-                        {prop.rooms.length === 0 ? (
-                          <div style={{ padding: "var(--space-3)", textAlign: "center", color: "var(--color-muted-fg)", fontSize: "var(--text-sm)" }}>
-                            Chưa có phòng nào trong nhà trọ này.
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    {properties.map((prop, pi) => (
+                      <motion.article
+                        className="card"
+                        key={prop.id}
+                        custom={pi}
+                        initial="hidden"
+                        animate="visible"
+                        variants={fadeUp}
+                      >
+                        <header className="card-header">
+                          <div>
+                            <h2 className="card-title">{prop.name}</h2>
+                            <p className="text-muted text-sm" style={{ marginTop: 3 }}>
+                              {prop.address ?? "Chưa cập nhật địa chỉ"}
+                            </p>
                           </div>
-                        ) : (
-                          <table className="data-table">
-                            <thead>
-                              <tr>
-                                <th scope="col">Số phòng</th>
-                                <th scope="col">Diện tích</th>
-                                <th scope="col">Giá thuê / tháng</th>
-                                <th scope="col">Trạng thái</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {prop.rooms.map((room) => (
-                                <tr key={room.id}>
-                                  <td style={{ fontWeight: 600 }}>Phòng {room.roomNumber}</td>
-                                  <td className="text-muted">{room.areaM2 ? `${room.areaM2} m²` : "—"}</td>
-                                  <td style={{ fontVariantNumeric: "tabular-nums" }}>
-                                    {money.format(room.monthlyRent)}
-                                  </td>
-                                  <td>
-                                    <span className={`badge ${room.status === "ready" ? "ready" : "maintenance"}`}>
-                                      {room.status === "ready" ? (
-                                        <><IconCheckCircle /> Sẵn sàng</>
-                                      ) : (
-                                        <><IconTool /> Bảo trì</>
-                                      )}
-                                    </span>
-                                  </td>
+                          <span className="badge ready">
+                            <CheckCircle size={11} weight="fill" />
+                            {prop.rooms.length} phòng
+                          </span>
+                        </header>
+
+                        <div className="table-responsive">
+                          {prop.rooms.length === 0 ? (
+                            <p style={{ padding: "var(--space-3)", textAlign: "center", color: "var(--color-fg-3)", fontSize: "var(--text-sm)" }}>
+                              Chưa có phòng nào trong nhà trọ này.
+                            </p>
+                          ) : (
+                            <table className="data-table">
+                              <thead>
+                                <tr>
+                                  <th scope="col">Số phòng</th>
+                                  <th scope="col">Diện tích</th>
+                                  <th scope="col">Giá thuê / tháng</th>
+                                  <th scope="col">Trạng thái</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                      </div>
-                    </article>
-                  ))
+                              </thead>
+                              <tbody>
+                                {prop.rooms.map((room) => (
+                                  <tr key={room.id}>
+                                    <td style={{ fontWeight: 600 }}>Phòng {room.roomNumber}</td>
+                                    <td className="text-muted">{room.areaM2 ? `${room.areaM2} m²` : "—"}</td>
+                                    <td style={{ fontVariantNumeric: "tabular-nums", fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)" }}>
+                                      {money.format(room.monthlyRent)}
+                                    </td>
+                                    <td>
+                                      <span className={`badge ${room.status === "ready" ? "ready" : "maintenance"}`}>
+                                        {room.status === "ready" ? (
+                                          <><CheckCircle size={10} weight="fill" /> Sẵn sàng</>
+                                        ) : (
+                                          <><Wrench size={10} weight="fill" /> Bảo trì</>
+                                        )}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      </motion.article>
+                    ))}
+                  </div>
                 )}
               </>
             )}
