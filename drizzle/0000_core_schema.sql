@@ -1,4 +1,4 @@
-﻿CREATE TYPE user_role AS ENUM ('owner', 'manager', 'tenant');
+CREATE TYPE user_role AS ENUM ('owner', 'manager', 'tenant');
 CREATE TYPE account_status AS ENUM ('active', 'disabled');
 CREATE TYPE property_member_status AS ENUM ('active', 'revoked');
 CREATE TYPE room_status AS ENUM ('ready', 'maintenance');
@@ -40,6 +40,9 @@ CREATE TABLE properties (
   owner_role user_role DEFAULT 'owner' NOT NULL,
   name text NOT NULL,
   address text,
+  bank_code text,
+  bank_account text,
+  account_holder text,
   created_at timestamptz DEFAULT now() NOT NULL,
   updated_at timestamptz DEFAULT now() NOT NULL,
   CONSTRAINT properties_owner_role_fk

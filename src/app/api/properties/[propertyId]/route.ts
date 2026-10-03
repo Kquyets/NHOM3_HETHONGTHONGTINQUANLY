@@ -32,11 +32,14 @@ export async function PATCH(request: NextRequest, { params }: Params): Promise<R
       return errorResponse(Object.assign(new Error("Request body must be JSON."), { code: "VALIDATION_ERROR" }));
     }
 
-    const { name, address } = body as Record<string, unknown>;
+    const { name, address, bankCode, bankAccount, accountHolder } = body as Record<string, unknown>;
 
     const property = await updateProperty(ctx.userId, ctx.role, propertyId, {
       name: typeof name === "string" ? name : undefined,
       address: address === null ? null : typeof address === "string" ? address : undefined,
+      bankCode: bankCode === null ? null : typeof bankCode === "string" ? bankCode : undefined,
+      bankAccount: bankAccount === null ? null : typeof bankAccount === "string" ? bankAccount : undefined,
+      accountHolder: accountHolder === null ? null : typeof accountHolder === "string" ? accountHolder : undefined,
     });
 
     return successResponse({ property });

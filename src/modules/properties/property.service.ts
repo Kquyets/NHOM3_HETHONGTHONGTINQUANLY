@@ -12,6 +12,9 @@ export type PropertyRow = {
   ownerId: string;
   name: string;
   address: string | null;
+  bankCode?: string | null;
+  bankAccount?: string | null;
+  accountHolder?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -19,11 +22,17 @@ export type PropertyRow = {
 export type CreatePropertyInput = {
   name: string;
   address?: string | null;
+  bankCode?: string | null;
+  bankAccount?: string | null;
+  accountHolder?: string | null;
 };
 
 export type UpdatePropertyInput = {
   name?: string;
   address?: string | null;
+  bankCode?: string | null;
+  bankAccount?: string | null;
+  accountHolder?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -77,6 +86,18 @@ async function assertOwner(userId: string, role: string, propertyId: string): Pr
 // Service
 // ---------------------------------------------------------------------------
 
+const PROPERTY_SELECT_COLUMNS = {
+  id: properties.id,
+  ownerId: properties.ownerId,
+  name: properties.name,
+  address: properties.address,
+  bankCode: properties.bankCode,
+  bankAccount: properties.bankAccount,
+  accountHolder: properties.accountHolder,
+  createdAt: properties.createdAt,
+  updatedAt: properties.updatedAt,
+} as const;
+
 /**
  * List properties accessible by the user.
  * Owners see their own properties; managers see properties they're assigned to.
@@ -86,14 +107,7 @@ export async function listProperties(userId: string, role: string): Promise<Prop
 
   if (role === "owner") {
     return db
-      .select({
-        id: properties.id,
-        ownerId: properties.ownerId,
-        name: properties.name,
-        address: properties.address,
-        createdAt: properties.createdAt,
-        updatedAt: properties.updatedAt,
-      })
+      .select(PROPERTY_SELECT_COLUMNS)
       .from(properties)
       .where(eq(properties.ownerId, userId))
       .orderBy(properties.createdAt);
@@ -102,14 +116,7 @@ export async function listProperties(userId: string, role: string): Promise<Prop
   if (role === "manager") {
     // Join to get assigned properties
     return db
-      .select({
-        id: properties.id,
-        ownerId: properties.ownerId,
-        name: properties.name,
-        address: properties.address,
-        createdAt: properties.createdAt,
-        updatedAt: properties.updatedAt,
-      })
+      .select(PROPERTY_SELECT_COLUMNS)
       .from(properties)
       .innerJoin(
         propertyMembers,
@@ -137,14 +144,7 @@ export async function getProperty(
 
   const db = getDatabase();
   const [row] = await db
-    .select({
-      id: properties.id,
-      ownerId: properties.ownerId,
-      name: properties.name,
-      address: properties.address,
-      createdAt: properties.createdAt,
-      updatedAt: properties.updatedAt,
-    })
+    .select(PROPERTY_SELECT_COLUMNS)
     .from(properties)
     .where(eq(properties.id, propertyId))
     .limit(1);
@@ -180,15 +180,11 @@ export async function createProperty(
       ownerRole: "owner",
       name,
       address: input.address?.trim() ?? null,
+      bankCode: input.bankCode?.trim() ?? null,
+      bankAccount: input.bankAccount?.trim() ?? null,
+      accountHolder: input.accountHolder?.trim() ? input.accountHolder.trim().toUpperCase() : null,
     })
-    .returning({
-      id: properties.id,
-      ownerId: properties.ownerId,
-      name: properties.name,
-      address: properties.address,
-      createdAt: properties.createdAt,
-      updatedAt: properties.updatedAt,
-    });
+    .returning(PROPERTY_SELECT_COLUMNS);
 
   if (!row) throw new AppError("DATABASE_ERROR", "Failed to create property.");
   return row;
@@ -223,19 +219,24 @@ export async function updateProperty(
     updates.address = input.address?.trim() ?? null;
   }
 
+  if (input.bankCode !== undefined) {
+    updates.bankCode = input.bankCode?.trim() ?? null;
+  }
+
+  if (input.bankAccount !== undefined) {
+    updates.bankAccount = input.bankAccount?.trim() ?? null;
+  }
+
+  if (input.accountHolder !== undefined) {
+    updates.accountHolder = input.accountHolder?.trim() ? input.accountHolder.trim().toUpperCase() : null;
+  }
+
   const db = getDatabase();
   const [row] = await db
     .update(properties)
     .set(updates)
     .where(eq(properties.id, propertyId))
-    .returning({
-      id: properties.id,
-      ownerId: properties.ownerId,
-      name: properties.name,
-      address: properties.address,
-      createdAt: properties.createdAt,
-      updatedAt: properties.updatedAt,
-    });
+    .returning(PROPERTY_SELECT_COLUMNS);
 
   if (!row) throw new AppError("NOT_FOUND", "Property not found.", []);
   return row;

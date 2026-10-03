@@ -13,11 +13,13 @@ import {
   Wrench,
   Trash,
   PencilSimple,
+  CreditCard,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
+import { VIETNAMESE_BANKS } from "../../utils/vietqr";
 import type { PropertyRow } from "../../modules/properties/property.service";
 import type { RoomRow } from "../../modules/rooms/room.service";
 
@@ -91,7 +93,17 @@ export default function PropertiesPage() {
   const [showAddProp, setShowAddProp] = useState(false);
   const [propName, setPropName] = useState("");
   const [propAddress, setPropAddress] = useState("");
+  const [propBankCode, setPropBankCode] = useState("");
+  const [propBankAccount, setPropBankAccount] = useState("");
+  const [propAccountHolder, setPropAccountHolder] = useState("");
   const [submittingProp, setSubmittingProp] = useState(false);
+
+  // Bank edit state
+  const [editingBankProp, setEditingBankProp] = useState<PropertyRow | null>(null);
+  const [editBankCode, setEditBankCode] = useState("");
+  const [editBankAccount, setEditBankAccount] = useState("");
+  const [editAccountHolder, setEditAccountHolder] = useState("");
+  const [submittingBank, setSubmittingBank] = useState(false);
 
   const [selectedPropId, setSelectedPropId] = useState<string | null>(null);
   const [roomNumber, setRoomNumber] = useState("");
@@ -135,16 +147,56 @@ export default function PropertiesPage() {
       setSubmittingProp(true);
       await apiClient("/api/properties", {
         method: "POST",
-        body: JSON.stringify({ name: propName.trim(), address: propAddress.trim() || null }),
+        body: JSON.stringify({
+          name: propName.trim(),
+          address: propAddress.trim() || null,
+          bankCode: propBankCode || null,
+          bankAccount: propBankAccount.trim() || null,
+          accountHolder: propAccountHolder.trim() || null,
+        }),
       });
       setPropName("");
       setPropAddress("");
+      setPropBankCode("");
+      setPropBankAccount("");
+      setPropAccountHolder("");
       setShowAddProp(false);
       await loadProperties();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Tạo nhà trọ thất bại.");
     } finally {
       setSubmittingProp(false);
+    }
+  };
+
+  const startEditBank = (prop: PropertyRow) => {
+    setEditingBankProp(prop);
+    setEditBankCode(prop.bankCode ?? "");
+    setEditBankAccount(prop.bankAccount ?? "");
+    setEditAccountHolder(prop.accountHolder ?? "");
+    setShowAddProp(false);
+    setSelectedPropId(null);
+  };
+
+  const handleSaveBank = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingBankProp) return;
+    try {
+      setSubmittingBank(true);
+      await apiClient(`/api/properties/${editingBankProp.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          bankCode: editBankCode || null,
+          bankAccount: editBankAccount.trim() || null,
+          accountHolder: editAccountHolder.trim() || null,
+        }),
+      });
+      setEditingBankProp(null);
+      await loadProperties();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Cập nhật tài khoản ngân hàng thất bại.");
+    } finally {
+      setSubmittingBank(false);
     }
   };
 
@@ -316,6 +368,54 @@ export default function PropertiesPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Bank Account Settings */}
+                <div style={{ marginTop: "var(--space-2)", borderTop: "1px dashed var(--color-border)", paddingTop: "var(--space-2)" }}>
+                  <span style={{ fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--color-primary)", display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                    <CreditCard size={14} /> Tài khoản nhận tiền (Tự động sinh mã VietQR trên hóa đơn)
+                  </span>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)" }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label htmlFor="prop-bank-code">Ngân hàng</label>
+                      <select
+                        id="prop-bank-code"
+                        className="form-control"
+                        value={propBankCode}
+                        onChange={(e) => setPropBankCode(e.target.value)}
+                      >
+                        <option value="">-- Chọn ngân hàng --</option>
+                        {VIETNAMESE_BANKS.map((b) => (
+                          <option key={b.code} value={b.code}>
+                            {b.shortName} ({b.name})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label htmlFor="prop-bank-account">Số tài khoản</label>
+                      <input
+                        id="prop-bank-account"
+                        type="text"
+                        className="form-control"
+                        placeholder="VD: 0987654321"
+                        value={propBankAccount}
+                        onChange={(e) => setPropBankAccount(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label htmlFor="prop-account-holder">Tên chủ tài khoản</label>
+                      <input
+                        id="prop-account-holder"
+                        type="text"
+                        className="form-control"
+                        placeholder="VD: NGUYEN VAN A"
+                        value={propAccountHolder}
+                        onChange={(e) => setPropAccountHolder(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: "var(--space-2)" }}>
                   <button type="button" className="btn-ghost" onClick={() => setShowAddProp(false)}>
                     Hủy
@@ -332,6 +432,76 @@ export default function PropertiesPage() {
                     ) : (
                       <><Plus size={13} weight="bold" />Lưu nhà trọ</>
                     )}
+                  </motion.button>
+                </div>
+              </form>
+            </SlidePanel>
+          )}
+        </AnimatePresence>
+
+        {/* Bank Settings Panel */}
+        <AnimatePresence>
+          {editingBankProp && (
+            <SlidePanel
+              title={`Cài đặt tài khoản nhận tiền — ${editingBankProp.name}`}
+              onClose={() => setEditingBankProp(null)}
+            >
+              <form onSubmit={handleSaveBank}>
+                <p className="text-muted" style={{ fontSize: "var(--text-xs)", marginBottom: "var(--space-2)" }}>
+                  Tài khoản ngân hàng dùng để tự động tạo mã VietQR chuẩn NAPAS 247 khi xuất hóa đơn thu tiền cho khách thuê.
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)" }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="edit-bank-code">Ngân hàng</label>
+                    <select
+                      id="edit-bank-code"
+                      className="form-control"
+                      value={editBankCode}
+                      onChange={(e) => setEditBankCode(e.target.value)}
+                    >
+                      <option value="">-- Chọn ngân hàng --</option>
+                      {VIETNAMESE_BANKS.map((b) => (
+                        <option key={b.code} value={b.code}>
+                          {b.shortName} ({b.name})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="edit-bank-account">Số tài khoản</label>
+                    <input
+                      id="edit-bank-account"
+                      type="text"
+                      className="form-control"
+                      placeholder="VD: 0987654321"
+                      value={editBankAccount}
+                      onChange={(e) => setEditBankAccount(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="edit-account-holder">Tên chủ tài khoản</label>
+                    <input
+                      id="edit-account-holder"
+                      type="text"
+                      className="form-control"
+                      placeholder="VD: NGUYEN VAN A"
+                      value={editAccountHolder}
+                      onChange={(e) => setEditAccountHolder(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: "var(--space-2)" }}>
+                  <button type="button" className="btn-ghost" onClick={() => setEditingBankProp(null)}>
+                    Hủy
+                  </button>
+                  <motion.button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={submittingBank}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    {submittingBank ? "Đang lưu..." : "Lưu tài khoản"}
                   </motion.button>
                 </div>
               </form>
@@ -489,9 +659,35 @@ export default function PropertiesPage() {
                       <MapPin size={12} />
                       {prop.address ?? "Chưa cập nhật địa chỉ"}
                     </p>
+                    {prop.bankAccount ? (
+                      <p style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6, fontSize: "var(--text-xs)", color: "var(--color-primary)", fontWeight: 500 }}>
+                        <CreditCard size={13} weight="fill" />
+                        <span>STK: <strong>{prop.bankCode ? `${prop.bankCode} ` : ""}{prop.bankAccount}</strong> ({prop.accountHolder ?? "Chủ nhà"})</span>
+                      </p>
+                    ) : (
+                      <p style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 4, fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>
+                        <CreditCard size={13} />
+                        <span>Chưa thiết lập STK nhận tiền VietQR</span>
+                      </p>
+                    )}
                   </div>
 
                   <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    {user?.role === "owner" && (
+                      <motion.button
+                        type="button"
+                        className="btn-secondary"
+                        style={{ padding: "6px 12px", fontSize: "var(--text-sm)", gap: 5 }}
+                        onClick={() => startEditBank(prop)}
+                        title="Cài đặt tài khoản ngân hàng nhận tiền"
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                      >
+                        <CreditCard size={13} />
+                        <span>{prop.bankAccount ? "Sửa STK" : "Cài STK"}</span>
+                      </motion.button>
+                    )}
+
                     <motion.button
                       type="button"
                       className="btn-primary"
@@ -499,6 +695,7 @@ export default function PropertiesPage() {
                       onClick={() => {
                         setSelectedPropId(prop.id);
                         setShowAddProp(false);
+                        setEditingBankProp(null);
                         window.scrollTo({ top: 0, behavior: "smooth" });
                       }}
                       whileHover={{ scale: 1.03 }}

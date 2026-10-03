@@ -17,11 +17,17 @@ import {
   MagnifyingGlass,
   CreditCard,
   ListPlus,
+  QrCode,
+  Copy,
+  Check,
+  DownloadSimple,
+  Bank,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
+import { buildVietQrUrl, getBankInfo } from "../../utils/vietqr";
 import type {
   InvoiceDetail,
   InvoiceItemType,
@@ -119,6 +125,20 @@ export default function InvoicesPage() {
   const [payMethod, setPayMethod] = useState<PaymentMethod>("bank_transfer");
   const [payRef, setPayRef] = useState("");
   const [submittingPay, setSubmittingPay] = useState(false);
+
+  // VietQR modal state
+  const [qrInvoice, setQrInvoice] = useState<InvoiceRow | InvoiceDetail | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const handleCopy = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch {
+      // Fallback or ignore
+    }
+  };
 
   const loadInvoices = useCallback(async () => {
     try {
@@ -524,6 +544,17 @@ export default function InvoicesPage() {
                             >
                               Chi tiết
                             </button>
+                            {inv.status !== "cancelled" && (
+                              <button
+                                type="button"
+                                className="btn-secondary"
+                                style={{ padding: "4px 8px", fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 4 }}
+                                onClick={() => setQrInvoice(inv)}
+                                title="Xem mã VietQR thanh toán"
+                              >
+                                <QrCode size={13} /> QR
+                              </button>
+                            )}
                             {inv.status !== "paid" && inv.status !== "cancelled" && (
                               <button
                                 type="button"
@@ -594,9 +625,21 @@ export default function InvoicesPage() {
                       Kỳ {selectedInvoice.billingPeriodStart} • {selectedInvoice.propertyName}
                     </p>
                   </div>
-                  <button type="button" className="btn-ghost" style={{ padding: 6 }} onClick={() => setSelectedInvoice(null)}>
-                    <X size={14} />
-                  </button>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    {selectedInvoice.status !== "cancelled" && (
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        style={{ padding: "4px 10px", fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 5 }}
+                        onClick={() => setQrInvoice(selectedInvoice)}
+                      >
+                        <QrCode size={14} /> Mã VietQR
+                      </button>
+                    )}
+                    <button type="button" className="btn-ghost" style={{ padding: 6 }} onClick={() => setSelectedInvoice(null)} aria-label="Đóng">
+                      <X size={14} />
+                    </button>
+                  </div>
                 </div>
 
                 <div style={{ marginBottom: "var(--space-2)" }}>
@@ -640,6 +683,343 @@ export default function InvoicesPage() {
                     ))}
                   </div>
                 )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* VietQR Payment Modal */}
+        <AnimatePresence>
+          {qrInvoice && (
+            <motion.div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.65)",
+                backdropFilter: "blur(6px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 110,
+                padding: 16,
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setQrInvoice(null)}
+            >
+              <motion.div
+                className="card"
+                style={{ maxWidth: 500, width: "100%", maxHeight: "90vh", overflowY: "auto" }}
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "var(--space-2)" }}>
+                  <div>
+                    <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                      <QrCode size={22} style={{ color: "var(--color-primary)" }} />
+                      Mã VietQR Thanh Toán
+                    </h2>
+                    <p className="text-muted" style={{ fontSize: "var(--text-xs)", margin: "4px 0 0" }}>
+                      Phòng {qrInvoice.roomNumber} • {qrInvoice.propertyName} • Kỳ {qrInvoice.billingPeriodStart}
+                    </p>
+                  </div>
+                  <button type="button" className="btn-ghost" style={{ padding: 6 }} onClick={() => setQrInvoice(null)} aria-label="Đóng">
+                    <X size={14} />
+                  </button>
+                </div>
+
+                {!qrInvoice.bankCode || !qrInvoice.bankAccount ? (
+                  <div style={{ textAlign: "center", padding: "var(--space-4) var(--space-2)" }}>
+                    <div style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: "50%",
+                      background: "rgba(234, 179, 8, 0.12)",
+                      color: "#eab308",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      margin: "0 auto var(--space-2)",
+                    }}>
+                      <Bank size={28} />
+                    </div>
+                    <h3 style={{ fontSize: "var(--text-base)", fontWeight: 600, marginBottom: 6 }}>
+                      Chưa thiết lập tài khoản ngân hàng
+                    </h3>
+                    <p className="text-muted" style={{ fontSize: "var(--text-xs)", maxWidth: 380, margin: "0 auto var(--space-3)", lineHeight: 1.5 }}>
+                      Nhà trọ <strong>{qrInvoice.propertyName}</strong> chưa có thông tin STK ngân hàng nhận tiền. Vui lòng cài đặt tài khoản ngân hàng cho nhà trọ này để hệ thống tạo mã VietQR chuẩn NAPAS 247.
+                    </p>
+                    <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+                      <button type="button" className="btn-ghost" onClick={() => setQrInvoice(null)}>
+                        Đóng
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={() => {
+                          setQrInvoice(null);
+                          router.push("/properties");
+                        }}
+                      >
+                        Cài đặt tài khoản ngân hàng
+                      </button>
+                    </div>
+                  </div>
+                ) : (() => {
+                  const remaining = Math.max(0, qrInvoice.totalAmount - (qrInvoice.paidAmount || 0));
+                  const transferDesc = `TT P${qrInvoice.roomNumber.replace(/\s+/g, "")} ${qrInvoice.billingPeriodStart.replace(/-/g, "").slice(0, 6)}`;
+                  const qrUrl = buildVietQrUrl({
+                    bankCode: qrInvoice.bankCode,
+                    bankAccount: qrInvoice.bankAccount,
+                    accountHolder: qrInvoice.accountHolder,
+                    amount: remaining,
+                    description: transferDesc,
+                    template: "compact2",
+                  });
+                  const bankInfo = getBankInfo(qrInvoice.bankCode);
+
+                  return (
+                    <div>
+                      {/* QR Code Frame */}
+                      <div style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        background: "#ffffff",
+                        padding: "16px",
+                        borderRadius: "12px",
+                        marginBottom: "var(--space-2)",
+                        boxShadow: "0 4px 18px rgba(0,0,0,0.12)",
+                      }}>
+                        <img
+                          src={qrUrl}
+                          alt={`VietQR ${qrInvoice.propertyName} ${qrInvoice.roomNumber}`}
+                          style={{
+                            width: "100%",
+                            maxWidth: 280,
+                            height: "auto",
+                            aspectRatio: "1/1",
+                            objectFit: "contain",
+                            display: "block",
+                          }}
+                          loading="eager"
+                        />
+                        <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center" }}>
+                          <a
+                            href={qrUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download={`vietqr-phong-${qrInvoice.roomNumber}.png`}
+                            className="btn-ghost"
+                            style={{
+                              padding: "4px 12px",
+                              fontSize: "var(--text-xs)",
+                              color: "#1e293b",
+                              border: "1px solid #cbd5e1",
+                              background: "#f8fafc",
+                            }}
+                          >
+                            <DownloadSimple size={13} /> Tải mã QR
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Payment Detail Items */}
+                      <div style={{ marginBottom: "var(--space-3)" }}>
+                        {/* Bank */}
+                        <div style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "8px 12px",
+                          background: "var(--color-surface)",
+                          borderRadius: 8,
+                          border: "1px solid var(--color-border)",
+                          marginBottom: 6,
+                        }}>
+                          <div>
+                            <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>Ngân hàng</div>
+                            <div style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>
+                              {bankInfo ? `${bankInfo.shortName} (${bankInfo.code})` : qrInvoice.bankCode}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Account Number */}
+                        <div style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "8px 12px",
+                          background: "var(--color-surface)",
+                          borderRadius: 8,
+                          border: "1px solid var(--color-border)",
+                          marginBottom: 6,
+                        }}>
+                          <div>
+                            <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>Số tài khoản</div>
+                            <div style={{ fontSize: "var(--text-base)", fontWeight: 700, fontFamily: "var(--font-mono)", letterSpacing: "0.5px" }}>
+                              {qrInvoice.bankAccount}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn-ghost"
+                            style={{ padding: "4px 8px", fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 4 }}
+                            onClick={() => void handleCopy(qrInvoice.bankAccount!, "account")}
+                          >
+                            {copiedKey === "account" ? (
+                              <>
+                                <Check size={12} weight="bold" style={{ color: "var(--color-success)" }} />
+                                <span style={{ color: "var(--color-success)" }}>Đã chép</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy size={12} /> Sao chép
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Account Holder */}
+                        {qrInvoice.accountHolder && (
+                          <div style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "8px 12px",
+                            background: "var(--color-surface)",
+                            borderRadius: 8,
+                            border: "1px solid var(--color-border)",
+                            marginBottom: 6,
+                          }}>
+                            <div>
+                              <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>Chủ tài khoản</div>
+                              <div style={{ fontSize: "var(--text-sm)", fontWeight: 600, textTransform: "uppercase" }}>
+                                {qrInvoice.accountHolder}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn-ghost"
+                              style={{ padding: "4px 8px", fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 4 }}
+                              onClick={() => void handleCopy(qrInvoice.accountHolder!, "holder")}
+                            >
+                              {copiedKey === "holder" ? (
+                                <>
+                                  <Check size={12} weight="bold" style={{ color: "var(--color-success)" }} />
+                                  <span style={{ color: "var(--color-success)" }}>Đã chép</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy size={12} /> Sao chép
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Amount */}
+                        <div style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "8px 12px",
+                          background: "var(--color-surface)",
+                          borderRadius: 8,
+                          border: "1px solid var(--color-border)",
+                          marginBottom: 6,
+                        }}>
+                          <div>
+                            <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>
+                              {remaining < qrInvoice.totalAmount ? "Số tiền còn nợ" : "Số tiền thanh toán"}
+                            </div>
+                            <div style={{ fontSize: "var(--text-base)", fontWeight: 700, color: "var(--color-primary)", fontFamily: "var(--font-mono)" }}>
+                              {money.format(remaining)}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn-ghost"
+                            style={{ padding: "4px 8px", fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 4 }}
+                            onClick={() => void handleCopy(String(remaining), "amount")}
+                          >
+                            {copiedKey === "amount" ? (
+                              <>
+                                <Check size={12} weight="bold" style={{ color: "var(--color-success)" }} />
+                                <span style={{ color: "var(--color-success)" }}>Đã chép</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy size={12} /> Sao chép
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Transfer Content */}
+                        <div style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "8px 12px",
+                          background: "var(--color-surface)",
+                          borderRadius: 8,
+                          border: "1px solid var(--color-border)",
+                        }}>
+                          <div>
+                            <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>Nội dung chuyển khoản</div>
+                            <div style={{ fontSize: "var(--text-sm)", fontWeight: 600, fontFamily: "var(--font-mono)", color: "var(--color-primary)" }}>
+                              {transferDesc}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn-ghost"
+                            style={{ padding: "4px 8px", fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 4 }}
+                            onClick={() => void handleCopy(transferDesc, "desc")}
+                          >
+                            {copiedKey === "desc" ? (
+                              <>
+                                <Check size={12} weight="bold" style={{ color: "var(--color-success)" }} />
+                                <span style={{ color: "var(--color-success)" }}>Đã chép</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy size={12} /> Sao chép
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                        <button type="button" className="btn-ghost" onClick={() => setQrInvoice(null)}>
+                          Đóng
+                        </button>
+                        {qrInvoice.status !== "paid" && qrInvoice.status !== "cancelled" && (
+                          <button
+                            type="button"
+                            className="btn-primary"
+                            style={{ display: "flex", alignItems: "center", gap: 5 }}
+                            onClick={() => {
+                              const cur = qrInvoice;
+                              setQrInvoice(null);
+                              setPayInvoiceId(cur.id);
+                              setPayAmount(String(remaining));
+                            }}
+                          >
+                            <CreditCard size={14} /> Ghi nhận thanh toán
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </motion.div>
             </motion.div>
           )}

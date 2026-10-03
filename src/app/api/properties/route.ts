@@ -24,7 +24,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       return errorResponse(Object.assign(new Error("Request body must be JSON."), { code: "VALIDATION_ERROR" }));
     }
 
-    const { name, address } = body as Record<string, unknown>;
+    const { name, address, bankCode, bankAccount, accountHolder } = body as Record<string, unknown>;
 
     if (typeof name !== "string") {
       return errorResponse(Object.assign(new Error("name is required."), { code: "VALIDATION_ERROR" }));
@@ -33,6 +33,9 @@ export async function POST(request: NextRequest): Promise<Response> {
     const property = await createProperty(ctx.userId, ctx.role, {
       name,
       address: typeof address === "string" ? address : null,
+      bankCode: typeof bankCode === "string" ? bankCode : null,
+      bankAccount: typeof bankAccount === "string" ? bankAccount : null,
+      accountHolder: typeof accountHolder === "string" ? accountHolder : null,
     });
 
     return successResponse({ property }, { status: 201 });

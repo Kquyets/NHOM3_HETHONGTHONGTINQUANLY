@@ -24,11 +24,15 @@ export type InvoiceRow = {
   contractId: string;
   roomNumber: string;
   propertyName: string;
+  bankCode?: string | null;
+  bankAccount?: string | null;
+  accountHolder?: string | null;
   billingPeriodStart: string;
   issueDate: string | null;
   dueDate: string | null;
   status: InvoiceStatus;
   totalAmount: number;
+  paidAmount?: number;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -109,6 +113,9 @@ export async function listInvoices(userId: string, role: string): Promise<Invoic
     contractId: invoices.contractId,
     roomNumber: rooms.roomNumber,
     propertyName: properties.name,
+    bankCode: properties.bankCode,
+    bankAccount: properties.bankAccount,
+    accountHolder: properties.accountHolder,
     billingPeriodStart: invoices.billingPeriodStart,
     issueDate: invoices.issueDate,
     dueDate: invoices.dueDate,
@@ -159,6 +166,9 @@ export async function getInvoice(
       contractId: invoices.contractId,
       roomNumber: rooms.roomNumber,
       propertyName: properties.name,
+      bankCode: properties.bankCode,
+      bankAccount: properties.bankAccount,
+      accountHolder: properties.accountHolder,
       billingPeriodStart: invoices.billingPeriodStart,
       issueDate: invoices.issueDate,
       dueDate: invoices.dueDate,

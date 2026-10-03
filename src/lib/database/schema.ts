@@ -1,4 +1,4 @@
-﻿import { sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import {
   check,
   date,
@@ -86,6 +86,9 @@ export const properties = pgTable(
     ownerRole: userRole("owner_role").default("owner").notNull(),
     name: text("name").notNull(),
     address: text("address"),
+    bankCode: text("bank_code"),
+    bankAccount: text("bank_account"),
+    accountHolder: text("account_holder"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
