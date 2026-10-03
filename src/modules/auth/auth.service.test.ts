@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { AppError } from "../../errors/app-error";
 
 // ---------------------------------------------------------------------------
 // Mock database and external libs before importing the service

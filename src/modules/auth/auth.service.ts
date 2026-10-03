@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { getDatabase } from "../../lib/database/client";
 import { refreshTokens, users } from "../../lib/database/schema";
-import { REFRESH_TOKEN_TTL_MS, signAccessToken, signRefreshToken, verifyRefreshToken } from "../../lib/auth/jwt";
+import { REFRESH_TOKEN_TTL_MS, signAccessToken, verifyRefreshToken } from "../../lib/auth/jwt";
 import { hashPassword, verifyPassword } from "../../lib/auth/password";
 import { AppError } from "../../errors/app-error";
 
@@ -270,7 +270,8 @@ async function _issueTokens(
   if (!dbToken) throw new AppError("DATABASE_ERROR", "Failed to create refresh token.");
 
   const accessToken = signAccessToken({ sub: userId, role });
-  const refreshToken = signRefreshToken({ sub: userId, jti: dbToken.id });
+  // The raw refresh token (rawRefresh UUID) is what the client stores.
+  // We only need signRefreshToken for the jti linkage via dbToken.id — stored hash is of rawRefresh.
 
   return { accessToken, refreshToken: `${dbToken.id}.${rawRefresh}` };
 }
