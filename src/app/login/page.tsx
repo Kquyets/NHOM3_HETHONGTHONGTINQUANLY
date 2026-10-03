@@ -6,6 +6,14 @@ import { useRouter } from "next/navigation";
 
 import { useAuth } from "../../lib/auth-context";
 
+function LogoIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+      <path d="M12 2L2 8.5V20a1 1 0 001 1h5v-6h8v6h5a1 1 0 001-1V8.5L12 2z" />
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const { user, isLoading, login } = useAuth();
   const router = useRouter();
@@ -40,7 +48,10 @@ export default function LoginPage() {
   if (isLoading) {
     return (
       <div className="auth-wrapper">
-        <div className="loading-indicator">Đang tải thông tin...</div>
+        <div className="loading-indicator">
+          <span className="spinner" role="status" aria-label="Đang tải" />
+          Đang tải thông tin...
+        </div>
       </div>
     );
   }
@@ -49,16 +60,20 @@ export default function LoginPage() {
     <div className="auth-wrapper">
       <div className="auth-card">
         <div className="auth-header">
-          <div className="brand-icon" style={{ margin: "0 auto 12px" }}>
-            🏠
+          <div className="auth-logo">
+            <LogoIcon />
           </div>
           <h1>Đăng nhập</h1>
           <p>Hệ thống Quản lý Nhà trọ Thông minh</p>
         </div>
 
-        {error && <div className="alert-error">{error}</div>}
+        {error && (
+          <div className="alert-error" role="alert">
+            {error}
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
@@ -69,6 +84,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="email"
               autoFocus
             />
           </div>
@@ -83,15 +99,25 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              autoComplete="current-password"
             />
           </div>
 
           <button
             type="submit"
             className="btn-primary"
+            style={{ width: "100%", marginTop: "8px" }}
             disabled={submitting}
+            aria-busy={submitting}
           >
-            {submitting ? "Đang đăng nhập..." : "Đăng nhập"}
+            {submitting ? (
+              <>
+                <span className="spinner" aria-hidden="true" />
+                Đang đăng nhập...
+              </>
+            ) : (
+              "Đăng nhập"
+            )}
           </button>
         </form>
 
