@@ -1049,18 +1049,71 @@ table.data-table tbody tr:last-child td {
 }
 
 /* --------------------------------------------------------------------------
-   16. Landing Page (quanlynhatro.com inspired)
+   16. Landing Page (quanlynhatro.com inspired with warm home backdrop)
    -------------------------------------------------------------------------- */
 .landing-wrapper {
+  position: relative;
   width: 100%;
   overflow-x: hidden;
 }
 
+/* Ambient Home Background with Subtle Blur */
+.landing-bg-layer {
+  position: fixed;
+  inset: -20px;
+  background-image: url('/images/image_e148c7f8.jpg');
+  background-size: cover;
+  background-position: center 25%;
+  background-repeat: no-repeat;
+  filter: blur(12px);
+  transform: scale(1.04);
+  opacity: 0.16;
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 0.3s ease;
+}
+
+[data-theme="dark"] .landing-bg-layer {
+  opacity: 0.10;
+  filter: blur(14px) brightness(0.65);
+}
+
+.landing-content-layer {
+  position: relative;
+  z-index: 1;
+}
+
 .landing-hero {
+  position: relative;
   max-width: 1200px;
   margin: 0 auto;
   padding: 48px 16px 24px;
   text-align: center;
+}
+
+/* Hero Vignette Backdrop with Subtle Blur */
+.landing-hero-backdrop {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%) scale(1.03);
+  width: 100vw;
+  max-width: 1300px;
+  height: 520px;
+  background-image: url('/images/image_e148c7f8.jpg');
+  background-size: cover;
+  background-position: center 30%;
+  filter: blur(8px);
+  opacity: 0.22;
+  mask-image: radial-gradient(ellipse at center 35%, black 25%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at center 35%, black 25%, transparent 75%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+[data-theme="dark"] .landing-hero-backdrop {
+  opacity: 0.13;
+  filter: blur(10px) brightness(0.65);
 }
 
 .landing-pill {

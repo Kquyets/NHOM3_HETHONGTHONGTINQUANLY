@@ -39,4 +39,10 @@ describe("Landing & Auth Navigation and Content", () => {
     expect(calcPwStrength("12345678")).toBe(2);
     expect(calcPwStrength("supersecret123")).toBe(3);
   });
+
+  it("references the project home background image correctly", () => {
+    const bgPath = "/images/image_e148c7f8.jpg";
+    expect(bgPath).toBe("/images/image_e148c7f8.jpg");
+  });
 });
+

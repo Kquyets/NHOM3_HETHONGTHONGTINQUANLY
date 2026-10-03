@@ -30,11 +30,18 @@ const fadeUp = {
 export function LandingPage() {
   return (
     <div className="landing-wrapper">
-      {/* ── 1. Hero Section ───────────────────────────────────── */}
-      <section className="landing-hero">
-        {/* Pill Badge */}
-        <motion.div
-          className="landing-pill"
+      {/* ── Ambient Home Background Layer (Soft Blur) ─────────── */}
+      <div className="landing-bg-layer" aria-hidden="true" />
+
+      <div className="landing-content-layer">
+        {/* ── 1. Hero Section ───────────────────────────────────── */}
+        <section className="landing-hero">
+          {/* Hero Vignette Backdrop with Soft Blur */}
+          <div className="landing-hero-backdrop" aria-hidden="true" />
+
+          {/* Pill Badge */}
+          <motion.div
+            className="landing-pill"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4 }}
@@ -559,6 +566,7 @@ export function LandingPage() {
           </div>
         </div>
       </footer>
+      </div>
     </div>
   );
 }
