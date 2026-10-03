@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { getDatabase } from "../../lib/database/client";
 import {
   contracts,
@@ -7,7 +7,6 @@ import {
   meterReadings,
   payments,
   properties,
-  propertyMembers,
   rooms,
   tenants,
 } from "../../lib/database/schema";

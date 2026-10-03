@@ -2,28 +2,23 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import {
   Buildings,
   Door,
   CheckCircle,
   WarningCircle,
   ClockCountdown,
-  ArrowRight,
   Lightning,
   FileText,
   Users,
   Receipt,
   ArrowClockwise,
-  Drop,
-  Calendar,
   CurrencyCircleDollar,
-  TrendUp,
   CaretRight,
 } from "@phosphor-icons/react";
 
 import { apiClient } from "../../lib/api-client";
-import { useAuth } from "../../lib/auth-context";
 import type { DashboardSummary } from "../../modules/dashboard/dashboard.service";
 
 const money = new Intl.NumberFormat("vi-VN", {
@@ -42,8 +37,6 @@ const fadeUp = {
 };
 
 export function DashboardView() {
-  const { user } = useAuth();
-
   const now = new Date();
   const [selectedProperty, setSelectedProperty] = useState<string>("all");
   const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth() + 1);
@@ -75,8 +68,34 @@ export function DashboardView() {
   }, [selectedProperty, selectedMonth, selectedYear]);
 
   useEffect(() => {
-    void fetchDashboard();
-  }, [fetchDashboard]);
+    let ignore = false;
+    async function loadData() {
+      try {
+        const params = new URLSearchParams();
+        if (selectedProperty !== "all") {
+          params.set("propertyId", selectedProperty);
+        }
+        params.set("month", selectedMonth.toString());
+        params.set("year", selectedYear.toString());
+
+        const res = await apiClient<DashboardSummary>(`/api/dashboard?${params.toString()}`);
+        if (!ignore) {
+          setSummary(res);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Không thể tải dữ liệu bảng tổng quan.");
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadData();
+    return () => {
+      ignore = true;
+    };
+  }, [selectedProperty, selectedMonth, selectedYear]);
 
   const occupancy = summary?.occupancy ?? {
     totalRooms: 0,
@@ -667,7 +686,7 @@ export function DashboardView() {
               { href: "/contracts", label: "Hợp đồng", Icon: FileText },
               { href: "/meters", label: "Điện & Nước", Icon: Lightning },
               { href: "/invoices", label: "Hóa đơn", Icon: Receipt },
-            ].map(({ href, label, Icon }, i) => (
+            ].map(({ href, label, Icon }) => (
               <motion.div
                 key={label}
                 whileHover={{ scale: 1.03 }}

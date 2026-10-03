@@ -65,6 +65,7 @@ import { getDashboardSummary } from "./dashboard.service";
 import { AppError } from "../../errors/app-error";
 
 function chain(result: unknown[]) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const obj: any = {
     from: vi.fn(),
     innerJoin: vi.fn(),
