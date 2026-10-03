@@ -13,6 +13,8 @@ import {
   ChartBar,
   Lightning,
   FileText,
+  Users,
+  Receipt,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../components/layout/app-header";
@@ -272,10 +274,11 @@ export default function HomePage() {
                   transition={{ delay: 0.4 }}
                 >
                   {[
-                    { href: "/properties", label: "Quản lý phòng", Icon: Buildings },
+                    { href: "/properties", label: "Nhà & Phòng", Icon: Buildings },
+                    { href: "/tenants", label: "Khách thuê", Icon: Users },
+                    { href: "/contracts", label: "Hợp đồng", Icon: FileText },
                     { href: "/meters", label: "Điện & Nước", Icon: Lightning },
-                    { href: "/invoices", label: "Hóa đơn", Icon: FileText },
-                    { href: "/", label: "Báo cáo", Icon: ChartBar },
+                    { href: "/invoices", label: "Hóa đơn", Icon: Receipt },
                   ].map(({ href, label, Icon }, i) => (
                     <motion.div
                       key={label}
