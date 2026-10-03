@@ -48,8 +48,10 @@ vi.mock("../../lib/database/schema", () => ({
   },
   contracts: { id: "id", roomId: "roomId" },
   rooms: { id: "id", propertyId: "propertyId", roomNumber: "roomNumber" },
-  properties: { id: "id", ownerId: "ownerId", name: "name" },
+  properties: { id: "id", ownerId: "ownerId", name: "name", address: "address" },
   propertyMembers: { id: "id", propertyId: "propertyId", userId: "userId", status: "status" },
+  contractTenants: { id: "id", contractId: "contractId", tenantId: "tenantId" },
+  tenants: { id: "id", fullName: "fullName", phone: "phone" },
 }));
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn().mockReturnValue({ type: "eq" }),

@@ -2,12 +2,14 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { getDatabase } from "../../lib/database/client";
 import {
   contracts,
+  contractTenants,
   invoiceItems,
   invoices,
   payments,
   properties,
   propertyMembers,
   rooms,
+  tenants,
 } from "../../lib/database/schema";
 import { AppError } from "../../errors/app-error";
 
@@ -24,6 +26,9 @@ export type InvoiceRow = {
   contractId: string;
   roomNumber: string;
   propertyName: string;
+  propertyAddress?: string | null;
+  tenantName?: string | null;
+  tenantPhone?: string | null;
   bankCode?: string | null;
   bankAccount?: string | null;
   accountHolder?: string | null;
@@ -113,6 +118,9 @@ export async function listInvoices(userId: string, role: string): Promise<Invoic
     contractId: invoices.contractId,
     roomNumber: rooms.roomNumber,
     propertyName: properties.name,
+    propertyAddress: properties.address,
+    tenantName: tenants.fullName,
+    tenantPhone: tenants.phone,
     bankCode: properties.bankCode,
     bankAccount: properties.bankAccount,
     accountHolder: properties.accountHolder,
@@ -132,6 +140,8 @@ export async function listInvoices(userId: string, role: string): Promise<Invoic
       .innerJoin(contracts, eq(contracts.id, invoices.contractId))
       .innerJoin(rooms, eq(rooms.id, contracts.roomId))
       .innerJoin(properties, eq(properties.id, rooms.propertyId))
+      .leftJoin(contractTenants, eq(contractTenants.contractId, contracts.id))
+      .leftJoin(tenants, eq(tenants.id, contractTenants.tenantId))
       .orderBy(desc(invoices.billingPeriodStart));
   }
 
@@ -141,6 +151,8 @@ export async function listInvoices(userId: string, role: string): Promise<Invoic
     .innerJoin(contracts, eq(contracts.id, invoices.contractId))
     .innerJoin(rooms, eq(rooms.id, contracts.roomId))
     .innerJoin(properties, eq(properties.id, rooms.propertyId))
+    .leftJoin(contractTenants, eq(contractTenants.contractId, contracts.id))
+    .leftJoin(tenants, eq(tenants.id, contractTenants.tenantId))
     .innerJoin(
       propertyMembers,
       and(
@@ -166,6 +178,9 @@ export async function getInvoice(
       contractId: invoices.contractId,
       roomNumber: rooms.roomNumber,
       propertyName: properties.name,
+      propertyAddress: properties.address,
+      tenantName: tenants.fullName,
+      tenantPhone: tenants.phone,
       bankCode: properties.bankCode,
       bankAccount: properties.bankAccount,
       accountHolder: properties.accountHolder,
@@ -181,6 +196,8 @@ export async function getInvoice(
     .innerJoin(contracts, eq(contracts.id, invoices.contractId))
     .innerJoin(rooms, eq(rooms.id, contracts.roomId))
     .innerJoin(properties, eq(properties.id, rooms.propertyId))
+    .leftJoin(contractTenants, eq(contractTenants.contractId, contracts.id))
+    .leftJoin(tenants, eq(tenants.id, contractTenants.tenantId))
     .where(eq(invoices.id, invoiceId))
     .limit(1);
 
@@ -217,8 +234,11 @@ export async function getInvoice(
     .where(eq(payments.invoiceId, invoiceId))
     .orderBy(desc(payments.paidAt));
 
+  const totalPaid = paymentsList.reduce((sum, p) => sum + p.amount, 0);
+
   return {
     ...row,
+    paidAmount: totalPaid,
     items,
     payments: paymentsList,
   };

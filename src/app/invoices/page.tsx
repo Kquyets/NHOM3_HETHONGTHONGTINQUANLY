@@ -22,9 +22,11 @@ import {
   Check,
   DownloadSimple,
   Bank,
+  Printer,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
+import { PrintableInvoiceModal } from "../../components/invoices/printable-invoice-modal";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import { buildVietQrUrl, getBankInfo } from "../../utils/vietqr";
@@ -129,6 +131,9 @@ export default function InvoicesPage() {
   // VietQR modal state
   const [qrInvoice, setQrInvoice] = useState<InvoiceRow | InvoiceDetail | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  // Printable A4/PDF modal state
+  const [printInvoice, setPrintInvoice] = useState<InvoiceRow | InvoiceDetail | null>(null);
 
   const handleCopy = async (text: string, key: string) => {
     try {
@@ -555,6 +560,15 @@ export default function InvoicesPage() {
                                 <QrCode size={13} /> QR
                               </button>
                             )}
+                            <button
+                              type="button"
+                              className="btn-ghost"
+                              style={{ padding: "4px 8px", fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 4 }}
+                              onClick={() => setPrintInvoice(inv)}
+                              title="In phiếu thu / Xuất PDF (A4)"
+                            >
+                              <Printer size={13} /> In
+                            </button>
                             {inv.status !== "paid" && inv.status !== "cancelled" && (
                               <button
                                 type="button"
@@ -636,6 +650,15 @@ export default function InvoicesPage() {
                         <QrCode size={14} /> Mã VietQR
                       </button>
                     )}
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      style={{ padding: "4px 10px", fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 5 }}
+                      onClick={() => setPrintInvoice(selectedInvoice)}
+                      title="In phiếu thu / Lưu PDF (A4)"
+                    >
+                      <Printer size={14} /> In phiếu thu
+                    </button>
                     <button type="button" className="btn-ghost" style={{ padding: 6 }} onClick={() => setSelectedInvoice(null)} aria-label="Đóng">
                       <X size={14} />
                     </button>
@@ -1024,6 +1047,9 @@ export default function InvoicesPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Printable Invoice Modal (A4/PDF) */}
+        <PrintableInvoiceModal invoice={printInvoice} onClose={() => setPrintInvoice(null)} />
       </main>
     </div>
   );
