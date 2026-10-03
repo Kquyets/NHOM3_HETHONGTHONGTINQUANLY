@@ -451,7 +451,8 @@ p:last-child { margin-bottom: 0; }
 }
 .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.btn-ghost {
+.btn-ghost,
+.btn-logout {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -467,16 +468,15 @@ p:last-child { margin-bottom: 0; }
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
   white-space: nowrap;
 }
-.btn-ghost:hover {
+.btn-ghost:hover,
+.btn-logout:hover {
   background: var(--color-danger-bg);
   border-color: rgba(248,113,113,0.3);
   color: var(--color-danger);
   transform: translateY(-1px);
 }
-.btn-ghost:active { transform: scale(0.97); }
-
-/* Legacy alias */
-.btn-logout { @extend .btn-ghost; }
+.btn-ghost:active,
+.btn-logout:active { transform: scale(0.97); }
 
 /* --------------------------------------------------------------------------
    7. Main Content
