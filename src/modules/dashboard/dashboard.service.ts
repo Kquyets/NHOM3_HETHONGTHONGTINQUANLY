@@ -314,8 +314,7 @@ export async function getDashboardSummary({
   // 9. Outstanding Debt and Unpaid Invoices across all periods
   const activeUnpaidInvoices = allInvoices.filter(
     (inv) =>
-      (inv.status === "issued" || inv.status === "partially_paid" || inv.status === "draft") &&
-      inv.status !== "cancelled",
+      inv.status === "issued" || inv.status === "partially_paid" || inv.status === "draft",
   );
 
   let totalDebt = 0;
