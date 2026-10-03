@@ -1,4 +1,11 @@
 import type { ReactNode } from "react";
+import "./globals.css";
+import { AuthProvider } from "../lib/auth-context";
+
+export const metadata = {
+  title: "Hệ thống Quản lý Nhà trọ Thông minh",
+  description: "Quản lý nhà trọ, phòng, khách thuê, điện nước và hóa đơn",
+};
 
 export default function RootLayout({
   children,
@@ -7,7 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
