@@ -23,6 +23,7 @@ END $$;
 CREATE TABLE IF NOT EXISTS "maintenance_requests" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "room_id" uuid NOT NULL,
+  "property_id" uuid NOT NULL,
   "tenant_id" uuid,
   "title" text NOT NULL,
   "category" "maintenance_category" DEFAULT 'plumbing' NOT NULL,
@@ -34,9 +35,11 @@ CREATE TABLE IF NOT EXISTS "maintenance_requests" (
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
   CONSTRAINT "maintenance_requests_room_fk" FOREIGN KEY ("room_id") REFERENCES "rooms"("id") ON DELETE cascade,
+  CONSTRAINT "maintenance_requests_property_fk" FOREIGN KEY ("property_id") REFERENCES "properties"("id") ON DELETE cascade,
   CONSTRAINT "maintenance_requests_tenant_fk" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE set null
 );
 
 CREATE INDEX IF NOT EXISTS "maintenance_requests_room_id_idx" ON "maintenance_requests" ("room_id");
+CREATE INDEX IF NOT EXISTS "maintenance_requests_property_id_idx" ON "maintenance_requests" ("property_id");
 CREATE INDEX IF NOT EXISTS "maintenance_requests_tenant_id_idx" ON "maintenance_requests" ("tenant_id");
 CREATE INDEX IF NOT EXISTS "maintenance_requests_status_idx" ON "maintenance_requests" ("status");
