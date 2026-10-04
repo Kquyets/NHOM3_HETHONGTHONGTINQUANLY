@@ -286,3 +286,34 @@ BEGIN
 END;
 $$;
 CREATE TRIGGER invoice_items_validate_meter BEFORE INSERT OR UPDATE ON invoice_items FOR EACH ROW EXECUTE FUNCTION validate_invoice_meter_item();
+
+CREATE TYPE maintenance_category AS ENUM ('electrical', 'plumbing', 'appliance', 'internet', 'structural', 'other');
+CREATE TYPE maintenance_priority AS ENUM ('low', 'medium', 'high', 'urgent');
+CREATE TYPE maintenance_status AS ENUM ('pending', 'in_progress', 'resolved', 'cancelled');
+
+CREATE TABLE maintenance_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  room_id uuid NOT NULL,
+  property_id uuid NOT NULL,
+  tenant_id uuid,
+  title text NOT NULL,
+  category maintenance_category DEFAULT 'other' NOT NULL,
+  priority maintenance_priority DEFAULT 'medium' NOT NULL,
+  description text NOT NULL,
+  status maintenance_status DEFAULT 'pending' NOT NULL,
+  resolution_notes text,
+  resolved_at timestamptz,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT maintenance_requests_room_id_rooms_id_fk
+    FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+  CONSTRAINT maintenance_requests_property_id_properties_id_fk
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+  CONSTRAINT maintenance_requests_tenant_id_tenants_id_fk
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE SET NULL
+);
+
+CREATE INDEX maintenance_requests_room_id_idx ON maintenance_requests USING btree (room_id);
+CREATE INDEX maintenance_requests_property_id_idx ON maintenance_requests USING btree (property_id);
+CREATE INDEX maintenance_requests_status_idx ON maintenance_requests USING btree (status);
+

@@ -15,6 +15,7 @@ import {
   Moon,
   Sparkle,
   CheckCircle,
+  Wrench,
 } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
@@ -27,12 +28,14 @@ const navItems = [
   { href: "/contracts",  label: "Hợp đồng",       Icon: FileText,  match: (p: string) => p.startsWith("/contracts") },
   { href: "/meters",     label: "Điện & Nước",    Icon: Lightning, match: (p: string) => p.startsWith("/meters") },
   { href: "/invoices",   label: "Hóa đơn",        Icon: Receipt,   match: (p: string) => p.startsWith("/invoices") },
+  { href: "/maintenance",label: "Sự cố",          Icon: Wrench,    match: (p: string) => p.startsWith("/maintenance") },
 ];
 
 const tenantNavItems = [
   { href: "/",           label: "Cổng thông tin", Icon: House,     match: (p: string) => p === "/" || p.startsWith("/dashboard") },
   { href: "/#invoices",  label: "Hóa đơn phòng",  Icon: Receipt,   match: () => false },
   { href: "/#utilities", label: "Điện & Nước",    Icon: Lightning, match: () => false },
+  { href: "/#maintenance", label: "Báo sự cố",    Icon: Wrench,    match: () => false },
 ];
 
 const guestNavItems = [

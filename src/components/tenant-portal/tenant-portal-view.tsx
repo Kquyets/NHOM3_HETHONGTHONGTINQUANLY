@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -23,6 +24,8 @@ import {
   DownloadSimple,
   X,
   Bank,
+  ArrowsClockwise,
+  Plus,
 } from "@phosphor-icons/react";
 
 import { apiClient } from "../../lib/api-client";
@@ -31,6 +34,12 @@ import { buildVietQrUrl, getBankInfo } from "../../utils/vietqr";
 import { PrintableInvoiceModal } from "../invoices/printable-invoice-modal";
 import type { InvoiceDetail, InvoiceStatus } from "../../modules/invoices/invoice.service";
 import type { TenantPortalData } from "../../modules/tenant-portal/tenant-portal.service";
+import type {
+  MaintenanceCategory,
+  MaintenancePriority,
+  MaintenanceRow,
+  MaintenanceStatus,
+} from "../../modules/maintenance/maintenance.service";
 
 const money = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -46,11 +55,27 @@ const STATUS_CONFIG: Record<InvoiceStatus, { label: string; cls: string; Icon: R
   cancelled:      { label: "Đã hủy",            cls: "badge",              Icon: WarningCircle },
 };
 
+const MNT_STATUS_CONFIG: Record<MaintenanceStatus, { label: string; cls: string; Icon: React.ElementType }> = {
+  pending:     { label: "Chờ tiếp nhận", cls: "badge maintenance", Icon: Clock },
+  in_progress: { label: "Đang xử lý",    cls: "badge",             Icon: ArrowsClockwise },
+  resolved:    { label: "Đã xong",       cls: "badge ready",       Icon: CheckCircle },
+  cancelled:   { label: "Đã hủy",        cls: "badge",             Icon: WarningCircle },
+};
+
 export function TenantPortalView() {
   const { user } = useAuth();
   const [data, setData] = useState<TenantPortalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Maintenance state
+  const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRow[]>([]);
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
+  const [submittingMnt, setSubmittingMnt] = useState(false);
+  const [mTitle, setMTitle] = useState("");
+  const [mCategory, setMCategory] = useState<MaintenanceCategory>("plumbing");
+  const [mPriority, setMPriority] = useState<MaintenancePriority>("medium");
+  const [mDescription, setMDescription] = useState("");
 
   // VietQR modal state
   const [qrInvoice, setQrInvoice] = useState<InvoiceDetail | null>(null);
@@ -72,9 +97,45 @@ export function TenantPortalView() {
     }
   }, []);
 
+  const loadMaintenance = useCallback(async () => {
+    try {
+      const res = await apiClient<{ requests: MaintenanceRow[] }>("/api/maintenance");
+      setMaintenanceRequests(res.requests);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleCreateMaintenance = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!stay) return;
+    try {
+      setSubmittingMnt(true);
+      await apiClient("/api/maintenance", {
+        method: "POST",
+        body: JSON.stringify({
+          roomId: stay.roomId,
+          title: mTitle.trim(),
+          category: mCategory,
+          priority: mPriority,
+          description: mDescription.trim(),
+        }),
+      });
+      setShowMaintenanceModal(false);
+      setMTitle("");
+      setMDescription("");
+      await loadMaintenance();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Gửi yêu cầu sửa chữa thất bại.");
+    } finally {
+      setSubmittingMnt(false);
+    }
+  };
+
   useEffect(() => {
     void loadData();
-  }, [loadData]);
+    void loadMaintenance();
+  }, [loadData, loadMaintenance]);
 
   const handleCopy = async (text: string, key: string) => {
     try {
@@ -158,13 +219,14 @@ export function TenantPortalView() {
 
           {stay && (
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <a
-                href="#maintenance"
+              <button
+                type="button"
                 className="btn-secondary"
                 style={{ fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 5 }}
+                onClick={() => setShowMaintenanceModal(true)}
               >
                 <Wrench size={14} /> Báo sự cố
-              </a>
+              </button>
             </div>
           )}
         </div>
@@ -507,6 +569,71 @@ export function TenantPortalView() {
         )}
       </div>
 
+      {/* Maintenance Requests Section */}
+      <div id="maintenance" style={{ marginBottom: "var(--space-3)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div>
+            <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
+              <Wrench size={20} style={{ color: "var(--color-primary)" }} /> Sự cố &amp; Yêu cầu sửa chữa
+            </h2>
+            <p className="text-muted" style={{ margin: "2px 0 0", fontSize: "var(--text-xs)" }}>
+              Gửi thông báo hỏng hóc thiết bị, sự cố điện nước phòng trọ đến Ban quản lý.
+            </p>
+          </div>
+          {stay && (
+            <button
+              type="button"
+              className="btn-primary"
+              style={{ fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 4 }}
+              onClick={() => setShowMaintenanceModal(true)}
+            >
+              <Plus size={14} weight="bold" /> Tạo yêu cầu
+            </button>
+          )}
+        </div>
+
+        {maintenanceRequests.length === 0 ? (
+          <div className="card" style={{ padding: "var(--space-3)", textAlign: "center" }}>
+            <p className="text-muted" style={{ margin: 0 }}>Chưa có yêu cầu sửa chữa nào. Nhấn &quot;Tạo yêu cầu&quot; nếu phòng gặp sự cố.</p>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {maintenanceRequests.map((req) => {
+              const cfg = MNT_STATUS_CONFIG[req.status] || MNT_STATUS_CONFIG.pending;
+              return (
+                <div key={req.id} className="card" style={{ padding: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontWeight: 700, fontSize: "var(--text-sm)" }}>{req.title}</span>
+                        <span className={cfg.cls} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "11px" }}>
+                          <cfg.Icon size={12} weight="fill" />
+                          {cfg.label}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginTop: 2 }}>
+                        Phòng {req.roomNumber} • Tạo lúc {new Date(req.createdAt).toLocaleDateString("vi-VN")}
+                      </div>
+                    </div>
+                  </div>
+                  {req.description && (
+                    <p style={{ margin: "6px 0", fontSize: "var(--text-xs)", color: "var(--color-fg)", lineHeight: 1.5 }}>
+                      {req.description}
+                    </p>
+                  )}
+                  {req.resolutionNotes && (
+                    <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: 6, fontSize: "var(--text-xs)" }}>
+                      <strong style={{ color: "#16a34a" }}>Phản hồi từ chủ nhà: </strong>
+                      <span>{req.resolutionNotes}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* VietQR Payment Modal for Tenant */}
       <AnimatePresence>
         {qrInvoice && (
@@ -689,6 +816,123 @@ export function TenantPortalView() {
                   </div>
                 );
               })()}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Create Maintenance Modal */}
+      <AnimatePresence>
+        {showMaintenanceModal && (
+          <motion.div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.65)",
+              backdropFilter: "blur(6px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 110,
+              padding: 16,
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowMaintenanceModal(false)}
+          >
+            <motion.div
+              className="card"
+              style={{ maxWidth: 480, width: "100%", maxHeight: "90vh", overflowY: "auto" }}
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "var(--space-2)" }}>
+                <div>
+                  <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                    <Wrench size={22} style={{ color: "var(--color-primary)" }} />
+                    Báo sự cố phòng {stay?.roomNumber}
+                  </h2>
+                  <p className="text-muted" style={{ fontSize: "var(--text-xs)", margin: "4px 0 0" }}>
+                    Chủ nhà sẽ nhận được thông báo và xử lý trong thời gian sớm nhất.
+                  </p>
+                </div>
+                <button type="button" className="btn-ghost" style={{ padding: 6 }} onClick={() => setShowMaintenanceModal(false)} aria-label="Đóng">
+                  <X size={14} />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateMaintenance} style={{ display: "grid", gap: 12 }}>
+                <div>
+                  <label className="field-label" htmlFor="mTitle">Tiêu đề sự cố *</label>
+                  <input
+                    id="mTitle"
+                    type="text"
+                    required
+                    className="input-field"
+                    placeholder="VD: Hỏng vòi sen, Nghẹt bồn rửa, Mất điện..."
+                    value={mTitle}
+                    onChange={(e) => setMTitle(e.target.value)}
+                  />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div>
+                    <label className="field-label" htmlFor="mCategory">Danh mục</label>
+                    <select
+                      id="mCategory"
+                      className="input-field"
+                      value={mCategory}
+                      onChange={(e) => setMCategory(e.target.value as MaintenanceCategory)}
+                    >
+                      <option value="plumbing">Cấp thoát nước</option>
+                      <option value="electrical">Điện sinh hoạt</option>
+                      <option value="appliance">Thiết bị / Đồ dùng</option>
+                      <option value="structural">Cơ sở vật chất</option>
+                      <option value="pest_control">Côn trùng / Vệ sinh</option>
+                      <option value="other">Khác</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="field-label" htmlFor="mPriority">Mức độ khẩn</label>
+                    <select
+                      id="mPriority"
+                      className="input-field"
+                      value={mPriority}
+                      onChange={(e) => setMPriority(e.target.value as MaintenancePriority)}
+                    >
+                      <option value="low">Thấp</option>
+                      <option value="medium">Bình thường</option>
+                      <option value="high">Cao</option>
+                      <option value="urgent">Khẩn cấp</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="field-label" htmlFor="mDescription">Mô tả chi tiết</label>
+                  <textarea
+                    id="mDescription"
+                    rows={3}
+                    className="input-field"
+                    placeholder="Mô tả cụ thể vị trí và tình trạng hỏng để thợ mang đúng đồ sửa..."
+                    value={mDescription}
+                    onChange={(e) => setMDescription(e.target.value)}
+                  />
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+                  <button type="button" className="btn-secondary" onClick={() => setShowMaintenanceModal(false)}>
+                    Hủy bỏ
+                  </button>
+                  <button type="submit" className="btn-primary" disabled={submittingMnt || !mTitle.trim()}>
+                    {submittingMnt ? "Đang gửi..." : "Gửi yêu cầu"}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </motion.div>
         )}

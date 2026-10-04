@@ -38,6 +38,29 @@ export const invoiceItemType = pgEnum("invoice_item_type", [
 ]);
 export const paymentMethod = pgEnum("payment_method", ["cash", "bank_transfer", "other"]);
 
+export const maintenanceCategory = pgEnum("maintenance_category", [
+  "electrical",
+  "plumbing",
+  "appliance",
+  "internet",
+  "structural",
+  "other",
+]);
+
+export const maintenancePriority = pgEnum("maintenance_priority", [
+  "low",
+  "medium",
+  "high",
+  "urgent",
+]);
+
+export const maintenanceStatus = pgEnum("maintenance_status", [
+  "pending",
+  "in_progress",
+  "resolved",
+  "cancelled",
+]);
+
 export const users = pgTable(
   "users",
   {
@@ -344,5 +367,34 @@ export const payments = pgTable(
   (table) => [
     check("payments_amount_positive", sql`${table.amount} > 0`),
     index("payments_invoice_id_idx").on(table.invoiceId),
+  ],
+);
+
+export const maintenanceRequests = pgTable(
+  "maintenance_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    propertyId: uuid("property_id")
+      .notNull()
+      .references(() => properties.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id")
+      .references(() => tenants.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    category: maintenanceCategory("category").default("other").notNull(),
+    priority: maintenancePriority("priority").default("medium").notNull(),
+    description: text("description").notNull(),
+    status: maintenanceStatus("status").default("pending").notNull(),
+    resolutionNotes: text("resolution_notes"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("maintenance_requests_room_id_idx").on(table.roomId),
+    index("maintenance_requests_property_id_idx").on(table.propertyId),
+    index("maintenance_requests_status_idx").on(table.status),
   ],
 );
