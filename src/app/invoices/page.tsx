@@ -266,6 +266,45 @@ export default function InvoicesPage() {
     return matchStatus && matchSearch;
   });
 
+  const exportCSV = () => {
+    if (invoices.length === 0) return;
+    const headers = [
+      "Mã Hóa Đơn",
+      "Phòng",
+      "Nhà trọ",
+      "Kỳ thu tiền",
+      "Hạn nộp",
+      "Tổng tiền (VND)",
+      "Đã thanh toán (VND)",
+      "Còn lại (VND)",
+      "Trạng thái",
+    ];
+    const rows = filteredInvoices.map((inv) => {
+      const paid = inv.paidAmount ?? 0;
+      return [
+        inv.id,
+        `P${inv.roomNumber}`,
+        `"${inv.propertyName.replace(/"/g, '""')}"`,
+        inv.billingPeriodStart,
+        inv.dueDate || "",
+        inv.totalAmount,
+        paid,
+        inv.totalAmount - paid,
+        STATUS_CONFIG[inv.status].label,
+      ];
+    });
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Danh_sach_hoa_don_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="app-shell">
       <AppHeader />
@@ -282,16 +321,30 @@ export default function InvoicesPage() {
             <h1 className="page-title">Hóa đơn &amp; Thanh toán</h1>
             <p className="page-desc">Quản lý hóa đơn thu tiền phòng, điện nước và lịch sử thanh toán.</p>
           </div>
-          <motion.button
-            type="button"
-            className={showCreate ? "btn-secondary" : "btn-primary"}
-            onClick={() => setShowCreate(!showCreate)}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-          >
-            {showCreate ? <X size={14} /> : <Plus size={14} weight="bold" />}
-            {showCreate ? "Đóng" : "Tạo hóa đơn"}
-          </motion.button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <motion.button
+              type="button"
+              className="btn-secondary"
+              onClick={exportCSV}
+              disabled={invoices.length === 0}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              title="Xuất danh sách hóa đơn ra file CSV"
+            >
+              <DownloadSimple size={14} />
+              Xuất CSV
+            </motion.button>
+            <motion.button
+              type="button"
+              className={showCreate ? "btn-secondary" : "btn-primary"}
+              onClick={() => setShowCreate(!showCreate)}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+            >
+              {showCreate ? <X size={14} /> : <Plus size={14} weight="bold" />}
+              {showCreate ? "Đóng" : "Tạo hóa đơn"}
+            </motion.button>
+          </div>
         </motion.div>
 
         {/* Error */}

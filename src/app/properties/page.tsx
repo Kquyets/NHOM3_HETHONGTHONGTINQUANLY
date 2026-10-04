@@ -14,9 +14,11 @@ import {
   Trash,
   PencilSimple,
   CreditCard,
+  ShieldCheck,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
+import { PropertyMembersModal } from "../../components/properties/property-members-modal";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import { VIETNAMESE_BANKS } from "../../utils/vietqr";
@@ -104,6 +106,8 @@ export default function PropertiesPage() {
   const [editBankAccount, setEditBankAccount] = useState("");
   const [editAccountHolder, setEditAccountHolder] = useState("");
   const [submittingBank, setSubmittingBank] = useState(false);
+
+  const [managingMembersProp, setManagingMembersProp] = useState<PropertyRow | null>(null);
 
   const [selectedPropId, setSelectedPropId] = useState<string | null>(null);
   const [roomNumber, setRoomNumber] = useState("");
@@ -678,6 +682,21 @@ export default function PropertiesPage() {
                         type="button"
                         className="btn-secondary"
                         style={{ padding: "6px 12px", fontSize: "var(--text-sm)", gap: 5 }}
+                        onClick={() => setManagingMembersProp(prop)}
+                        title="Ban quản lý & Phân quyền quản lý nhà trọ"
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                      >
+                        <ShieldCheck size={14} />
+                        <span>Ban quản lý</span>
+                      </motion.button>
+                    )}
+
+                    {user?.role === "owner" && (
+                      <motion.button
+                        type="button"
+                        className="btn-secondary"
+                        style={{ padding: "6px 12px", fontSize: "var(--text-sm)", gap: 5 }}
                         onClick={() => startEditBank(prop)}
                         title="Cài đặt tài khoản ngân hàng nhận tiền"
                         whileHover={{ scale: 1.03 }}
@@ -826,6 +845,14 @@ export default function PropertiesPage() {
           </div>
         )}
       </main>
+
+      {/* Property Members / Management Modal */}
+      {managingMembersProp && (
+        <PropertyMembersModal
+          property={managingMembersProp}
+          onClose={() => setManagingMembersProp(null)}
+        />
+      )}
     </div>
   );
 }

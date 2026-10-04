@@ -14,6 +14,7 @@ import {
   CurrencyDollar,
   Receipt,
   Buildings,
+  DownloadSimple,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
@@ -204,6 +205,50 @@ export default function MetersPage() {
     (r) => filterType === "all" || r.utilityType === filterType,
   );
 
+  const exportReadingsCSV = () => {
+    if (readings.length === 0) return;
+    const headers = [
+      "Mã Bản Ghi",
+      "Phòng",
+      "Nhà trọ",
+      "Loại dịch vụ",
+      "Kỳ tính",
+      "Chỉ số cũ",
+      "Chỉ số mới",
+      "Tiêu thụ",
+      "Đơn vị",
+      "Đơn giá (VND)",
+      "Thành tiền (VND)",
+    ];
+    const rows = filteredReadings.map((r) => {
+      const usage = Number(r.currentValue) - Number(r.previousValue);
+      const cost = usage * r.unitPriceSnapshot;
+      return [
+        r.id,
+        `P${r.roomNumber}`,
+        `"${r.propertyName.replace(/"/g, '""')}"`,
+        r.utilityType === "electricity" ? "Điện" : "Nước",
+        r.billingPeriod,
+        r.previousValue,
+        r.currentValue,
+        usage,
+        r.utilityType === "electricity" ? "kWh" : "m3",
+        r.unitPriceSnapshot,
+        cost,
+      ];
+    });
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Chi_so_dien_nuoc_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="app-shell">
       <AppHeader />
@@ -220,7 +265,21 @@ export default function MetersPage() {
             <h1 className="page-title">Điện &amp; Nước</h1>
             <p className="page-desc">Ghi nhận chỉ số điện nước hàng tháng và quản lý đơn giá tiêu thụ.</p>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {activeTab === "readings" && (
+              <motion.button
+                type="button"
+                className="btn-secondary"
+                onClick={exportReadingsCSV}
+                disabled={readings.length === 0}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                title="Xuất bảng chỉ số điện nước ra file CSV"
+              >
+                <DownloadSimple size={14} />
+                Xuất CSV
+              </motion.button>
+            )}
             {activeTab === "readings" ? (
               <motion.button
                 type="button"

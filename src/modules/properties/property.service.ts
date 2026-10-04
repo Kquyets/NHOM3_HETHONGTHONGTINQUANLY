@@ -1,7 +1,8 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { getDatabase } from "../../lib/database/client";
-import { properties, propertyMembers } from "../../lib/database/schema";
+import { properties, propertyMembers, users } from "../../lib/database/schema";
 import { AppError } from "../../errors/app-error";
+import { createNotification } from "../notifications/notification.service";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -259,3 +260,184 @@ export async function deleteProperty(
 
   if (!result) throw new AppError("NOT_FOUND", "Property not found.", []);
 }
+
+// ---------------------------------------------------------------------------
+// Property Members (Staff / Managers)
+// ---------------------------------------------------------------------------
+
+export type PropertyMemberRow = {
+  id: string;
+  propertyId: string;
+  userId: string;
+  email: string;
+  fullName: string | null;
+  phone: string | null;
+  role: string;
+  status: "active" | "revoked";
+  createdAt: Date;
+};
+
+/**
+ * List all managers assigned to a property.
+ */
+export async function listPropertyMembers(
+  userId: string,
+  role: string,
+  propertyId: string,
+): Promise<PropertyMemberRow[]> {
+  await assertAccess(userId, role, propertyId);
+  const db = getDatabase();
+
+  const rows = await db
+    .select({
+      id: propertyMembers.id,
+      propertyId: propertyMembers.propertyId,
+      userId: propertyMembers.userId,
+      email: users.email,
+      fullName: users.fullName,
+      phone: users.phone,
+      role: propertyMembers.managerRole,
+      status: propertyMembers.status,
+      createdAt: propertyMembers.createdAt,
+    })
+    .from(propertyMembers)
+    .innerJoin(users, eq(users.id, propertyMembers.userId))
+    .where(
+      and(
+        eq(propertyMembers.propertyId, propertyId),
+        eq(propertyMembers.status, "active"),
+      ),
+    );
+
+  return rows as PropertyMemberRow[];
+}
+
+/**
+ * Add a manager to a property by email or phone. Only owner can add.
+ */
+export async function addPropertyMember(
+  userId: string,
+  role: string,
+  propertyId: string,
+  emailOrPhone: string,
+): Promise<PropertyMemberRow> {
+  await assertOwner(userId, role, propertyId);
+  const db = getDatabase();
+
+  const query = emailOrPhone.trim().toLowerCase();
+  const [targetUser] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      fullName: users.fullName,
+      phone: users.phone,
+      role: users.role,
+    })
+    .from(users)
+    .where(or(eq(users.email, query), eq(users.phone, emailOrPhone.trim())))
+    .limit(1);
+
+  if (!targetUser) {
+    throw new AppError(
+      "NOT_FOUND",
+      "Không tìm thấy tài khoản người dùng với email hoặc số điện thoại này.",
+      [{ field: "emailOrPhone", message: "Tài khoản không tồn tại trong hệ thống." }],
+    );
+  }
+
+  // Check if already an active member
+  const [existing] = await db
+    .select({ id: propertyMembers.id, status: propertyMembers.status })
+    .from(propertyMembers)
+    .where(
+      and(
+        eq(propertyMembers.propertyId, propertyId),
+        eq(propertyMembers.userId, targetUser.id),
+      ),
+    )
+    .limit(1);
+
+  let memberId = existing?.id;
+
+  if (existing) {
+    if (existing.status === "active") {
+      throw new AppError(
+        "BUSINESS_RULE_ERROR",
+        "Người dùng này đã là quản lý của tòa nhà.",
+        [],
+      );
+    }
+    // Reactivate revoked member
+    await db
+      .update(propertyMembers)
+      .set({ status: "active" })
+      .where(eq(propertyMembers.id, existing.id));
+  } else {
+    const [inserted] = await db
+      .insert(propertyMembers)
+      .values({
+        propertyId,
+        userId: targetUser.id,
+        managerRole: "manager",
+        status: "active",
+      })
+      .returning({ id: propertyMembers.id });
+    memberId = inserted.id;
+  }
+
+  // Fetch property name for notification
+  const [prop] = await db
+    .select({ name: properties.name })
+    .from(properties)
+    .where(eq(properties.id, propertyId))
+    .limit(1);
+
+  // Send notification to manager
+  try {
+    await createNotification({
+      userId: targetUser.id,
+      title: "Phân quyền quản lý nhà trọ",
+      message: `Bạn đã được phân quyền quản lý cơ sở: ${prop?.name || "Nhà trọ"}.`,
+      type: "system",
+      link: "/properties",
+    });
+  } catch {
+    // Non-blocking
+  }
+
+  return {
+    id: memberId!,
+    propertyId,
+    userId: targetUser.id,
+    email: targetUser.email,
+    fullName: targetUser.fullName,
+    phone: targetUser.phone,
+    role: "manager",
+    status: "active",
+    createdAt: new Date(),
+  };
+}
+
+/**
+ * Remove a manager from a property. Only owner can remove.
+ */
+export async function removePropertyMember(
+  userId: string,
+  role: string,
+  propertyId: string,
+  memberId: string,
+): Promise<void> {
+  await assertOwner(userId, role, propertyId);
+  const db = getDatabase();
+
+  await db
+    .update(propertyMembers)
+    .set({ status: "revoked" })
+    .where(
+      and(
+        eq(propertyMembers.id, memberId),
+        eq(propertyMembers.propertyId, propertyId),
+      ),
+    );
+}
+

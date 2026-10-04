@@ -14,6 +14,7 @@ import {
   X,
   MagnifyingGlass,
   Check,
+  DownloadSimple,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
@@ -290,6 +291,34 @@ export default function TenantsPage() {
     return `${day}/${m}/${y}`;
   };
 
+  const exportTenantsCSV = () => {
+    if (tenants.length === 0) return;
+    const headers = [
+      "Mã Khách Thuê",
+      "Họ và Tên",
+      "Số điện thoại",
+      "Ngày sinh",
+      "Ngày tạo hồ sơ",
+    ];
+    const rows = filtered.map((t) => [
+      t.id,
+      `"${t.fullName.replace(/"/g, '""')}"`,
+      t.phone || "",
+      formatDate(t.birthDate),
+      t.createdAt ? new Date(t.createdAt).toLocaleDateString("vi-VN") : "",
+    ]);
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Danh_sach_khach_thue_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="app-shell">
       <AppHeader />
@@ -306,16 +335,30 @@ export default function TenantsPage() {
             <h1 className="page-title">Khách thuê</h1>
             <p className="page-desc">Quản lý hồ sơ khách thuê và thông tin liên hệ.</p>
           </div>
-          <motion.button
-            type="button"
-            className={showAdd ? "btn-secondary" : "btn-primary"}
-            onClick={() => { setShowAdd(!showAdd); setEditingTenant(null); }}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-          >
-            {showAdd ? <X size={14} /> : <UserPlus size={14} weight="bold" />}
-            {showAdd ? "Đóng" : "Thêm khách thuê"}
-          </motion.button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <motion.button
+              type="button"
+              className="btn-secondary"
+              onClick={exportTenantsCSV}
+              disabled={tenants.length === 0}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              title="Xuất danh sách khách thuê ra file CSV"
+            >
+              <DownloadSimple size={14} />
+              Xuất CSV
+            </motion.button>
+            <motion.button
+              type="button"
+              className={showAdd ? "btn-secondary" : "btn-primary"}
+              onClick={() => { setShowAdd(!showAdd); setEditingTenant(null); }}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+            >
+              {showAdd ? <X size={14} /> : <UserPlus size={14} weight="bold" />}
+              {showAdd ? "Đóng" : "Thêm khách thuê"}
+            </motion.button>
+          </div>
         </motion.div>
 
         {/* Error */}

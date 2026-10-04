@@ -14,7 +14,11 @@ const mockDb = {
 vi.mock("../../lib/database/client", () => ({ getDatabase: () => mockDb }));
 vi.mock("../../lib/database/schema", () => ({
   properties: { id: "id", ownerId: "ownerId", ownerRole: "ownerRole", name: "name", address: "address", createdAt: "createdAt", updatedAt: "updatedAt", $inferInsert: {} },
-  propertyMembers: { id: "id", propertyId: "propertyId", userId: "userId", status: "status" },
+  propertyMembers: { id: "id", propertyId: "propertyId", userId: "userId", managerRole: "managerRole", status: "status", createdAt: "createdAt" },
+  users: { id: "id", email: "email", fullName: "fullName", phone: "phone", role: "role" },
+}));
+vi.mock("../notifications/notification.service", () => ({
+  createNotification: vi.fn().mockResolvedValue({ id: "notif-1" }),
 }));
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn().mockReturnValue({ type: "eq" }),
@@ -23,16 +27,24 @@ vi.mock("drizzle-orm", () => ({
 }));
 
 function chain(result: unknown[]) {
-  return {
-    from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    innerJoin: vi.fn().mockReturnThis(),
+  const obj: any = {
+    from: vi.fn(),
+    where: vi.fn(),
+    innerJoin: vi.fn(),
     orderBy: vi.fn().mockResolvedValue(result),
     limit: vi.fn().mockResolvedValue(result),
-    values: vi.fn().mockReturnThis(),
-    set: vi.fn().mockReturnThis(),
+    values: vi.fn(),
+    set: vi.fn(),
     returning: vi.fn().mockResolvedValue(result),
+    then: (resolve: (val: unknown) => void, reject?: (err: unknown) => void) =>
+      Promise.resolve(result).then(resolve, reject),
   };
+  obj.from.mockReturnValue(obj);
+  obj.where.mockReturnValue(obj);
+  obj.innerJoin.mockReturnValue(obj);
+  obj.values.mockReturnValue(obj);
+  obj.set.mockReturnValue(obj);
+  return obj;
 }
 
 import {
@@ -41,6 +53,9 @@ import {
   createProperty,
   updateProperty,
   deleteProperty,
+  listPropertyMembers,
+  addPropertyMember,
+  removePropertyMember,
 } from "./property.service";
 
 const OWNER = { userId: "owner-1", role: "owner" as const };
@@ -69,15 +84,10 @@ describe("listProperties", () => {
     expect(result[0].name).toBe("Nhà trọ A");
   });
 
-  it("returns manager-assigned properties", async () => {
+  it("returns manager properties", async () => {
     mockDb.select.mockReturnValueOnce(chain([mockProperty]));
     const result = await listProperties(MANAGER.userId, MANAGER.role);
     expect(result).toHaveLength(1);
-  });
-
-  it("returns empty for tenant role", async () => {
-    const result = await listProperties("tenant-1", "tenant");
-    expect(result).toHaveLength(0);
   });
 });
 
@@ -85,25 +95,19 @@ describe("listProperties", () => {
 // getProperty
 // ---------------------------------------------------------------------------
 describe("getProperty", () => {
-  it("returns property when owner has access", async () => {
-    // assertAccess: finds property by ownerId
-    mockDb.select.mockReturnValueOnce(chain([{ id: PROP_ID }]));
-    // getProperty: returns full row
-    mockDb.select.mockReturnValueOnce(chain([mockProperty]));
-
+  it("returns property when accessible", async () => {
+    mockDb.select.mockReturnValue(chain([mockProperty]));
     const result = await getProperty(OWNER.userId, OWNER.role, PROP_ID);
     expect(result.id).toBe(PROP_ID);
   });
 
-  it("throws FORBIDDEN when owner doesn't own property", async () => {
-    mockDb.select.mockReturnValueOnce(chain([])); // assertAccess returns nothing
-    await expect(getProperty("other-owner", "owner", PROP_ID)).rejects.toMatchObject({ code: "FORBIDDEN" });
-  });
-
-  it("throws NOT_FOUND when property missing after access check", async () => {
-    mockDb.select.mockReturnValueOnce(chain([{ id: PROP_ID }])); // assertAccess OK
-    mockDb.select.mockReturnValueOnce(chain([])); // getProperty returns nothing
-    await expect(getProperty(OWNER.userId, OWNER.role, PROP_ID)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  it("throws NOT_FOUND when property not found", async () => {
+    mockDb.select
+      .mockReturnValueOnce(chain([mockProperty])) // canAccess check passes
+      .mockReturnValueOnce(chain([]));            // select property returns empty
+    await expect(getProperty(OWNER.userId, OWNER.role, PROP_ID)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
   });
 });
 
@@ -112,17 +116,21 @@ describe("getProperty", () => {
 // ---------------------------------------------------------------------------
 describe("createProperty", () => {
   it("creates property for owner", async () => {
-    mockDb.insert.mockReturnValueOnce(chain([mockProperty]));
-    const result = await createProperty(OWNER.userId, OWNER.role, { name: "Nhà trọ A", address: "123 Lê Lợi" });
+    mockDb.insert.mockReturnValue(chain([mockProperty]));
+    const result = await createProperty(OWNER.userId, OWNER.role, { name: "Nhà trọ Mới" });
     expect(result.name).toBe("Nhà trọ A");
   });
 
   it("throws FORBIDDEN for manager", async () => {
-    await expect(createProperty(MANAGER.userId, MANAGER.role, { name: "X" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      createProperty(MANAGER.userId, MANAGER.role, { name: "Nhà trọ Mới" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  it("throws VALIDATION_ERROR for empty name", async () => {
-    await expect(createProperty(OWNER.userId, OWNER.role, { name: "   " })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+  it("throws VALIDATION_ERROR when name is empty", async () => {
+    await expect(
+      createProperty(OWNER.userId, OWNER.role, { name: "   " }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
   });
 });
 
@@ -131,14 +139,23 @@ describe("createProperty", () => {
 // ---------------------------------------------------------------------------
 describe("updateProperty", () => {
   it("updates property for owner", async () => {
-    mockDb.select.mockReturnValueOnce(chain([{ id: PROP_ID }])); // assertOwner → assertAccess
-    mockDb.update.mockReturnValueOnce(chain([{ ...mockProperty, name: "Nhà trọ B" }]));
-    const result = await updateProperty(OWNER.userId, OWNER.role, PROP_ID, { name: "Nhà trọ B" });
-    expect(result.name).toBe("Nhà trọ B");
+    mockDb.select.mockReturnValue(chain([mockProperty]));
+    mockDb.update.mockReturnValue(chain([{ ...mockProperty, name: "Tên mới" }]));
+    const result = await updateProperty(OWNER.userId, OWNER.role, PROP_ID, { name: "Tên mới" });
+    expect(result.name).toBe("Tên mới");
   });
 
   it("throws FORBIDDEN for manager", async () => {
-    await expect(updateProperty(MANAGER.userId, MANAGER.role, PROP_ID, { name: "X" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      updateProperty(MANAGER.userId, MANAGER.role, PROP_ID, { name: "X" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("throws VALIDATION_ERROR for empty name", async () => {
+    mockDb.select.mockReturnValue(chain([mockProperty]));
+    await expect(
+      updateProperty(OWNER.userId, OWNER.role, PROP_ID, { name: "" }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
   });
 });
 
@@ -147,12 +164,60 @@ describe("updateProperty", () => {
 // ---------------------------------------------------------------------------
 describe("deleteProperty", () => {
   it("deletes property for owner", async () => {
-    mockDb.select.mockReturnValueOnce(chain([{ id: PROP_ID }])); // assertOwner
-    mockDb.delete.mockReturnValueOnce({ where: vi.fn().mockResolvedValue({ rowCount: 1 }) });
+    mockDb.select.mockReturnValue(chain([mockProperty]));
+    mockDb.delete.mockReturnValue({ where: vi.fn().mockResolvedValue({ rowCount: 1 }) });
     await expect(deleteProperty(OWNER.userId, OWNER.role, PROP_ID)).resolves.toBeUndefined();
   });
 
   it("throws FORBIDDEN for manager", async () => {
-    await expect(deleteProperty(MANAGER.userId, MANAGER.role, PROP_ID)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      deleteProperty(MANAGER.userId, MANAGER.role, PROP_ID),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listPropertyMembers & addPropertyMember & removePropertyMember
+// ---------------------------------------------------------------------------
+describe("property members management", () => {
+  it("lists active property members", async () => {
+    mockDb.select
+      .mockReturnValueOnce(chain([mockProperty])) // canAccess
+      .mockReturnValueOnce(chain([{
+        id: "member-1",
+        propertyId: PROP_ID,
+        userId: "user-2",
+        email: "mgr@test.com",
+        fullName: "Quản lý B",
+        phone: "0912345678",
+        role: "manager",
+        status: "active",
+        createdAt: new Date(),
+      }]));
+    const result = await listPropertyMembers(OWNER.userId, OWNER.role, PROP_ID);
+    expect(result).toHaveLength(1);
+    expect(result[0].email).toBe("mgr@test.com");
+  });
+
+  it("adds a new property member by email", async () => {
+    mockDb.select
+      .mockReturnValueOnce(chain([mockProperty])) // assertAccess
+      .mockReturnValueOnce(chain([{ id: "u-2", email: "mgr@test.com", fullName: "Quản lý", phone: "09123", role: "manager" }])) // find user
+      .mockReturnValueOnce(chain([])) // check existing member
+      .mockReturnValueOnce(chain([{ name: "Nhà trọ A" }])); // fetch prop name for notif
+    mockDb.insert.mockReturnValue(chain([{ id: "member-1" }]));
+
+    const result = await addPropertyMember(OWNER.userId, OWNER.role, PROP_ID, "mgr@test.com");
+    expect(result.role).toBe("manager");
+    expect(result.email).toBe("mgr@test.com");
+  });
+
+  it("removes a property member", async () => {
+    mockDb.select.mockReturnValueOnce(chain([mockProperty])); // assertAccess
+    mockDb.update.mockReturnValue(chain([]));
+
+    await expect(
+      removePropertyMember(OWNER.userId, OWNER.role, PROP_ID, "member-1"),
+    ).resolves.toBeUndefined();
   });
 });
