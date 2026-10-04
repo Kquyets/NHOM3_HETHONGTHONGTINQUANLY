@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { getDatabase } from "../../lib/database/client";
-import { refreshTokens, users } from "../../lib/database/schema";
+import { refreshTokens, tenants, users } from "../../lib/database/schema";
 import { REFRESH_TOKEN_TTL_MS, signAccessToken, verifyRefreshToken } from "../../lib/auth/jwt";
 import { hashPassword, verifyPassword } from "../../lib/auth/password";
 import { AppError } from "../../errors/app-error";
@@ -13,7 +13,9 @@ import { AppError } from "../../errors/app-error";
 export type RegisterInput = {
   email: string;
   password: string;
-  role: "owner" | "manager";
+  role: "owner" | "manager" | "tenant";
+  fullName?: string;
+  phone?: string;
 };
 
 export type LoginInput = {
@@ -31,6 +33,9 @@ export type UserPublic = {
   email: string;
   role: "owner" | "manager" | "tenant";
   status: "active" | "disabled";
+  fullName?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
   createdAt: Date;
 };
 
@@ -52,8 +57,7 @@ function hashToken(raw: string): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Register a new owner or manager account.
- * Tenants are created indirectly when a contract is assigned.
+ * Register a new owner, manager, or tenant account.
  */
 export async function register(input: RegisterInput): Promise<{ user: UserPublic; tokens: AuthTokens }> {
   const email = normalizeEmail(input.email);
@@ -83,16 +87,55 @@ export async function register(input: RegisterInput): Promise<{ user: UserPublic
 
   const [user] = await db
     .insert(users)
-    .values({ email, passwordHash, role: input.role })
+    .values({
+      email,
+      passwordHash,
+      role: input.role,
+      fullName: input.fullName?.trim() || null,
+      phone: input.phone?.trim() || null,
+    })
     .returning({
       id: users.id,
       email: users.email,
       role: users.role,
       status: users.status,
+      fullName: users.fullName,
+      phone: users.phone,
+      avatarUrl: users.avatarUrl,
       createdAt: users.createdAt,
     });
 
   if (!user) throw new AppError("DATABASE_ERROR", "Failed to create user.");
+
+  // If registering as a tenant, link or create tenant profile record
+  if (input.role === "tenant") {
+    const rawPhone = input.phone?.trim();
+    if (rawPhone) {
+      const [existingTenant] = await db
+        .select()
+        .from(tenants)
+        .where(and(eq(tenants.phone, rawPhone), isNull(tenants.userId)))
+        .limit(1);
+
+      if (existingTenant) {
+        await db
+          .update(tenants)
+          .set({ userId: user.id, updatedAt: new Date() })
+          .where(eq(tenants.id, existingTenant.id));
+      } else {
+        await db.insert(tenants).values({
+          userId: user.id,
+          fullName: input.fullName?.trim() || email.split("@")[0],
+          phone: rawPhone,
+        });
+      }
+    } else {
+      await db.insert(tenants).values({
+        userId: user.id,
+        fullName: input.fullName?.trim() || email.split("@")[0],
+      });
+    }
+  }
 
   const tokens = await _issueTokens(user.id, user.role);
 
@@ -132,6 +175,9 @@ export async function login(input: LoginInput): Promise<{ user: UserPublic; toke
       email: user.email,
       role: user.role,
       status: user.status,
+      fullName: user.fullName ?? null,
+      phone: user.phone ?? null,
+      avatarUrl: user.avatarUrl ?? null,
       createdAt: user.createdAt,
     },
     tokens,
@@ -232,6 +278,9 @@ export async function getMe(userId: string): Promise<UserPublic> {
       email: users.email,
       role: users.role,
       status: users.status,
+      fullName: users.fullName,
+      phone: users.phone,
+      avatarUrl: users.avatarUrl,
       createdAt: users.createdAt,
     })
     .from(users)

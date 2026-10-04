@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   date,
   foreignKey,
@@ -69,6 +70,9 @@ export const users = pgTable(
     passwordHash: text("password_hash").notNull(),
     role: userRole("role").notNull(),
     status: accountStatus("status").default("active").notNull(),
+    fullName: text("full_name"),
+    phone: text("phone"),
+    avatarUrl: text("avatar_url"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -398,3 +402,31 @@ export const maintenanceRequests = pgTable(
     index("maintenance_requests_status_idx").on(table.status),
   ],
 );
+
+export const notificationType = pgEnum("notification_type", [
+  "invoice",
+  "maintenance",
+  "payment",
+  "system",
+]);
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    message: text("message").notNull(),
+    type: notificationType("type").default("system").notNull(),
+    link: text("link"),
+    isRead: boolean("is_read").default(false).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("notifications_user_id_idx").on(table.userId),
+    index("notifications_user_is_read_idx").on(table.userId, table.isRead),
+  ],
+);
+

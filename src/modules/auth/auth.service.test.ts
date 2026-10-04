@@ -88,6 +88,41 @@ describe("auth.service", () => {
       expect(result.tokens.accessToken).toBe("access.token.mock");
     });
 
+    it("creates a new tenant user and creates/links tenant profile", async () => {
+      const newUser = {
+        id: "tenant-uuid-1",
+        email: "tenant@test.com",
+        role: "tenant" as const,
+        status: "active" as const,
+        fullName: "Nguyễn Văn A",
+        phone: "0901234567",
+        createdAt: new Date(),
+      };
+
+      // Check duplicate email → empty
+      mockDb.select.mockReturnValueOnce(makeChain([]));
+      // Insert user → returns user
+      mockDb.insert.mockReturnValueOnce(makeChain([newUser]));
+      // Check existing unlinked tenant by phone → empty
+      mockDb.select.mockReturnValueOnce(makeChain([]));
+      // Insert tenant profile
+      mockDb.insert.mockReturnValueOnce(makeChain([{ id: "t-1" }]));
+      // Insert refresh token
+      mockDb.insert.mockReturnValueOnce(makeChain([{ id: "rt-1" }]));
+
+      const result = await register({
+        email: "tenant@test.com",
+        password: "password123",
+        role: "tenant",
+        fullName: "Nguyễn Văn A",
+        phone: "0901234567",
+      });
+
+      expect(result.user.email).toBe("tenant@test.com");
+      expect(result.user.role).toBe("tenant");
+      expect(result.user.fullName).toBe("Nguyễn Văn A");
+    });
+
     it("throws CONFLICT if email already exists", async () => {
       mockDb.select.mockReturnValueOnce(makeChain([{ id: "existing" }]));
 

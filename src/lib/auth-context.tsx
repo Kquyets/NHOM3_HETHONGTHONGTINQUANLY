@@ -27,9 +27,12 @@ export type AuthContextValue = {
   register: (
     email: string,
     password: string,
-    role: "owner" | "manager",
+    role: "owner" | "manager" | "tenant",
+    fullName?: string,
+    phone?: string,
   ) => Promise<void>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -103,6 +106,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    try {
+      const data = await apiClient<{ user: UserPublic }>("/api/auth/me");
+      setUser(data.user);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const login = useCallback(
     async (email: string, password: string) => {
       const data = await apiClient<{
@@ -122,13 +134,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const register = useCallback(
-    async (email: string, password: string, role: "owner" | "manager") => {
+    async (
+      email: string,
+      password: string,
+      role: "owner" | "manager" | "tenant",
+      fullName?: string,
+      phone?: string,
+    ) => {
       const data = await apiClient<{
         user: UserPublic;
         tokens: { accessToken: string; refreshToken: string };
       }>("/api/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password, role }),
+        body: JSON.stringify({ email, password, role, fullName, phone }),
         skipAuth: true,
       });
 
@@ -158,8 +176,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router]);
 
   const value = useMemo(
-    () => ({ user, isLoading, login, register, logout }),
-    [user, isLoading, login, register, logout],
+    () => ({ user, isLoading, login, register, logout, refreshProfile }),
+    [user, isLoading, login, register, logout, refreshProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

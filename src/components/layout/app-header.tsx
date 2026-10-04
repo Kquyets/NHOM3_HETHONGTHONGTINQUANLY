@@ -16,10 +16,12 @@ import {
   Sparkle,
   CheckCircle,
   Wrench,
+  UserGear,
 } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
 import { useTheme } from "../../lib/theme-context";
+import { NotificationBell } from "./notification-bell";
 
 const navItems = [
   { href: "/",           label: "Tổng quan",      Icon: House,     match: (p: string) => p === "/" || p.startsWith("/dashboard") },
@@ -151,12 +153,26 @@ export function AppHeader() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <div className="user-badge">
+                <NotificationBell />
+                <Link
+                  href="/profile"
+                  className="user-badge"
+                  style={{ textDecoration: "none", cursor: "pointer" }}
+                  title="Cài đặt hồ sơ cá nhân"
+                >
                   <span className="user-badge-email" title={user.email}>
-                    {user.email}
+                    {user.fullName || user.email}
                   </span>
                   <span className={`role-tag ${user.role}`}>{roleText}</span>
-                </div>
+                </Link>
+                <Link
+                  href="/profile"
+                  className="btn-ghost"
+                  style={{ padding: "6px 8px", fontSize: 13, display: "flex", alignItems: "center", gap: 4 }}
+                  title="Hồ sơ cá nhân & Cài đặt"
+                >
+                  <UserGear size={15} />
+                </Link>
                 <motion.button
                   type="button"
                   className="btn-ghost btn-logout"

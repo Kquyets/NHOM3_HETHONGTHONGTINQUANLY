@@ -25,11 +25,13 @@ export default function RegisterPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [role, setRole] = useState<"owner" | "manager">("owner");
+  const [role, setRole] = useState<"owner" | "manager" | "tenant">("owner");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,7 +73,7 @@ export default function RegisterPage() {
 
     setSubmitting(true);
     try {
-      await register(email, password, role);
+      await register(email, password, role, fullName.trim() || undefined, phone.trim() || undefined);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Đăng ký thất bại. Vui lòng thử lại.",
@@ -154,7 +156,7 @@ export default function RegisterPage() {
                 <label id="role-label" style={{ fontWeight: 600, marginBottom: 8, display: "block" }}>
                   Vai trò của bạn
                 </label>
-                <div className="role-selector" role="radiogroup" aria-labelledby="role-label">
+                <div className="role-selector" role="radiogroup" aria-labelledby="role-label" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
                   <label className={`role-option ${role === "owner" ? "selected" : ""}`}>
                     <input
                       type="radio"
@@ -187,11 +189,63 @@ export default function RegisterPage() {
                     <div className="role-option-icon">
                       <UserCircle size={20} weight={role === "manager" ? "fill" : "regular"} />
                     </div>
-                    <span className="role-option-title">Quản lý phòng</span>
-                    <span className="role-option-desc">Theo cơ sở phân công</span>
+                    <span className="role-option-title">Quản lý</span>
+                    <span className="role-option-desc">Phòng &amp; Sự cố</span>
+                  </label>
+
+                  <label className={`role-option ${role === "tenant" ? "selected" : ""}`}>
+                    <input
+                      type="radio"
+                      name="role"
+                      value="tenant"
+                      checked={role === "tenant"}
+                      onChange={() => setRole("tenant")}
+                    />
+                    <div className="role-option-check">
+                      {role === "tenant" && <Check size={11} weight="bold" />}
+                    </div>
+                    <div className="role-option-icon">
+                      <Buildings size={20} weight={role === "tenant" ? "fill" : "regular"} />
+                    </div>
+                    <span className="role-option-title">Khách thuê</span>
+                    <span className="role-option-desc">Xem bill &amp; Báo sự cố</span>
                   </label>
                 </div>
               </div>
+
+              {/* Full Name & Phone */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label htmlFor="fullName">Họ và tên</label>
+                  <input
+                    id="fullName"
+                    type="text"
+                    className="form-control"
+                    placeholder="Nguyễn Văn A"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    autoComplete="name"
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label htmlFor="phone">Số điện thoại</label>
+                  <input
+                    id="phone"
+                    type="tel"
+                    className="form-control"
+                    placeholder="0912 345 678"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    autoComplete="tel"
+                  />
+                </div>
+              </div>
+              {role === "tenant" && (
+                <p className="text-muted" style={{ fontSize: "11px", marginTop: -6, marginBottom: 14 }}>
+                  💡 Điền đúng Số điện thoại để hệ thống tự động liên kết với hợp đồng phòng trọ của bạn.
+                </p>
+              )}
 
               {/* Email */}
               <div className="form-group">

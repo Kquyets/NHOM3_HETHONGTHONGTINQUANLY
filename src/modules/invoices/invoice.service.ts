@@ -12,6 +12,7 @@ import {
   tenants,
 } from "../../lib/database/schema";
 import { AppError } from "../../errors/app-error";
+import { createNotification } from "../notifications/notification.service";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -304,7 +305,74 @@ export async function createInvoice(
     );
   }
 
+  if (row.status === "issued") {
+    void notifyTenantInvoice(input.contractId, input.billingPeriodStart, row.totalAmount, input.dueDate);
+  }
+
   return { ...row, roomNumber: "", propertyName: "" } as InvoiceRow;
+}
+
+async function notifyTenantInvoice(
+  contractId: string,
+  billingPeriod: string,
+  totalAmount: number,
+  dueDate?: string | null,
+) {
+  try {
+    const db = getDatabase();
+    const tenantsList = await db
+      .select({ userId: tenants.userId })
+      .from(contractTenants)
+      .innerJoin(tenants, eq(tenants.id, contractTenants.tenantId))
+      .where(eq(contractTenants.contractId, contractId));
+
+    for (const t of tenantsList) {
+      if (t.userId) {
+        await createNotification({
+          userId: t.userId,
+          title: `Hóa đơn mới kỳ ${billingPeriod}`,
+          message: `Hóa đơn tiền phòng kỳ ${billingPeriod} đã được phát hành (${new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(totalAmount)}). Hạn nộp: ${dueDate || "Ngày 10"}.`,
+          type: "invoice",
+          link: "/#invoices",
+        });
+      }
+    }
+  } catch {
+    // Non-blocking
+  }
+}
+
+async function notifyTenantPayment(invoiceId: string, amount: number) {
+  try {
+    const db = getDatabase();
+    const [inv] = await db
+      .select({ contractId: invoices.contractId, billingPeriodStart: invoices.billingPeriodStart })
+      .from(invoices)
+      .where(eq(invoices.id, invoiceId))
+      .limit(1);
+
+    if (inv) {
+      const tenantsList = await db
+        .select({ userId: tenants.userId })
+        .from(contractTenants)
+        .innerJoin(tenants, eq(tenants.id, contractTenants.tenantId))
+        .where(eq(contractTenants.contractId, inv.contractId));
+
+      for (const t of tenantsList) {
+        if (t.userId) {
+          await createNotification({
+            userId: t.userId,
+            title: `Xác nhận thanh toán hóa đơn`,
+            message: `Chủ nhà đã xác nhận thanh toán ${new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount)} cho hóa đơn kỳ ${inv.billingPeriodStart}.`,
+            type: "payment",
+            link: "/#invoices",
+          });
+        }
+      }
+    }
+  } catch {
+    // Non-blocking
+  }
 }
 
 export async function updateInvoiceStatus(
@@ -335,6 +403,11 @@ export async function updateInvoiceStatus(
     });
 
   if (!row) throw new AppError("NOT_FOUND", "Không tìm thấy hóa đơn.", []);
+
+  if (status === "issued") {
+    void notifyTenantInvoice(row.contractId, row.billingPeriodStart, row.totalAmount, row.dueDate);
+  }
+
   return { ...row, roomNumber: "", propertyName: "" } as InvoiceRow;
 }
 
@@ -386,6 +459,8 @@ export async function addPayment(
     .update(invoices)
     .set({ status: newStatus, updatedAt: new Date() })
     .where(eq(invoices.id, invoiceId));
+
+  void notifyTenantPayment(invoiceId, input.amount);
 
   return payment;
 }

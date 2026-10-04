@@ -10,6 +10,7 @@ import {
   tenants,
 } from "../../lib/database/schema";
 import { AppError } from "../../errors/app-error";
+import { createNotification } from "../notifications/notification.service";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -192,6 +193,7 @@ export async function createMaintenanceRequest(
   const [room] = await db
     .select({
       id: rooms.id,
+      roomNumber: rooms.roomNumber,
       propertyId: rooms.propertyId,
       ownerId: properties.ownerId,
     })
@@ -285,7 +287,87 @@ export async function createMaintenanceRequest(
     throw new AppError("INTERNAL_SERVER_ERROR", "Tạo sự cố thành công nhưng không lấy được bản ghi.", []);
   }
 
+  void notifyStaffNewMaintenance(room.propertyId, room.roomNumber, title);
+
   return found;
+}
+
+async function notifyStaffNewMaintenance(propertyId: string, roomNumber: string, title: string) {
+  try {
+    const db = getDatabase();
+    const [prop] = await db
+      .select({ ownerId: properties.ownerId, name: properties.name })
+      .from(properties)
+      .where(eq(properties.id, propertyId))
+      .limit(1);
+
+    if (prop) {
+      await createNotification({
+        userId: prop.ownerId,
+        title: `Sự cố mới: Phòng ${roomNumber}`,
+        message: `Phòng ${roomNumber} (${prop.name}) vừa báo sự cố: "${title}".`,
+        type: "maintenance",
+        link: "/maintenance",
+      });
+
+      const managers = await db
+        .select({ userId: propertyMembers.userId })
+        .from(propertyMembers)
+        .where(
+          and(
+            eq(propertyMembers.propertyId, propertyId),
+            eq(propertyMembers.status, "active"),
+          ),
+        );
+
+      for (const m of managers) {
+        await createNotification({
+          userId: m.userId,
+          title: `Sự cố mới: Phòng ${roomNumber}`,
+          message: `Phòng ${roomNumber} (${prop.name}) vừa báo sự cố: "${title}".`,
+          type: "maintenance",
+          link: "/maintenance",
+        });
+      }
+    }
+  } catch {
+    // Non-blocking
+  }
+}
+
+async function notifyTenantMaintenanceUpdate(
+  tenantId: string,
+  title: string,
+  status: MaintenanceStatus,
+  notes?: string | null,
+) {
+  try {
+    const db = getDatabase();
+    const [t] = await db
+      .select({ userId: tenants.userId })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+
+    if (t?.userId) {
+      const statusMap: Record<MaintenanceStatus, string> = {
+        pending: "Chờ tiếp nhận",
+        in_progress: "Đang xử lý",
+        resolved: "Đã hoàn thành",
+        cancelled: "Đã hủy",
+      };
+      const label = statusMap[status] || status;
+      await createNotification({
+        userId: t.userId,
+        title: `Cập nhật sự cố: ${title}`,
+        message: `Ban quản lý đã chuyển trạng thái sang "${label}".${notes ? ` Ghi chú: ${notes}` : ""}`,
+        type: "maintenance",
+        link: "/#maintenance",
+      });
+    }
+  } catch {
+    // Non-blocking
+  }
 }
 
 export async function updateMaintenanceStatus(
@@ -305,6 +387,8 @@ export async function updateMaintenanceStatus(
       id: maintenanceRequests.id,
       propertyId: maintenanceRequests.propertyId,
       ownerId: properties.ownerId,
+      tenantId: maintenanceRequests.tenantId,
+      title: maintenanceRequests.title,
     })
     .from(maintenanceRequests)
     .innerJoin(properties, eq(properties.id, maintenanceRequests.propertyId))
@@ -358,6 +442,10 @@ export async function updateMaintenanceStatus(
   const updated = rows.find((r) => r.id === requestId);
   if (!updated) {
     throw new AppError("NOT_FOUND", "Không tìm thấy sự cố sau khi cập nhật.", []);
+  }
+
+  if (req.tenantId) {
+    void notifyTenantMaintenanceUpdate(req.tenantId, req.title, input.status, input.resolutionNotes);
   }
 
   return updated;

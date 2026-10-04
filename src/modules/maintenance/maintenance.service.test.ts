@@ -7,6 +7,9 @@ const mockDb = {
 };
 
 vi.mock("../../lib/database/client", () => ({ getDatabase: () => mockDb }));
+vi.mock("../notifications/notification.service", () => ({
+  createNotification: vi.fn().mockResolvedValue({ id: "notif-mock" }),
+}));
 vi.mock("../../lib/database/schema", () => ({
   maintenanceRequests: {
     id: "id",
