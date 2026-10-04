@@ -26,8 +26,14 @@ vi.mock("../../lib/database/schema", () => ({
     $inferInsert: {},
   },
   rooms: { id: "id", propertyId: "propertyId", roomNumber: "roomNumber" },
-  properties: { id: "id", ownerId: "ownerId", name: "name" },
+  properties: { id: "id", ownerId: "ownerId", name: "name", address: "address" },
   propertyMembers: { id: "id", propertyId: "propertyId", userId: "userId", status: "status" },
+  contractTenants: { contractId: "contractId", tenantId: "tenantId" },
+  tenants: { id: "id", fullName: "fullName", phone: "phone", citizenId: "citizenId", userId: "userId" },
+  users: { id: "id", fullName: "fullName", phone: "phone" },
+}));
+vi.mock("../notifications/notification.service", () => ({
+  createNotification: vi.fn().mockResolvedValue({ id: "notif-1" }),
 }));
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn().mockReturnValue({ type: "eq" }),
@@ -56,6 +62,8 @@ import {
   createContract,
   updateContractStatus,
   deleteContract,
+  addTenantToContract,
+  removeTenantFromContract,
 } from "./contract.service";
 
 const OWNER = { userId: "owner-1", role: "owner" as const };
@@ -69,11 +77,13 @@ const mockContract = {
   roomId: ROOM_ID,
   roomNumber: "101",
   propertyName: "Nhà trọ A",
+  propertyAddress: "123 Đường A",
   startDate: "2025-01-01",
   endDate: null,
   status: "active" as const,
   monthlyRentSnapshot: 3000000,
   depositSnapshot: 6000000,
+  tenants: [],
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -85,14 +95,14 @@ beforeEach(() => vi.clearAllMocks());
 // ---------------------------------------------------------------------------
 describe("listContracts", () => {
   it("returns contracts for owner", async () => {
-    mockDb.select.mockReturnValueOnce(chain([mockContract]));
+    mockDb.select.mockReturnValue(chain([mockContract]));
     const result = await listContracts(OWNER.userId, OWNER.role);
     expect(result).toHaveLength(1);
     expect(result[0].status).toBe("active");
   });
 
   it("returns contracts for manager", async () => {
-    mockDb.select.mockReturnValueOnce(chain([mockContract]));
+    mockDb.select.mockReturnValue(chain([mockContract]));
     const result = await listContracts(MANAGER.userId, MANAGER.role);
     expect(result).toHaveLength(1);
   });
@@ -109,13 +119,13 @@ describe("listContracts", () => {
 // ---------------------------------------------------------------------------
 describe("getContract", () => {
   it("returns contract for owner", async () => {
-    mockDb.select.mockReturnValueOnce(chain([mockContract]));
+    mockDb.select.mockReturnValue(chain([mockContract]));
     const result = await getContract(OWNER.userId, OWNER.role, CONTRACT_ID);
     expect(result.id).toBe(CONTRACT_ID);
   });
 
   it("throws NOT_FOUND when contract does not exist", async () => {
-    mockDb.select.mockReturnValueOnce(chain([]));
+    mockDb.select.mockReturnValue(chain([]));
     await expect(getContract(OWNER.userId, OWNER.role, CONTRACT_ID)).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
@@ -133,7 +143,8 @@ describe("getContract", () => {
 // ---------------------------------------------------------------------------
 describe("createContract", () => {
   it("creates contract for owner", async () => {
-    mockDb.insert.mockReturnValueOnce(chain([mockContract]));
+    mockDb.insert.mockReturnValue(chain([mockContract]));
+    mockDb.select.mockReturnValue(chain([mockContract]));
     const result = await createContract(OWNER.userId, OWNER.role, {
       roomId: ROOM_ID,
       startDate: "2025-01-01",
@@ -143,13 +154,15 @@ describe("createContract", () => {
     expect(result.roomId).toBe(ROOM_ID);
   });
 
-  it("creates contract for manager", async () => {
-    mockDb.insert.mockReturnValueOnce(chain([mockContract]));
+  it("creates contract for manager with tenantIds", async () => {
+    mockDb.insert.mockReturnValue(chain([mockContract]));
+    mockDb.select.mockReturnValue(chain([mockContract]));
     const result = await createContract(MANAGER.userId, MANAGER.role, {
       roomId: ROOM_ID,
       startDate: "2025-01-01",
       monthlyRentSnapshot: 2000000,
       depositSnapshot: 4000000,
+      tenantIds: ["tenant-1"],
     });
     expect(result.monthlyRentSnapshot).toBe(3000000);
   });
@@ -204,15 +217,15 @@ describe("createContract", () => {
 // ---------------------------------------------------------------------------
 describe("updateContractStatus", () => {
   it("activates a draft contract for owner", async () => {
-    mockDb.select.mockReturnValueOnce(chain([{ ...mockContract, status: "draft" }]));
-    mockDb.update.mockReturnValueOnce(chain([{ ...mockContract, status: "active" }]));
+    mockDb.select.mockReturnValue(chain([{ ...mockContract, status: "draft" }]));
+    mockDb.update.mockReturnValue(chain([{ ...mockContract, status: "active" }]));
     const result = await updateContractStatus(OWNER.userId, OWNER.role, CONTRACT_ID, "active");
     expect(result.status).toBe("active");
   });
 
   it("ends an active contract", async () => {
-    mockDb.select.mockReturnValueOnce(chain([mockContract]));
-    mockDb.update.mockReturnValueOnce(chain([{ ...mockContract, status: "ended" }]));
+    mockDb.select.mockReturnValue(chain([mockContract]));
+    mockDb.update.mockReturnValue(chain([{ ...mockContract, status: "ended" }]));
     const result = await updateContractStatus(OWNER.userId, OWNER.role, CONTRACT_ID, "ended");
     expect(result.status).toBe("ended");
   });
@@ -224,10 +237,29 @@ describe("updateContractStatus", () => {
   });
 
   it("throws NOT_FOUND when contract does not exist", async () => {
-    mockDb.select.mockReturnValueOnce(chain([]));
+    mockDb.select.mockReturnValue(chain([]));
     await expect(
       updateContractStatus(OWNER.userId, OWNER.role, CONTRACT_ID, "ended"),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// addTenantToContract & removeTenantFromContract
+// ---------------------------------------------------------------------------
+describe("addTenantToContract & removeTenantFromContract", () => {
+  it("adds tenant to contract", async () => {
+    mockDb.select.mockReturnValue(chain([mockContract]));
+    mockDb.insert.mockReturnValue(chain([{ contractId: CONTRACT_ID, tenantId: "t-1" }]));
+    const result = await addTenantToContract(OWNER.userId, OWNER.role, CONTRACT_ID, "t-1");
+    expect(result.id).toBe(CONTRACT_ID);
+  });
+
+  it("removes tenant from contract", async () => {
+    mockDb.select.mockReturnValue(chain([mockContract]));
+    mockDb.delete.mockReturnValue({ where: vi.fn().mockResolvedValue({ rowCount: 1 }) });
+    const result = await removeTenantFromContract(OWNER.userId, OWNER.role, CONTRACT_ID, "t-1");
+    expect(result.id).toBe(CONTRACT_ID);
   });
 });
 
@@ -236,8 +268,8 @@ describe("updateContractStatus", () => {
 // ---------------------------------------------------------------------------
 describe("deleteContract", () => {
   it("allows owner to delete a draft contract", async () => {
-    mockDb.select.mockReturnValueOnce(chain([{ ...mockContract, status: "draft" }]));
-    mockDb.delete.mockReturnValueOnce({ where: vi.fn().mockResolvedValue({ rowCount: 1 }) });
+    mockDb.select.mockReturnValue(chain([{ ...mockContract, status: "draft" }]));
+    mockDb.delete.mockReturnValue({ where: vi.fn().mockResolvedValue({ rowCount: 1 }) });
     await expect(deleteContract(OWNER.userId, OWNER.role, CONTRACT_ID)).resolves.toBeUndefined();
   });
 
@@ -248,14 +280,14 @@ describe("deleteContract", () => {
   });
 
   it("throws BUSINESS_RULE_ERROR when trying to delete an active contract", async () => {
-    mockDb.select.mockReturnValueOnce(chain([mockContract])); // status: active
+    mockDb.select.mockReturnValue(chain([mockContract])); // status: active
     await expect(deleteContract(OWNER.userId, OWNER.role, CONTRACT_ID)).rejects.toMatchObject({
       code: "BUSINESS_RULE_ERROR",
     });
   });
 
   it("throws NOT_FOUND when contract does not exist", async () => {
-    mockDb.select.mockReturnValueOnce(chain([]));
+    mockDb.select.mockReturnValue(chain([]));
     await expect(deleteContract(OWNER.userId, OWNER.role, CONTRACT_ID)).rejects.toMatchObject({
       code: "NOT_FOUND",
     });

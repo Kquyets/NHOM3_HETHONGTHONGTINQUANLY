@@ -41,6 +41,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       endDate: typeof endDate === "string" ? endDate : null,
       monthlyRentSnapshot: Number(monthlyRentSnapshot),
       depositSnapshot: Number(depositSnapshot),
+      tenantIds: Array.isArray(body.tenantIds) ? body.tenantIds.map(String) : undefined,
     });
 
     return successResponse({ contract }, { status: 201 });
