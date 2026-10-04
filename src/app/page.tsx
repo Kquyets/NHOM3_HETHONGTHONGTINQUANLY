@@ -3,6 +3,7 @@
 import { AppHeader } from "../components/layout/app-header";
 import { LandingPage } from "../components/landing/landing-page";
 import { DashboardView } from "../components/dashboard/dashboard-view";
+import { TenantPortalView } from "../components/tenant-portal/tenant-portal-view";
 import { useAuth } from "../lib/auth-context";
 
 export default function HomePage() {
@@ -33,6 +34,8 @@ export default function HomePage() {
             ))}
           </div>
         </main>
+      ) : user?.role === "tenant" ? (
+        <TenantPortalView />
       ) : (
         <DashboardView />
       )}

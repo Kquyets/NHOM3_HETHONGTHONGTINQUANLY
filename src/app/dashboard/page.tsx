@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AppHeader } from "../../components/layout/app-header";
 import { DashboardView } from "../../components/dashboard/dashboard-view";
+import { TenantPortalView } from "../../components/tenant-portal/tenant-portal-view";
 import { useAuth } from "../../lib/auth-context";
 
 export default function DashboardPage() {
@@ -46,7 +47,7 @@ export default function DashboardPage() {
   return (
     <div className="app-shell">
       <AppHeader />
-      <DashboardView />
+      {user.role === "tenant" ? <TenantPortalView /> : <DashboardView />}
     </div>
   );
 }

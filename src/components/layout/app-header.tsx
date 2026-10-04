@@ -29,6 +29,12 @@ const navItems = [
   { href: "/invoices",   label: "Hóa đơn",        Icon: Receipt,   match: (p: string) => p.startsWith("/invoices") },
 ];
 
+const tenantNavItems = [
+  { href: "/",           label: "Cổng thông tin", Icon: House,     match: (p: string) => p === "/" || p.startsWith("/dashboard") },
+  { href: "/#invoices",  label: "Hóa đơn phòng",  Icon: Receipt,   match: () => false },
+  { href: "/#utilities", label: "Điện & Nước",    Icon: Lightning, match: () => false },
+];
+
 const guestNavItems = [
   { href: "/",           label: "Trang chủ",      Icon: House,       match: (p: string) => p === "/" },
   { href: "/#features",  label: "Tính năng",      Icon: Sparkle,     match: () => false },
@@ -73,7 +79,7 @@ export function AppHeader() {
         {/* Nav */}
         <nav aria-label="Điều hướng chính">
           <ul className="nav-links">
-            {(user ? navItems : guestNavItems).map(({ href, label, Icon, match }, i) => {
+            {(!user ? guestNavItems : user.role === "tenant" ? tenantNavItems : navItems).map(({ href, label, Icon, match }, i) => {
               const isActive = match(pathname);
               return (
                 <motion.li
