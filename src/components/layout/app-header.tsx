@@ -31,6 +31,7 @@ const navItems = [
   { href: "/meters",     label: "Điện & Nước",    Icon: Lightning, match: (p: string) => p.startsWith("/meters") },
   { href: "/invoices",   label: "Hóa đơn",        Icon: Receipt,   match: (p: string) => p.startsWith("/invoices") },
   { href: "/maintenance",label: "Sự cố",          Icon: Wrench,    match: (p: string) => p.startsWith("/maintenance") },
+  { href: "/ai",         label: "Trợ lý AI",      Icon: Sparkle,   match: (p: string) => p.startsWith("/ai") },
 ];
 
 const tenantNavItems = [

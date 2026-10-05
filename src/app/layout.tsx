@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import { AuthProvider } from "../lib/auth-context";
 import { ThemeProvider } from "../lib/theme-context";
+import { AiFloatingChat } from "../components/ai-assistant/ai-floating-chat";
 
 export const metadata = {
   title: "Nhà Trọ Thông Minh — Hệ thống Quản lý",
@@ -25,7 +26,10 @@ export default function RootLayout({
       </head>
       <body>
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            {children}
+            <AiFloatingChat />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

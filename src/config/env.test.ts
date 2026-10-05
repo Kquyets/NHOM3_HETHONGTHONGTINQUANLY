@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getDatabaseUrl, getJwtSecret, getJwtRefreshSecret } from "./env";
+import { getDatabaseUrl, getJwtSecret, getJwtRefreshSecret, getGeminiApiKey } from "./env";
 
 describe("getDatabaseUrl", () => {
   it("requires a database URL", () => {
@@ -57,5 +57,15 @@ describe("getJwtRefreshSecret", () => {
   it("returns secret when valid", () => {
     const secret = "b".repeat(32);
     expect(getJwtRefreshSecret({ JWT_REFRESH_SECRET: secret })).toBe(secret);
+  });
+});
+
+describe("getGeminiApiKey", () => {
+  it("returns undefined when GEMINI_API_KEY is not set", () => {
+    expect(getGeminiApiKey({})).toBeUndefined();
+  });
+
+  it("returns trimmed API key when set", () => {
+    expect(getGeminiApiKey({ GEMINI_API_KEY: " AIzaSyTestKey123 " })).toBe("AIzaSyTestKey123");
   });
 });

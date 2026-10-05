@@ -45,3 +45,7 @@ export function getJwtRefreshSecret(env: DatabaseEnvironment = process.env): str
   }
   return secret;
 }
+
+export function getGeminiApiKey(env: DatabaseEnvironment = process.env): string | undefined {
+  return env.GEMINI_API_KEY?.trim() || undefined;
+}
