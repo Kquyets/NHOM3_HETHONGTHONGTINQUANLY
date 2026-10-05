@@ -288,12 +288,12 @@ export default function AiAssistantPage() {
                   width: 38,
                   height: 38,
                   borderRadius: "var(--radius-lg, 12px)",
-                  background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+                  background: "linear-gradient(135deg, #D2C3F6 0%, #A384F5 100%)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: "#fff",
-                  boxShadow: "0 4px 12px rgba(59, 130, 246, 0.4)",
+                  color: "#151026",
+                  boxShadow: "0 4px 14px rgba(210, 195, 246, 0.45)",
                 }}
               >
                 <Sparkle size={22} weight="fill" />
@@ -316,14 +316,16 @@ export default function AiAssistantPage() {
               display: "flex",
               alignItems: "center",
               gap: 6,
-              background: "var(--color-surface-2)",
-              border: "1px solid var(--color-border)",
+              background: "rgba(210, 195, 246, 0.08)",
+              border: "1px solid rgba(210, 195, 246, 0.22)",
               color: "var(--color-fg-2)",
               padding: "8px 14px",
               borderRadius: "var(--radius-md, 8px)",
               fontSize: "0.85rem",
               fontWeight: 600,
               cursor: "pointer",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
             }}
           >
             <ArrowsCounterClockwise size={16} />
@@ -345,9 +347,12 @@ export default function AiAssistantPage() {
           {/* Left Column: Quick Query Templates */}
           <div
             style={{
-              background: "var(--color-surface)",
-              border: "1px solid var(--color-border)",
+              background: "rgba(18, 14, 32, 0.75)",
+              backdropFilter: "blur(20px) saturate(180%)",
+              WebkitBackdropFilter: "blur(20px) saturate(180%)",
+              border: "1px solid rgba(210, 195, 246, 0.22)",
               borderRadius: "var(--radius-xl, 16px)",
+              boxShadow: "var(--shadow-glass)",
               padding: 16,
               display: "flex",
               flexDirection: "column",
@@ -363,7 +368,7 @@ export default function AiAssistantPage() {
               const IconComp = cat.icon;
               return (
                 <div key={cIdx} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.82rem", fontWeight: 600, color: "var(--color-primary)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.82rem", fontWeight: 600, color: "#D2C3F6" }}>
                     <IconComp size={15} weight="bold" />
                     <span>{cat.label}</span>
                   </div>
@@ -374,8 +379,8 @@ export default function AiAssistantPage() {
                       disabled={isLoading}
                       onClick={() => handleSend(q)}
                       style={{
-                        background: "var(--color-surface-2)",
-                        border: "1px solid var(--color-border-soft, rgba(255,255,255,0.06))",
+                        background: "rgba(210, 195, 246, 0.08)",
+                        border: "1px solid rgba(210, 195, 246, 0.16)",
                         color: "var(--color-fg-2)",
                         padding: "8px 10px",
                         borderRadius: "var(--radius-md, 8px)",
@@ -386,14 +391,14 @@ export default function AiAssistantPage() {
                         transition: "all 0.15s ease",
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = "var(--color-primary)";
+                        e.currentTarget.style.borderColor = "rgba(210, 195, 246, 0.45)";
                         e.currentTarget.style.color = "var(--color-fg)";
-                        e.currentTarget.style.background = "var(--color-primary-light)";
+                        e.currentTarget.style.background = "rgba(210, 195, 246, 0.18)";
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = "var(--color-border-soft, rgba(255,255,255,0.06))";
+                        e.currentTarget.style.borderColor = "rgba(210, 195, 246, 0.16)";
                         e.currentTarget.style.color = "var(--color-fg-2)";
-                        e.currentTarget.style.background = "var(--color-surface-2)";
+                        e.currentTarget.style.background = "rgba(210, 195, 246, 0.08)";
                       }}
                     >
                       {q}
@@ -407,9 +412,12 @@ export default function AiAssistantPage() {
           {/* Right Column: Interactive Chat Stream */}
           <div
             style={{
-              background: "var(--color-surface)",
-              border: "1px solid var(--color-border)",
+              background: "rgba(18, 14, 32, 0.75)",
+              backdropFilter: "blur(20px) saturate(180%)",
+              WebkitBackdropFilter: "blur(20px) saturate(180%)",
+              border: "1px solid rgba(210, 195, 246, 0.22)",
               borderRadius: "var(--radius-xl, 16px)",
+              boxShadow: "var(--shadow-glass)",
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
@@ -424,7 +432,7 @@ export default function AiAssistantPage() {
                 display: "flex",
                 flexDirection: "column",
                 gap: "18px",
-                background: "var(--color-bg)",
+                background: "rgba(14, 11, 26, 0.55)",
               }}
             >
               {messages.map((m) => {
@@ -444,11 +452,16 @@ export default function AiAssistantPage() {
                         padding: isUser ? "12px 18px" : "16px 20px",
                         borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
                         background: isUser
-                          ? "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"
-                          : "var(--color-surface)",
-                        color: isUser ? "#ffffff" : "var(--color-fg)",
-                        border: isUser ? "none" : "1px solid var(--color-border)",
-                        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+                          ? "linear-gradient(135deg, #D2C3F6 0%, #B89DF6 100%)"
+                          : "rgba(28, 22, 50, 0.72)",
+                        color: isUser ? "#151026" : "var(--color-fg)",
+                        fontWeight: isUser ? 500 : 400,
+                        border: isUser ? "1px solid rgba(255, 255, 255, 0.4)" : "1px solid rgba(210, 195, 246, 0.2)",
+                        backdropFilter: isUser ? undefined : "blur(12px)",
+                        WebkitBackdropFilter: isUser ? undefined : "blur(12px)",
+                        boxShadow: isUser
+                          ? "0 4px 14px rgba(210, 195, 246, 0.3)"
+                          : "0 4px 16px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.1)",
                         wordBreak: "break-word",
                       }}
                     >
@@ -462,7 +475,7 @@ export default function AiAssistantPage() {
                               style={{
                                 marginTop: 12,
                                 paddingTop: 8,
-                                borderTop: "1px solid var(--color-border-soft, rgba(255,255,255,0.06))",
+                                borderTop: "1px solid rgba(210, 195, 246, 0.15)",
                                 display: "flex",
                                 alignItems: "center",
                                 gap: 6,
@@ -470,8 +483,8 @@ export default function AiAssistantPage() {
                                 color: "var(--color-fg-3)",
                               }}
                             >
-                              <Sparkle size={13} weight="fill" color="var(--color-primary)" />
-                              <span>Công cụ đã gọi: <strong>{m.toolsUsed.join(", ")}</strong></span>
+                              <Sparkle size={13} weight="fill" color="#D2C3F6" />
+                              <span>Công cụ đã gọi: <strong style={{ color: "#D2C3F6" }}>{m.toolsUsed.join(", ")}</strong></span>
                             </div>
                           )}
                         </div>
@@ -526,14 +539,25 @@ export default function AiAssistantPage() {
                             disabled={isLoading}
                             onClick={() => handleSend(sug)}
                             style={{
-                              background: "var(--color-surface-2)",
-                              border: "1px solid var(--color-border)",
-                              color: "var(--color-primary)",
+                              background: "rgba(210, 195, 246, 0.12)",
+                              border: "1px solid rgba(210, 195, 246, 0.28)",
+                              color: "#D2C3F6",
+                              backdropFilter: "blur(6px)",
+                              WebkitBackdropFilter: "blur(6px)",
                               borderRadius: "16px",
-                              padding: "5px 12px",
+                              padding: "6px 14px",
                               fontSize: "0.82rem",
+                              fontWeight: 500,
                               cursor: isLoading ? "not-allowed" : "pointer",
-                              transition: "all 0.15s ease",
+                              transition: "all 0.18s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = "rgba(210, 195, 246, 0.55)";
+                              e.currentTarget.style.background = "rgba(210, 195, 246, 0.22)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = "rgba(210, 195, 246, 0.28)";
+                              e.currentTarget.style.background = "rgba(210, 195, 246, 0.12)";
                             }}
                           >
                             💡 {sug}
@@ -552,13 +576,14 @@ export default function AiAssistantPage() {
                       width: 28,
                       height: 28,
                       borderRadius: "50%",
-                      background: "var(--color-primary-light)",
+                      background: "rgba(210, 195, 246, 0.18)",
+                      border: "1px solid rgba(210, 195, 246, 0.35)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Sparkle size={16} className="animate-spin" color="var(--color-primary)" />
+                    <Sparkle size={16} className="animate-spin" color="#D2C3F6" />
                   </div>
                   <span style={{ fontSize: "0.88rem", color: "var(--color-fg-3)" }}>
                     AI đang tra cứu dữ liệu & xử lý câu trả lời...
@@ -579,8 +604,10 @@ export default function AiAssistantPage() {
                 alignItems: "center",
                 gap: 12,
                 padding: "16px 20px",
-                borderTop: "1px solid var(--color-border)",
-                background: "var(--color-surface-2)",
+                borderTop: "1px solid rgba(210, 195, 246, 0.16)",
+                background: "rgba(24, 18, 44, 0.85)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
               }}
             >
               <input
@@ -592,8 +619,8 @@ export default function AiAssistantPage() {
                 disabled={isLoading}
                 style={{
                   flex: 1,
-                  background: "var(--color-bg)",
-                  border: "1px solid var(--color-border)",
+                  background: "rgba(14, 11, 26, 0.7)",
+                  border: "1px solid rgba(210, 195, 246, 0.22)",
                   borderRadius: "var(--radius-lg, 10px)",
                   padding: "12px 16px",
                   fontSize: "0.95rem",
@@ -605,17 +632,19 @@ export default function AiAssistantPage() {
                 type="submit"
                 disabled={!inputMessage.trim() || isLoading}
                 style={{
-                  background: !inputMessage.trim() || isLoading ? "var(--color-surface-3)" : "var(--color-primary)",
-                  color: "#ffffff",
+                  background: !inputMessage.trim() || isLoading ? "rgba(255, 255, 255, 0.08)" : "#D2C3F6",
+                  color: !inputMessage.trim() || isLoading ? "var(--color-fg-3)" : "#151026",
                   border: "none",
                   borderRadius: "var(--radius-lg, 10px)",
                   padding: "12px 20px",
-                  fontWeight: 600,
+                  fontWeight: 700,
                   fontSize: "0.92rem",
                   cursor: !inputMessage.trim() || isLoading ? "not-allowed" : "pointer",
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
+                  boxShadow: !inputMessage.trim() || isLoading ? "none" : "0 0 16px rgba(210, 195, 246, 0.45)",
+                  transition: "all 0.18s ease",
                 }}
               >
                 <span>Gửi</span>

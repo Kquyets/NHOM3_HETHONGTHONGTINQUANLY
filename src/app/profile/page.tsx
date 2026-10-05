@@ -93,7 +93,7 @@ export default function ProfilePage() {
     "",
     "var(--color-danger, #ef4444)",
     "var(--color-warning, #f59e0b)",
-    "var(--color-primary, #3b82f6)",
+    "var(--color-primary, #D2C3F6)",
     "var(--color-success, #10b981)",
   ][pwStrength];
 

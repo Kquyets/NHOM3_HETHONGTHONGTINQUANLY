@@ -491,7 +491,7 @@ export function LandingPage() {
                 href="/register"
                 style={{
                   background: "#ffffff",
-                  color: "#1d4ed8",
+                  color: "#151026",
                   padding: "12px 28px",
                   borderRadius: "var(--radius-md)",
                   fontWeight: 700,
