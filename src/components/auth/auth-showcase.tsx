@@ -17,7 +17,16 @@ export function AuthShowcase() {
 
       {/* Top Brand */}
       <div className="auth-showcase-brand">
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, color: "#ffffff" }}>
+        <Link
+          href="/"
+          className="auth-showcase-brand-link"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            textDecoration: "none",
+          }}
+        >
           <div
             style={{
               width: 34,
@@ -27,16 +36,31 @@ export function AuthShowcase() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 2px 8px rgba(37, 99, 235, 0.4)",
+              color: "var(--color-on-primary)",
+              boxShadow: "0 2px 8px var(--color-primary-glow)",
             }}
           >
-            <House size={18} weight="fill" color="#ffffff" />
+            <House size={18} weight="fill" />
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 16, letterSpacing: "-0.01em" }}>
+            <div
+              className="auth-showcase-brand-title"
+              style={{
+                fontWeight: 800,
+                fontSize: 16,
+                letterSpacing: "-0.01em",
+                color: "var(--color-fg, #0f172a)",
+              }}
+            >
               Nhà Trọ Thông Minh
             </div>
-            <div style={{ fontSize: 11.5, color: "#94a3b8" }}>
+            <div
+              className="auth-showcase-brand-sub"
+              style={{
+                fontSize: 11.5,
+                color: "var(--color-fg-3, #475569)",
+              }}
+            >
               Giải pháp quản lý phòng trọ 4.0
             </div>
           </div>

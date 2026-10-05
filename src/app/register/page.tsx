@@ -15,13 +15,17 @@ import {
   ShieldCheck,
   Buildings,
   Check,
+  Sun,
+  Moon,
 } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
+import { useTheme } from "../../lib/theme-context";
 import { AuthShowcase } from "../../components/auth/auth-showcase";
 
 export default function RegisterPage() {
   const { user, isLoading, register } = useAuth();
+  const { theme, toggle: toggleTheme } = useTheme();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -101,6 +105,44 @@ export default function RegisterPage() {
 
       {/* ── Right Form Panel ─────────────────────────────────── */}
       <main className="auth-form-side">
+        <div style={{ position: "absolute", top: 20, right: 20, zIndex: 10 }}>
+          <motion.button
+            type="button"
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Chuyển sang chế độ sáng" : "Chuyển sang chế độ tối"}
+            title={theme === "dark" ? "Chế độ sáng" : "Chế độ tối"}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {theme === "dark" ? (
+                <motion.span
+                  key="sun"
+                  initial={{ opacity: 0, rotate: -45, scale: 0.7 }}
+                  animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                  exit={{ opacity: 0, rotate: 45, scale: 0.7 }}
+                  transition={{ duration: 0.15 }}
+                  style={{ display: "flex" }}
+                >
+                  <Sun size={15} weight="fill" />
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="moon"
+                  initial={{ opacity: 0, rotate: 45, scale: 0.7 }}
+                  animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                  exit={{ opacity: 0, rotate: 45, scale: 0.7 }}
+                  transition={{ duration: 0.15 }}
+                  style={{ display: "flex" }}
+                >
+                  <Moon size={15} weight="fill" />
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
+        </div>
+
         <div className="auth-form-container" style={{ maxWidth: 480 }}>
           <motion.div
             className="auth-form-box"

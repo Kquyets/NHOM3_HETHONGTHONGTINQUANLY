@@ -2158,6 +2158,18 @@ table.data-table tbody tr:last-child td {
   color: #1e1b4b;
 }
 
+[data-theme="light"] .auth-showcase-brand-title {
+  color: #0f172a !important; /* Màu chữ tối chuẩn theo yêu cầu */
+}
+
+[data-theme="light"] .auth-showcase-brand-sub {
+  color: #475569 !important; /* Màu chữ phụ tối */
+}
+
+[data-theme="light"] .auth-showcase-brand a {
+  color: inherit;
+}
+
 [data-theme="light"] .auth-showcase-desc,
 [data-theme="light"] .auth-showcase-footer {
   color: #475569;
