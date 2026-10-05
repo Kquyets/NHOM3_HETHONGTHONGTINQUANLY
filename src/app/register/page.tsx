@@ -119,9 +119,9 @@ export default function RegisterPage() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: "#fff",
+                  color: "var(--color-on-primary)",
                   marginBottom: 14,
-                  boxShadow: "0 2px 6px rgba(37, 99, 235, 0.3)",
+                  boxShadow: "0 4px 14px var(--color-primary-glow)",
                 }}
               >
                 <Buildings size={20} weight="fill" />

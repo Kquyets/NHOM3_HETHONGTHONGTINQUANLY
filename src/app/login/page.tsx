@@ -92,9 +92,9 @@ export default function LoginPage() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: "#fff",
+                  color: "var(--color-on-primary)",
                   marginBottom: 16,
-                  boxShadow: "0 2px 6px rgba(37, 99, 235, 0.3)",
+                  boxShadow: "0 4px 14px var(--color-primary-glow)",
                 }}
               >
                 <House size={20} weight="fill" />

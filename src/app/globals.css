@@ -1831,22 +1831,70 @@ table.data-table tbody tr:last-child td {
   align-items: center;
   justify-content: center;
   padding: 40px 24px;
+  position: relative;
+  overflow: hidden;
   background: var(--color-bg);
+}
+
+/* Background image layer with blur: 3px */
+.auth-form-side::before {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  background-image: url("/images/login-bg.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(3px);
+  -webkit-filter: blur(3px);
+  transform: scale(1.05);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Glass tint overlay over the blurred background */
+.auth-form-side::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(14, 11, 26, 0.6) 0%,
+    rgba(24, 18, 44, 0.72) 50%,
+    rgba(14, 11, 26, 0.8) 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+
+[data-theme="light"] .auth-form-side::after {
+  background: linear-gradient(
+    135deg,
+    rgba(245, 243, 251, 0.52) 0%,
+    rgba(235, 228, 255, 0.62) 50%,
+    rgba(245, 243, 251, 0.72) 100%
+  );
 }
 
 .auth-form-container {
   width: 100%;
   max-width: 440px;
+  position: relative;
+  z-index: 2;
 }
 
 .auth-form-box {
-  background: var(--color-surface);
-  backdrop-filter: blur(var(--backdrop-blur)) saturate(180%);
-  -webkit-backdrop-filter: blur(var(--backdrop-blur)) saturate(180%);
-  border: 1px solid var(--color-glass-border);
+  background: rgba(22, 18, 40, 0.72);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(210, 195, 246, 0.32);
   border-radius: var(--radius-xl);
   padding: 36px 32px;
-  box-shadow: var(--shadow-glass);
+  box-shadow:
+    0 24px 64px -10px rgba(0, 0, 0, 0.6),
+    0 0 32px 0 rgba(210, 195, 246, 0.18),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.25);
+  transition: all 0.25s ease;
 }
 
 /* Responsive adjustments for Landing & Auth */
@@ -2065,11 +2113,21 @@ table.data-table tbody tr:last-child td {
   color: #ffffff;
 }
 
-[data-theme="light"] .auth-card,
-[data-theme="light"] .auth-form-box {
+[data-theme="light"] .auth-card {
   background: rgba(255, 255, 255, 0.92);
   border-color: rgba(167, 139, 250, 0.3);
   box-shadow: 0 16px 40px -4px rgba(124, 58, 237, 0.12), inset 0 1px 0 0 #ffffff;
+}
+
+[data-theme="light"] .auth-form-box {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(167, 139, 250, 0.45);
+  box-shadow: 
+    0 24px 64px -10px rgba(124, 58, 237, 0.16),
+    0 0 32px 0 rgba(210, 195, 246, 0.3),
+    inset 0 1px 2px 0 #ffffff;
 }
 
 [data-theme="light"] .auth-logo {
