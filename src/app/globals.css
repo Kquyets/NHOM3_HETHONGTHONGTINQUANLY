@@ -59,6 +59,36 @@
   --color-info-bg:       rgba(210, 195, 246, 0.14);
   --color-info-border:   rgba(210, 195, 246, 0.3);
 
+  /* Input & Textbox Tokens (Default Dark Theme) */
+  --color-input-bg:            rgba(18, 15, 32, 0.65);
+  --color-input-border:        var(--color-glass-border);
+  --color-input-focus-bg:      rgba(24, 18, 44, 0.85);
+  --color-input-focus-border:  #D2C3F6;
+  --color-input-focus-ring:    rgba(210, 195, 246, 0.28);
+  --color-table-th-bg:         rgba(30, 24, 52, 0.65);
+  --color-table-th-fg:         #D2C3F6;
+  --color-table-hover-bg:      rgba(210, 195, 246, 0.07);
+  --color-card-header-bg:      rgba(210, 195, 246, 0.04);
+  --color-badge-lilac-bg:      rgba(210, 195, 246, 0.12);
+  --color-badge-lilac-fg:      #D2C3F6;
+  --color-badge-lilac-border:  rgba(210, 195, 246, 0.25);
+
+  /* Chat & Assistant Containers (Default Dark Theme) */
+  --color-chat-window-bg:       rgba(18, 14, 32, 0.88);
+  --color-chat-window-border:   rgba(210, 195, 246, 0.28);
+  --color-chat-header-bg:       rgba(28, 22, 50, 0.75);
+  --color-chat-scroll-bg:       rgba(14, 11, 26, 0.55);
+  --color-chat-bubble-ai-bg:    rgba(28, 22, 50, 0.72);
+  --color-chat-bubble-ai-fg:    var(--color-fg);
+  --color-chat-bubble-ai-border:rgba(210, 195, 246, 0.2);
+  --color-chat-bubble-user-bg:  linear-gradient(135deg, #D2C3F6 0%, #B89DF6 100%);
+  --color-chat-bubble-user-fg:  #151026;
+  --color-chat-input-bar-bg:    rgba(24, 18, 44, 0.85);
+  --color-chat-chip-bg:         rgba(210, 195, 246, 0.12);
+  --color-chat-chip-fg:         #D2C3F6;
+  --color-chat-chip-border:     rgba(210, 195, 246, 0.28);
+  --color-chat-chip-hover-bg:   rgba(210, 195, 246, 0.22);
+
   /* Typography */
   --font-display: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-body:    "Inter", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -110,52 +140,87 @@
 }
 
 /* --------------------------------------------------------------------------
-   2. Light Theme Tokens (Glassmorphic Frosted Pearl)
+   2. Light Theme Tokens (Glassmorphic Frosted Pearl & Nền Sáng Chữ Tối)
    -------------------------------------------------------------------------- */
 [data-theme="light"] {
   color-scheme: light;
 
-  /* Neutrals (Luminous Lilac Pearl) */
-  --color-bg:            #f6f4fc;   /* soft lilac pearl */
-  --color-surface:       rgba(255, 255, 255, 0.75);   /* frosted white glass */
-  --color-surface-2:     rgba(243, 239, 255, 0.65);   /* slate/lavender row */
-  --color-surface-3:     rgba(230, 222, 252, 0.75);   /* active / focus */
+  /* Neutrals: Luminous soft lavender pearl */
+  --color-bg:            #f5f3fb;
+  --color-surface:       rgba(255, 255, 255, 0.88);   /* Frosted white glass card/panel */
+  --color-surface-2:     rgba(244, 240, 255, 0.82);   /* Light lilac row */
+  --color-surface-3:     rgba(235, 228, 255, 0.9);    /* Focus/active */
 
-  --color-glass-border:    rgba(167, 139, 250, 0.25);
-  --color-glass-highlight: rgba(255, 255, 255, 0.6);
+  --color-glass-border:    rgba(167, 139, 250, 0.28);
+  --color-glass-highlight: rgba(255, 255, 255, 0.95);
 
-  /* Primary Accent in Light Mode (Deep Lilac/Violet for high readability contrast) */
+  /* Primary Accent: Royal Violet/Lilac with WCAG AAA readability */
   --color-primary:       #7c3aed;   /* violet-600 */
   --color-primary-hover: #6d28d9;   /* violet-700 */
-  --color-primary-light: rgba(210, 195, 246, 0.35);
+  --color-primary-dark:  #5b21b6;   /* violet-800 */
+  --color-primary-light: rgba(210, 195, 246, 0.45);
   --color-primary-glow:  rgba(124, 58, 237, 0.22);
   --color-on-primary:    #ffffff;
 
   --color-accent:        #9333ea;   /* purple-600 */
   --color-accent-dim:    #7e22ce;
 
-  /* Typography */
-  --color-fg:            #0f172a;   /* slate-900 */
-  --color-fg-2:          #334155;   /* slate-700 */
-  --color-fg-3:          #64748b;   /* slate-500 */
+  /* Typography: Slate Dark Text for High Contrast (Nền Sáng Chữ Tối) */
+  --color-fg:            #0f172a;   /* slate-900: Chữ tối */
+  --color-fg-2:          #334155;   /* slate-700: Chữ phụ tối */
+  --color-fg-3:          #64748b;   /* slate-500: Placeholder / muted */
+
+  /* Textbox & Input Tokens: Nền Sáng Chữ Tối */
+  --color-input-bg:           rgba(255, 255, 255, 0.95);  /* Nền trắng sáng */
+  --color-input-border:       rgba(167, 139, 250, 0.35);  /* Viền tím nhạt */
+  --color-input-focus-bg:     #ffffff;                     /* Trắng tinh khiết khi focus */
+  --color-input-focus-border: #7c3aed;                     /* Viền tím đậm khi focus */
+  --color-input-focus-ring:   rgba(124, 58, 237, 0.18);
+
+  /* Table Tokens */
+  --color-table-th-bg:        rgba(238, 232, 255, 0.9);   /* Header bảng nền sáng */
+  --color-table-th-fg:        #4c1d95;                     /* Chữ đậm tím tối */
+  --color-table-hover-bg:     rgba(210, 195, 246, 0.22);
+  --color-card-header-bg:     rgba(244, 240, 255, 0.7);
+
+  /* Badges */
+  --color-badge-lilac-bg:     rgba(210, 195, 246, 0.38);
+  --color-badge-lilac-fg:     #4c1d95;
+  --color-badge-lilac-border: rgba(167, 139, 250, 0.45);
+
+  /* Chat & Assistant Containers: Nền Sáng Chữ Tối */
+  --color-chat-window-bg:       rgba(255, 255, 255, 0.94);
+  --color-chat-window-border:   rgba(167, 139, 250, 0.3);
+  --color-chat-header-bg:       rgba(245, 241, 255, 0.92);
+  --color-chat-scroll-bg:       rgba(248, 246, 254, 0.8);
+  --color-chat-bubble-ai-bg:    rgba(255, 255, 255, 0.96);
+  --color-chat-bubble-ai-fg:    #0f172a;                     /* Chữ tối */
+  --color-chat-bubble-ai-border:rgba(167, 139, 250, 0.25);
+  --color-chat-bubble-user-bg:  linear-gradient(135deg, #E2D4F8 0%, #D2C3F6 100%);
+  --color-chat-bubble-user-fg:  #151026;                     /* Chữ tối */
+  --color-chat-input-bar-bg:    rgba(245, 242, 255, 0.94);
+  --color-chat-chip-bg:         rgba(255, 255, 255, 0.92);
+  --color-chat-chip-fg:         #4c1d95;                     /* Chữ tối */
+  --color-chat-chip-border:     rgba(167, 139, 250, 0.38);
+  --color-chat-chip-hover-bg:   rgba(240, 235, 255, 1);
 
   /* Borders & Dividers */
-  --color-border:        rgba(167, 139, 250, 0.22);
-  --color-border-soft:   rgba(167, 139, 250, 0.12);
+  --color-border:        rgba(167, 139, 250, 0.24);
+  --color-border-soft:   rgba(167, 139, 250, 0.14);
   --color-ring:          rgba(124, 58, 237, 0.3);
 
   /* Status Tokens */
   --color-success:       #059669;   /* emerald-600 */
-  --color-success-bg:    rgba(5, 150, 105, 0.1);
-  --color-success-border:#a7f3d0;
+  --color-success-bg:    rgba(5, 150, 105, 0.12);
+  --color-success-border:#6ee7b7;
 
   --color-warning:       #d97706;   /* amber-600 */
-  --color-warning-bg:    rgba(217, 119, 6, 0.1);
-  --color-warning-border:#fde68a;
+  --color-warning-bg:    rgba(217, 119, 6, 0.12);
+  --color-warning-border:#fcd34d;
 
   --color-danger:        #dc2626;   /* red-600 */
-  --color-danger-bg:     rgba(220, 38, 38, 0.1);
-  --color-danger-border: #fecaca;
+  --color-danger-bg:     rgba(220, 38, 38, 0.12);
+  --color-danger-border: #fca5a5;
 
   --color-info:          #7c3aed;   /* violet-600 */
   --color-info-bg:       rgba(210, 195, 246, 0.35);
@@ -165,8 +230,8 @@
   --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 14px 0 rgba(124, 58, 237, 0.08);
   --shadow-lg: 0 12px 28px -4px rgba(124, 58, 237, 0.12);
-  --shadow-glass: 0 8px 32px 0 rgba(124, 58, 237, 0.08), inset 0 1px 0 0 rgba(255, 255, 255, 0.7);
-  --shadow-glass-hover: 0 14px 38px 0 rgba(124, 58, 237, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+  --shadow-glass: 0 8px 32px 0 rgba(124, 58, 237, 0.08), inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
+  --shadow-glass-hover: 0 14px 38px 0 rgba(124, 58, 237, 0.15), inset 0 1px 0 0 #ffffff;
   --shadow-glow: 0 0 20px rgba(210, 195, 246, 0.5);
 }
 
@@ -563,7 +628,7 @@ p:last-child { margin-bottom: 0; }
 .card-header {
   padding: 16px 20px;
   border-bottom: 1px solid var(--color-glass-border);
-  background: rgba(210, 195, 246, 0.04);
+  background: var(--color-card-header-bg, rgba(210, 195, 246, 0.04));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -603,7 +668,8 @@ p:last-child { margin-bottom: 0; }
   position: relative;
 }
 
-.form-group label {
+.form-group label,
+.field-label {
   display: block;
   font-size: var(--text-xs);
   font-weight: 600;
@@ -614,35 +680,70 @@ p:last-child { margin-bottom: 0; }
 }
 
 .form-control,
-.form-select {
+.form-select,
+.input-field,
+textarea.form-control,
+textarea.input-field,
+input.form-control,
+input.input-field,
+select.form-select,
+select.input-field {
   width: 100%;
   padding: 8px 12px;
   height: 38px;
-  border: 1px solid var(--color-glass-border);
+  border: 1px solid var(--color-input-border, var(--color-glass-border));
   border-radius: var(--radius-md);
   font-family: var(--font-body);
   font-size: var(--text-sm);
   color: var(--color-fg);
-  background: rgba(18, 15, 32, 0.6);
+  background: var(--color-input-bg, rgba(18, 15, 32, 0.6));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   transition: all 0.18s ease;
   outline: none;
 }
-.form-control::placeholder {
+textarea.form-control,
+textarea.input-field {
+  height: auto;
+  min-height: 80px;
+}
+.form-control::placeholder,
+.input-field::placeholder {
   color: var(--color-fg-3);
 }
 .form-control:focus,
-.form-select:focus {
-  border-color: #D2C3F6;
-  box-shadow: 0 0 0 3px rgba(210, 195, 246, 0.28);
-  background: rgba(22, 18, 40, 0.75);
+.form-select:focus,
+.input-field:focus,
+textarea.form-control:focus,
+textarea.input-field:focus,
+input.form-control:focus,
+input.input-field:focus,
+select.form-select:focus,
+select.input-field:focus {
+  border-color: var(--color-input-focus-border, #D2C3F6);
+  box-shadow: 0 0 0 3px var(--color-input-focus-ring, rgba(210, 195, 246, 0.28));
+  background: var(--color-input-focus-bg, rgba(22, 18, 40, 0.75));
+}
+
+select.form-select option,
+select.input-field option,
+select option {
+  background-color: #1a162b;
+  color: #f8fafc;
+}
+
+[data-theme="light"] select.form-select option,
+[data-theme="light"] select.input-field option,
+[data-theme="light"] select option {
+  background-color: #ffffff;
+  color: #0f172a;
 }
 
 .input-wrapper {
   position: relative;
 }
-.input-wrapper .form-control {
+.input-wrapper .form-control,
+.input-wrapper .input-field {
   padding-right: 40px;
 }
 .input-icon-btn {
@@ -680,12 +781,12 @@ table.data-table {
 
 table.data-table th {
   padding: 12px 18px;
-  background: rgba(30, 24, 52, 0.65);
+  background: var(--color-table-th-bg, rgba(30, 24, 52, 0.65));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   font-size: 11.5px;
   font-weight: 700;
-  color: #D2C3F6;
+  color: var(--color-table-th-fg, #D2C3F6);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   border-bottom: 1px solid var(--color-glass-border);
@@ -703,7 +804,7 @@ table.data-table tbody tr {
   transition: background-color 0.15s ease;
 }
 table.data-table tbody tr:hover td {
-  background: rgba(210, 195, 246, 0.07);
+  background: var(--color-table-hover-bg, rgba(210, 195, 246, 0.07));
 }
 table.data-table tbody tr:last-child td {
   border-bottom: none;
@@ -720,9 +821,9 @@ table.data-table tbody tr:last-child td {
   border-radius: var(--radius-full);
   font-size: 12px;
   font-weight: 600;
-  background: rgba(210, 195, 246, 0.12);
-  color: #D2C3F6;
-  border: 1px solid rgba(210, 195, 246, 0.25);
+  background: var(--color-badge-lilac-bg, rgba(210, 195, 246, 0.12));
+  color: var(--color-badge-lilac-fg, #D2C3F6);
+  border: 1px solid var(--color-badge-lilac-border, rgba(210, 195, 246, 0.25));
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   white-space: nowrap;
@@ -741,9 +842,9 @@ table.data-table tbody tr:last-child td {
 }
 
 .badge.occupied {
-  background: rgba(210, 195, 246, 0.15);
-  color: #D2C3F6;
-  border-color: rgba(210, 195, 246, 0.32);
+  background: var(--color-badge-lilac-bg, rgba(210, 195, 246, 0.15));
+  color: var(--color-badge-lilac-fg, #D2C3F6);
+  border-color: var(--color-badge-lilac-border, rgba(210, 195, 246, 0.32));
 }
 
 /* --------------------------------------------------------------------------
@@ -1876,6 +1977,141 @@ table.data-table tbody tr:last-child td {
   100% {
     box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
   }
+}
+
+/* --------------------------------------------------------------------------
+   19. Light Mode Enhancements (Nền Sáng Chữ Tối & Glass Refinements)
+   -------------------------------------------------------------------------- */
+[data-theme="light"] .card:hover {
+  border-color: rgba(124, 58, 237, 0.35);
+  box-shadow: 0 14px 38px 0 rgba(124, 58, 237, 0.14);
+}
+
+[data-theme="light"] .stat-card::before {
+  background: linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.5), transparent);
+}
+
+[data-theme="light"] .stat-card:hover {
+  border-color: rgba(124, 58, 237, 0.35);
+  box-shadow: 0 14px 38px 0 rgba(124, 58, 237, 0.14);
+}
+
+[data-theme="light"] .stat-icon.teal {
+  background: rgba(210, 195, 246, 0.35);
+  color: #6d28d9;
+  border-color: rgba(167, 139, 250, 0.4);
+}
+
+[data-theme="light"] .nav-item.active a {
+  color: #3b0764;
+  background: linear-gradient(135deg, rgba(210, 195, 246, 0.45) 0%, rgba(196, 181, 253, 0.35) 100%);
+  border-color: rgba(167, 139, 250, 0.45);
+  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="light"] .btn-secondary {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(167, 139, 250, 0.35);
+  color: #1e293b;
+}
+
+[data-theme="light"] .btn-secondary:hover:not(:disabled) {
+  background: #ffffff;
+  border-color: #7c3aed;
+  color: #0f172a;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.15);
+}
+
+[data-theme="light"] .btn-ghost:hover,
+[data-theme="light"] .btn-logout:hover {
+  background: rgba(210, 195, 246, 0.25);
+  color: #0f172a;
+  border-color: rgba(167, 139, 250, 0.35);
+}
+
+[data-theme="light"] .role-option {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(167, 139, 250, 0.3);
+}
+
+[data-theme="light"] .role-option:hover {
+  border-color: rgba(124, 58, 237, 0.45);
+  background: rgba(244, 239, 255, 0.95);
+}
+
+[data-theme="light"] .role-option.selected {
+  border-color: #7c3aed;
+  background: rgba(210, 195, 246, 0.3);
+  box-shadow: 0 0 0 1px #7c3aed, 0 8px 20px -4px rgba(124, 58, 237, 0.2);
+}
+
+[data-theme="light"] .role-option.selected .role-option-icon {
+  background: #7c3aed;
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.35);
+}
+
+[data-theme="light"] .role-option.selected .role-option-title {
+  color: #4c1d95;
+}
+
+[data-theme="light"] .role-option.selected .role-option-desc {
+  color: #5b21b6;
+}
+
+[data-theme="light"] .role-option.selected .role-option-check {
+  border-color: #7c3aed;
+  background: #7c3aed;
+  color: #ffffff;
+}
+
+[data-theme="light"] .auth-card,
+[data-theme="light"] .auth-form-box {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(167, 139, 250, 0.3);
+  box-shadow: 0 16px 40px -4px rgba(124, 58, 237, 0.12), inset 0 1px 0 0 #ffffff;
+}
+
+[data-theme="light"] .auth-logo {
+  background: #7c3aed;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.3);
+}
+
+[data-theme="light"] .landing-feature-card:hover {
+  border-color: rgba(124, 58, 237, 0.4);
+  box-shadow: 0 14px 38px 0 rgba(124, 58, 237, 0.14);
+}
+
+[data-theme="light"] .landing-feature-icon {
+  background: rgba(210, 195, 246, 0.35);
+  color: #6d28d9;
+  border-color: rgba(167, 139, 250, 0.4);
+}
+
+[data-theme="light"] .auth-showcase-side {
+  background: linear-gradient(145deg, #ede9fe 0%, #ddd6fe 100%);
+  color: #1e1b4b;
+  border-right-color: rgba(167, 139, 250, 0.28);
+}
+
+[data-theme="light"] .auth-showcase-brand,
+[data-theme="light"] .auth-showcase-title {
+  color: #1e1b4b;
+}
+
+[data-theme="light"] .auth-showcase-desc,
+[data-theme="light"] .auth-showcase-footer {
+  color: #475569;
+}
+
+[data-theme="light"] .auth-showcase-checklist li {
+  color: #334155;
+}
+
+[data-theme="light"] .auth-check-icon {
+  background: rgba(124, 58, 237, 0.18);
+  color: #7c3aed;
 }
 
 

@@ -302,12 +302,12 @@ export function AiFloatingChat() {
             style={{
               width: "min(420px, calc(100vw - 32px))",
               height: "min(620px, calc(100vh - 100px))",
-              background: "rgba(18, 14, 32, 0.85)",
+              background: "var(--color-chat-window-bg)",
               backdropFilter: "blur(24px) saturate(180%)",
               WebkitBackdropFilter: "blur(24px) saturate(180%)",
-              border: "1px solid rgba(210, 195, 246, 0.28)",
+              border: "1px solid var(--color-chat-window-border)",
               borderRadius: "var(--radius-xl, 18px)",
-              boxShadow: "0 25px 60px -12px rgba(0, 0, 0, 0.65), 0 0 30px rgba(210, 195, 246, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.15)",
+              boxShadow: "var(--shadow-glass)",
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
@@ -320,8 +320,8 @@ export function AiFloatingChat() {
                 alignItems: "center",
                 justifyContent: "space-between",
                 padding: "14px 16px",
-                borderBottom: "1px solid rgba(210, 195, 246, 0.16)",
-                background: "rgba(28, 22, 50, 0.75)",
+                borderBottom: "1px solid var(--color-border-soft)",
+                background: "var(--color-chat-header-bg)",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -408,7 +408,7 @@ export function AiFloatingChat() {
                 display: "flex",
                 flexDirection: "column",
                 gap: "14px",
-                background: "rgba(14, 11, 26, 0.55)",
+                background: "var(--color-chat-scroll-bg)",
               }}
             >
               {messages.map((m) => {
@@ -428,16 +428,16 @@ export function AiFloatingChat() {
                         padding: isUser ? "10px 14px" : "12px 16px",
                         borderRadius: isUser ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
                         background: isUser
-                          ? "linear-gradient(135deg, #D2C3F6 0%, #B89DF6 100%)"
-                          : "rgba(28, 22, 50, 0.72)",
-                        color: isUser ? "#151026" : "var(--color-fg)",
+                          ? "var(--color-chat-bubble-user-bg)"
+                          : "var(--color-chat-bubble-ai-bg)",
+                        color: isUser ? "var(--color-chat-bubble-user-fg)" : "var(--color-chat-bubble-ai-fg)",
                         fontWeight: isUser ? 500 : 400,
-                        border: isUser ? "1px solid rgba(255, 255, 255, 0.4)" : "1px solid rgba(210, 195, 246, 0.2)",
+                        border: isUser ? "1px solid rgba(255, 255, 255, 0.4)" : "1px solid var(--color-chat-bubble-ai-border)",
                         backdropFilter: isUser ? undefined : "blur(12px)",
                         WebkitBackdropFilter: isUser ? undefined : "blur(12px)",
                         boxShadow: isUser
                           ? "0 4px 14px rgba(210, 195, 246, 0.3)"
-                          : "0 4px 16px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.1)",
+                          : "0 4px 16px rgba(0, 0, 0, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.1)",
                         wordBreak: "break-word",
                       }}
                     >
@@ -517,9 +517,9 @@ export function AiFloatingChat() {
                             disabled={isLoading}
                             onClick={() => handleSend(sug)}
                             style={{
-                              background: "rgba(210, 195, 246, 0.12)",
-                              border: "1px solid rgba(210, 195, 246, 0.28)",
-                              color: "#D2C3F6",
+                              background: "var(--color-chat-chip-bg)",
+                              border: "1px solid var(--color-chat-chip-border)",
+                              color: "var(--color-chat-chip-fg)",
                               backdropFilter: "blur(6px)",
                               WebkitBackdropFilter: "blur(6px)",
                               borderRadius: "14px",
@@ -531,12 +531,12 @@ export function AiFloatingChat() {
                               transition: "all 0.18s ease",
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.borderColor = "rgba(210, 195, 246, 0.55)";
-                              e.currentTarget.style.background = "rgba(210, 195, 246, 0.22)";
+                              e.currentTarget.style.borderColor = "var(--color-primary)";
+                              e.currentTarget.style.background = "var(--color-chat-chip-hover-bg)";
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.borderColor = "rgba(210, 195, 246, 0.28)";
-                              e.currentTarget.style.background = "rgba(210, 195, 246, 0.12)";
+                              e.currentTarget.style.borderColor = "var(--color-chat-chip-border)";
+                              e.currentTarget.style.background = "var(--color-chat-chip-bg)";
                             }}
                           >
                             💡 {sug}
@@ -555,14 +555,14 @@ export function AiFloatingChat() {
                       width: 24,
                       height: 24,
                       borderRadius: "50%",
-                      background: "rgba(210, 195, 246, 0.18)",
-                      border: "1px solid rgba(210, 195, 246, 0.35)",
+                      background: "var(--color-chat-chip-bg)",
+                      border: "1px solid var(--color-chat-chip-border)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Sparkle size={14} className="animate-spin" color="#D2C3F6" />
+                    <Sparkle size={14} className="animate-spin" color="var(--color-primary)" />
                   </div>
                   <span style={{ fontSize: "0.82rem", color: "var(--color-fg-3)" }}>
                     AI đang trích xuất dữ liệu & soạn câu trả lời...
@@ -583,8 +583,8 @@ export function AiFloatingChat() {
                 alignItems: "center",
                 gap: 8,
                 padding: "12px 14px",
-                borderTop: "1px solid rgba(210, 195, 246, 0.16)",
-                background: "rgba(24, 18, 44, 0.85)",
+                borderTop: "1px solid var(--color-border-soft)",
+                background: "var(--color-chat-input-bar-bg)",
                 backdropFilter: "blur(12px)",
                 WebkitBackdropFilter: "blur(12px)",
               }}
@@ -598,8 +598,8 @@ export function AiFloatingChat() {
                 disabled={isLoading}
                 style={{
                   flex: 1,
-                  background: "rgba(14, 11, 26, 0.7)",
-                  border: "1px solid rgba(210, 195, 246, 0.22)",
+                  background: "var(--color-input-bg)",
+                  border: "1px solid var(--color-input-border)",
                   borderRadius: "var(--radius-md, 8px)",
                   padding: "9px 12px",
                   fontSize: "0.88rem",
@@ -611,8 +611,8 @@ export function AiFloatingChat() {
                 type="submit"
                 disabled={!inputMessage.trim() || isLoading}
                 style={{
-                  background: !inputMessage.trim() || isLoading ? "rgba(255, 255, 255, 0.08)" : "#D2C3F6",
-                  color: !inputMessage.trim() || isLoading ? "var(--color-fg-3)" : "#151026",
+                  background: !inputMessage.trim() || isLoading ? "var(--color-surface-3)" : "var(--color-primary)",
+                  color: !inputMessage.trim() || isLoading ? "var(--color-fg-3)" : "var(--color-on-primary)",
                   border: "none",
                   borderRadius: "var(--radius-md, 8px)",
                   padding: "9px 14px",
@@ -620,7 +620,7 @@ export function AiFloatingChat() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  boxShadow: !inputMessage.trim() || isLoading ? "none" : "0 0 14px rgba(210, 195, 246, 0.45)",
+                  boxShadow: !inputMessage.trim() || isLoading ? "none" : "0 0 14px var(--color-primary-glow)",
                   transition: "all 0.18s ease",
                 }}
                 title="Gửi câu hỏi"
