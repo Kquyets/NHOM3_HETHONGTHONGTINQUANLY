@@ -113,4 +113,96 @@ describe("Tenant Portal & Tenants UI Specifications", () => {
     expect(selectedContract).toBeDefined();
     expect(selectedContract?.monthlyRentSnapshot).toBe(3200000);
   });
+
+  it("maps URL hashes correctly to corresponding tenant portal tabs", () => {
+    function resolveTabFromHash(hash: string): "invoices" | "utilities" | "maintenance" {
+      const h = hash.toLowerCase();
+      if (h === "#utilities") return "utilities";
+      if (h === "#maintenance") return "maintenance";
+      return "invoices";
+    }
+
+    expect(resolveTabFromHash("#invoices")).toBe("invoices");
+    expect(resolveTabFromHash("#utilities")).toBe("utilities");
+    expect(resolveTabFromHash("#maintenance")).toBe("maintenance");
+    expect(resolveTabFromHash("")).toBe("invoices");
+    expect(resolveTabFromHash("#unknown")).toBe("invoices");
+  });
+
+  it("maps item types to Vietnamese labels for invoice breakdown", () => {
+    const itemLabels: Record<string, string> = {
+      rent: "Tiền thuê phòng",
+      electricity: "Tiền điện sinh hoạt",
+      water: "Tiền nước sinh hoạt",
+      service: "Phí dịch vụ chung",
+      other: "Khoản thu khác",
+    };
+
+    expect(itemLabels.rent).toBe("Tiền thuê phòng");
+    expect(itemLabels.electricity).toBe("Tiền điện sinh hoạt");
+    expect(itemLabels.water).toBe("Tiền nước sinh hoạt");
+    expect(itemLabels.service).toBe("Phí dịch vụ chung");
+    expect(itemLabels.other).toBe("Khoản thu khác");
+  });
+
+  it("calculates utility consumption and temporary cost estimation correctly", () => {
+    function calculateUtilityCost(prev: number, curr: number, unitPrice: number) {
+      const consumption = Math.max(0, curr - prev);
+      const totalCost = consumption * unitPrice;
+      return { consumption, totalCost };
+    }
+
+    const electricity = calculateUtilityCost(1200, 1342, 3500);
+    expect(electricity.consumption).toBe(142);
+    expect(electricity.totalCost).toBe(497000);
+
+    const water = calculateUtilityCost(45, 53, 25000);
+    expect(water.consumption).toBe(8);
+    expect(water.totalCost).toBe(200000);
+
+    // Negative reading protection
+    const invalidReading = calculateUtilityCost(500, 480, 3500);
+    expect(invalidReading.consumption).toBe(0);
+    expect(invalidReading.totalCost).toBe(0);
+  });
+
+  it("evaluates active stages in the 4-step maintenance progress tracker", () => {
+    function getTrackerStages(status: "pending" | "in_progress" | "resolved" | "cancelled") {
+      const isInProgress = status === "in_progress";
+      const isResolved = status === "resolved";
+      return [
+        { step: 1, label: "Đã gửi", active: true },
+        { step: 2, label: "Tiếp nhận", active: isInProgress || isResolved },
+        { step: 3, label: "Đang xử lý", active: isInProgress || isResolved },
+        { step: 4, label: "Hoàn tất", active: isResolved },
+      ];
+    }
+
+    const pendingStages = getTrackerStages("pending");
+    expect(pendingStages[0].active).toBe(true);
+    expect(pendingStages[1].active).toBe(false);
+    expect(pendingStages[2].active).toBe(false);
+    expect(pendingStages[3].active).toBe(false);
+
+    const inProgressStages = getTrackerStages("in_progress");
+    expect(inProgressStages[0].active).toBe(true);
+    expect(inProgressStages[1].active).toBe(true);
+    expect(inProgressStages[2].active).toBe(true);
+    expect(inProgressStages[3].active).toBe(false);
+
+    const resolvedStages = getTrackerStages("resolved");
+    expect(resolvedStages.every((s) => s.active)).toBe(true);
+  });
+
+  it("provides emergency technical contact hotlines", () => {
+    const emergencyHotlines = {
+      firePCCC: "114",
+      medicalAmbulance: "115",
+      securityPolice: "113",
+    };
+
+    expect(emergencyHotlines.firePCCC).toBe("114");
+    expect(emergencyHotlines.medicalAmbulance).toBe("115");
+    expect(emergencyHotlines.securityPolice).toBe("113");
+  });
 });

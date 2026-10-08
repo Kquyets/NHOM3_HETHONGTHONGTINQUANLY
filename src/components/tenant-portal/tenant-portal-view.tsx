@@ -26,6 +26,11 @@ import {
   ArrowsClockwise,
   Plus,
   ShieldCheck,
+  Eye,
+  Info,
+  Lightbulb,
+  Fire,
+  FirstAid,
 } from "@phosphor-icons/react";
 
 import { apiClient } from "../../lib/api-client";
@@ -46,6 +51,14 @@ const money = new Intl.NumberFormat("vi-VN", {
   currency: "VND",
   maximumFractionDigits: 0,
 });
+
+const ITEM_TYPE_LABELS: Record<string, string> = {
+  rent: "Tiền thuê phòng",
+  electricity: "Tiền điện sinh hoạt",
+  water: "Tiền nước sinh hoạt",
+  service: "Phí dịch vụ chung",
+  other: "Khoản thu khác",
+};
 
 const STATUS_CONFIG: Record<InvoiceStatus, { label: string; cls: string; Icon: React.ElementType }> = {
   draft:          { label: "Nháp",              cls: "badge",              Icon: Clock },
@@ -96,12 +109,34 @@ export function TenantPortalView() {
   const [mPriority, setMPriority] = useState<MaintenancePriority>("medium");
   const [mDescription, setMDescription] = useState("");
 
+  // Invoice detail modal state
+  const [detailInvoice, setDetailInvoice] = useState<InvoiceDetail | null>(null);
+
   // VietQR modal state
   const [qrInvoice, setQrInvoice] = useState<InvoiceDetail | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   // Printable A4/PDF modal state
   const [printInvoice, setPrintInvoice] = useState<InvoiceDetail | null>(null);
+
+  // Synchronize activeTab with URL hash (#invoices, #utilities, #maintenance)
+  useEffect(() => {
+    const handleHash = () => {
+      const h = window.location.hash.toLowerCase();
+      if (h === "#invoices") setActiveTab("invoices");
+      else if (h === "#utilities") setActiveTab("utilities");
+      else if (h === "#maintenance") setActiveTab("maintenance");
+    };
+    handleHash();
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
+
+  const handleTabChange = (tab: "invoices" | "utilities" | "maintenance") => {
+    setActiveTab(tab);
+    window.history.replaceState(null, "", `#${tab}`);
+    window.dispatchEvent(new Event("hashchange"));
+  };
 
   const loadMaintenance = useCallback(async () => {
     try {
@@ -481,8 +516,8 @@ export function TenantPortalView() {
         </section>
       )}
 
-      {/* ── 5. INTERACTIVE SEGMENTED TABS ─────────────────────────────────── */}
-      <section>
+      {/* ── 5. INTERACTIVE SEGMENTED TABS (#invoices, #utilities, #maintenance) ── */}
+      <section style={{ scrollMarginTop: 80 }}>
         {/* Tab Controls Bar */}
         <div style={{
           display: "flex",
@@ -496,7 +531,7 @@ export function TenantPortalView() {
             type="button"
             className={activeTab === "invoices" ? "btn-primary" : "btn-ghost"}
             style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "var(--text-sm)", padding: "8px 16px" }}
-            onClick={() => setActiveTab("invoices")}
+            onClick={() => handleTabChange("invoices")}
           >
             <Receipt size={17} />
             <span>Lịch sử Hóa đơn ({invoices.length})</span>
@@ -506,7 +541,7 @@ export function TenantPortalView() {
             type="button"
             className={activeTab === "utilities" ? "btn-primary" : "btn-ghost"}
             style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "var(--text-sm)", padding: "8px 16px" }}
-            onClick={() => setActiveTab("utilities")}
+            onClick={() => handleTabChange("utilities")}
           >
             <Lightning size={17} />
             <span>Chỉ số Điện &amp; Nước ({meters.length})</span>
@@ -516,22 +551,97 @@ export function TenantPortalView() {
             type="button"
             className={activeTab === "maintenance" ? "btn-primary" : "btn-ghost"}
             style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "var(--text-sm)", padding: "8px 16px" }}
-            onClick={() => setActiveTab("maintenance")}
+            onClick={() => handleTabChange("maintenance")}
           >
             <Wrench size={17} />
             <span>Bảo trì &amp; Sự cố ({maintenanceRequests.length})</span>
           </button>
         </div>
 
-        {/* ── TAB CONTENT 1: INVOICES ─────────────────────────────────────── */}
+        {/* ── TAB CONTENT 1: INVOICES (#invoices) ─────────────────────────── */}
         {activeTab === "invoices" && (
           <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+            <div id="invoices" style={{ scrollMarginTop: 90 }} />
             {invoices.length === 0 ? (
-              <div className="card" style={{ padding: "36px 20px", textAlign: "center" }}>
-                <Receipt size={32} style={{ color: "var(--color-fg-3)", margin: "0 auto 10px" }} />
-                <p className="text-muted" style={{ margin: 0, fontSize: "var(--text-sm)" }}>
-                  Hiện chưa có hóa đơn nào được phát hành cho phòng của bạn.
-                </p>
+              <div className="card" style={{ padding: "32px 24px" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 18, flexWrap: "wrap", marginBottom: 20 }}>
+                  <div style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: "var(--radius-md)",
+                    background: "rgba(210, 195, 246, 0.15)",
+                    color: "var(--color-primary)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}>
+                    <Receipt size={28} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 260 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <h3 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: 0 }}>
+                        Hiện chưa có hóa đơn phát sinh
+                      </h3>
+                      <span className="badge ready" style={{ fontSize: 10 }}>Không có nợ đọng</span>
+                    </div>
+                    <p className="text-muted" style={{ margin: 0, fontSize: "var(--text-xs)", lineHeight: 1.6 }}>
+                      Hóa đơn tiền phòng, điện nước và các chi phí dịch vụ hàng tháng sẽ được Ban quản lý tạo và thông báo tự động tại đây kèm mã VietQR chuyển khoản nhanh.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: 12,
+                  padding: "16px",
+                  background: "rgba(255, 255, 255, 0.025)",
+                  borderRadius: "var(--radius-md)",
+                  border: "1px solid var(--color-glass-border)",
+                  fontSize: "var(--text-xs)",
+                }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--color-primary)", fontWeight: 600, marginBottom: 4 }}>
+                      <CalendarBlank size={14} /> Chu kỳ phát hành hóa đơn
+                    </div>
+                    <div style={{ color: "var(--color-fg)", fontWeight: 600 }}>
+                      Ngày 25 – 30 hàng tháng
+                    </div>
+                    <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                      Tự động tính theo chỉ số điện nước thực tế
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--color-warning)", fontWeight: 600, marginBottom: 4 }}>
+                      <Clock size={14} /> Hạn nộp tiền phòng
+                    </div>
+                    <div style={{ color: "var(--color-fg)", fontWeight: 600 }}>
+                      Trước ngày 05 – 10 tháng sau
+                    </div>
+                    <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                      Hỗ trợ chuyển khoản VietQR Napas 24/7
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--color-success)", fontWeight: 600, marginBottom: 4 }}>
+                      <House size={14} /> Giá thuê phòng cố định
+                    </div>
+                    <div style={{ color: "var(--color-fg)", fontWeight: 700, fontFamily: "var(--font-mono)" }}>
+                      {stay ? `${money.format(stay.monthlyRent)}/tháng` : "Theo thỏa thuận hợp đồng"}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                      Tiền cọc: {stay ? money.format(stay.deposit) : "—"}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8, fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>
+                  <Info size={14} />
+                  <span>Cần xuất hóa đơn sớm hoặc đối soát lại hợp đồng? Vui lòng liên hệ trực tiếp với Chủ nhà / Quản lý tòa nhà.</span>
+                </div>
               </div>
             ) : (
               <div className="card" style={{ padding: 0 }}>
@@ -572,6 +682,16 @@ export function TenantPortalView() {
                             </td>
                             <td style={{ textAlign: "right" }}>
                               <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                                <button
+                                  type="button"
+                                  className="btn-secondary"
+                                  style={{ padding: "4px 10px", fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 5 }}
+                                  onClick={() => setDetailInvoice(inv)}
+                                  title="Xem chi tiết từng khoản"
+                                >
+                                  <Eye size={14} /> Chi tiết
+                                </button>
+
                                 {inv.status !== "cancelled" && (
                                   <button
                                     type="button"
@@ -606,93 +726,231 @@ export function TenantPortalView() {
           </motion.div>
         )}
 
-        {/* ── TAB CONTENT 2: UTILITIES (CLEAN STRIP - NO NESTED CARDS) ───── */}
+        {/* ── TAB CONTENT 2: UTILITIES (#utilities) ───────────────────────── */}
         {activeTab === "utilities" && (
           <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+            <div id="utilities" style={{ scrollMarginTop: 90 }} />
             {meters.length === 0 ? (
-              <div className="card" style={{ padding: "36px 20px", textAlign: "center" }}>
-                <Lightning size={32} style={{ color: "var(--color-fg-3)", margin: "0 auto 10px" }} />
-                <p className="text-muted" style={{ margin: 0, fontSize: "var(--text-sm)" }}>
-                  Chưa có dữ liệu chốt số điện nước cho phòng này.
-                </p>
+              <div className="card" style={{ padding: "32px 24px" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 18, flexWrap: "wrap", marginBottom: 20 }}>
+                  <div style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: "var(--radius-md)",
+                    background: "rgba(234, 179, 8, 0.15)",
+                    color: "#eab308",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}>
+                    <Lightning size={28} weight="fill" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 260 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <h3 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: 0 }}>
+                        Chưa đến kỳ chốt số điện &amp; nước tháng này
+                      </h3>
+                      <span className="badge" style={{ fontSize: 10 }}>Chờ chốt số</span>
+                    </div>
+                    <p className="text-muted" style={{ margin: 0, fontSize: "var(--text-xs)", lineHeight: 1.6 }}>
+                      Ban quản lý sẽ ghi nhận chỉ số công tơ điện và đồng hồ nước định kỳ vào ngày 25 – 28 hàng tháng. Chỉ số mới và mức tiêu thụ sẽ tự động xuất hiện tại đây ngay khi chốt.
+                    </p>
+                  </div>
+                </div>
+
+                {/* 2 Bento Box biểu giá định mức */}
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                  gap: 12,
+                  marginBottom: 16,
+                }}>
+                  <div style={{
+                    padding: "16px",
+                    background: "rgba(234, 179, 8, 0.05)",
+                    borderRadius: "var(--radius-md)",
+                    border: "1px solid rgba(234, 179, 8, 0.25)",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 700, fontSize: "var(--text-sm)", color: "#eab308" }}>
+                        <Lightning size={16} weight="fill" /> Điện sinh hoạt
+                      </div>
+                      <span className="badge" style={{ fontSize: 10 }}>Công tơ riêng</span>
+                    </div>
+                    <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginBottom: 6 }}>
+                      Định mức áp dụng:
+                    </div>
+                    <div style={{ fontSize: "var(--text-base)", fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--color-fg)" }}>
+                      3.500 ₫ / kWh
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--color-fg-3)", marginTop: 4 }}>
+                      Theo chỉ số công tơ điện riêng của phòng {stay?.roomNumber}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    padding: "16px",
+                    background: "rgba(6, 182, 212, 0.05)",
+                    borderRadius: "var(--radius-md)",
+                    border: "1px solid rgba(6, 182, 212, 0.25)",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 700, fontSize: "var(--text-sm)", color: "#06b6d4" }}>
+                        <Drop size={16} weight="fill" /> Nước sinh hoạt
+                      </div>
+                      <span className="badge" style={{ fontSize: 10 }}>Đồng hồ riêng</span>
+                    </div>
+                    <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginBottom: 6 }}>
+                      Định mức áp dụng:
+                    </div>
+                    <div style={{ fontSize: "var(--text-base)", fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--color-fg)" }}>
+                      25.000 ₫ / m³
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--color-fg-3)", marginTop: 4 }}>
+                      Theo chỉ số đồng hồ nước riêng của phòng {stay?.roomNumber}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Eco Tips */}
+                <div style={{
+                  padding: "14px 16px",
+                  background: "rgba(255, 255, 255, 0.025)",
+                  borderRadius: "var(--radius-md)",
+                  border: "1px solid var(--color-glass-border)",
+                  fontSize: "var(--text-xs)",
+                  display: "grid",
+                  gap: 8,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, color: "var(--color-primary)" }}>
+                    <Lightbulb size={15} weight="bold" /> Mẹo tiết kiệm chi phí điện &amp; nước phòng trọ:
+                  </div>
+                  <div style={{ color: "var(--color-fg-2)", lineHeight: 1.5 }}>
+                    • Tắt bình nóng lạnh và máy điều hòa trước khi ra khỏi phòng 30 phút giúp tiết kiệm 15–20% điện sinh hoạt.<br />
+                    • Kiểm tra bồn cầu và van vòi xịt định kỳ để tránh nước bị rỉ ngầm gây tăng vọt số nước.
+                  </div>
+                </div>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14 }}>
-                {meters.map((m) => {
-                  const isElectric = m.utilityType === "electricity";
-                  const unit = isElectric ? "kWh" : "m³";
-                  const themeColor = isElectric ? "#eab308" : "#06b6d4";
+              <div style={{ display: "grid", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14 }}>
+                  {meters.map((m) => {
+                    const isElectric = m.utilityType === "electricity";
+                    const unit = isElectric ? "kWh" : "m³";
+                    const themeColor = isElectric ? "#eab308" : "#06b6d4";
+                    const tempCost = m.consumption * (m.unitPriceSnapshot || (isElectric ? 3500 : 25000));
 
-                  return (
-                    <div
-                      key={m.id}
-                      className="card"
-                      style={{
-                        padding: "18px 20px",
-                        borderLeft: `4px solid ${themeColor}`,
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          {isElectric ? (
-                            <Lightning size={20} weight="fill" style={{ color: themeColor }} />
-                          ) : (
-                            <Drop size={20} weight="fill" style={{ color: themeColor }} />
-                          )}
-                          <strong style={{ fontSize: "var(--text-sm)" }}>
-                            {isElectric ? "Điện sinh hoạt" : "Nước sinh hoạt"}
-                          </strong>
+                    return (
+                      <div
+                        key={m.id}
+                        className="card"
+                        style={{
+                          padding: "18px 20px",
+                          borderLeft: `4px solid ${themeColor}`,
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            {isElectric ? (
+                              <Lightning size={20} weight="fill" style={{ color: themeColor }} />
+                            ) : (
+                              <Drop size={20} weight="fill" style={{ color: themeColor }} />
+                            )}
+                            <strong style={{ fontSize: "var(--text-sm)" }}>
+                              {isElectric ? "Điện sinh hoạt" : "Nước sinh hoạt"}
+                            </strong>
+                          </div>
+                          <span className="badge" style={{ fontSize: "11px" }}>Kỳ {m.billingPeriod}</span>
                         </div>
-                        <span className="badge" style={{ fontSize: "11px" }}>Kỳ {m.billingPeriod}</span>
+
+                        {/* Flat metrics row */}
+                        <div style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr 1.2fr",
+                          gap: 12,
+                          padding: "10px 14px",
+                          background: "rgba(255, 255, 255, 0.03)",
+                          borderRadius: "var(--radius-md)",
+                          marginBottom: 10,
+                        }}>
+                          <div>
+                            <div style={{ fontSize: "11px", color: "var(--color-fg-3)" }}>Chỉ số cũ</div>
+                            <div style={{ fontWeight: 600, fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)", marginTop: 2 }}>
+                              {m.previousValue}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div style={{ fontSize: "11px", color: "var(--color-fg-3)" }}>Chỉ số mới</div>
+                            <div style={{ fontWeight: 600, fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)", marginTop: 2 }}>
+                              {m.currentValue}
+                            </div>
+                          </div>
+
+                          <div style={{ textAlign: "right" }}>
+                            <div style={{ fontSize: "11px", color: "var(--color-fg-3)" }}>Tiêu thụ</div>
+                            <div style={{
+                              fontWeight: 800,
+                              color: themeColor,
+                              fontFamily: "var(--font-mono)",
+                              fontSize: "var(--text-base)",
+                              marginTop: 2,
+                            }}>
+                              {m.consumption} {unit}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Cost estimation */}
+                        <div style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          fontSize: "var(--text-xs)",
+                          paddingTop: 8,
+                          borderTop: "1px solid rgba(255,255,255,0.06)",
+                        }}>
+                          <span className="text-muted">
+                            Đơn giá: {money.format(m.unitPriceSnapshot || (isElectric ? 3500 : 25000))}/{unit}
+                          </span>
+                          <div>
+                            <span className="text-muted" style={{ marginRight: 6 }}>Tạm tính:</span>
+                            <strong style={{ fontFamily: "var(--font-mono)", color: themeColor }}>
+                              {money.format(tempCost)}
+                            </strong>
+                          </div>
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
 
-                      {/* Clean flat metrics row (No inner card/border box) */}
-                      <div style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr 1.2fr",
-                        gap: 12,
-                        padding: "10px 14px",
-                        background: "rgba(255, 255, 255, 0.03)",
-                        borderRadius: "var(--radius-md)",
-                      }}>
-                        <div>
-                          <div style={{ fontSize: "11px", color: "var(--color-fg-3)" }}>Chỉ số cũ</div>
-                          <div style={{ fontWeight: 600, fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)", marginTop: 2 }}>
-                            {m.previousValue}
-                          </div>
-                        </div>
-
-                        <div>
-                          <div style={{ fontSize: "11px", color: "var(--color-fg-3)" }}>Chỉ số mới</div>
-                          <div style={{ fontWeight: 600, fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)", marginTop: 2 }}>
-                            {m.currentValue}
-                          </div>
-                        </div>
-
-                        <div style={{ textAlign: "right" }}>
-                          <div style={{ fontSize: "11px", color: "var(--color-fg-3)" }}>Tiêu thụ</div>
-                          <div style={{
-                            fontWeight: 800,
-                            color: themeColor,
-                            fontFamily: "var(--font-mono)",
-                            fontSize: "var(--text-base)",
-                            marginTop: 2,
-                          }}>
-                            {m.consumption} {unit}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {/* Transparency banner */}
+                <div style={{
+                  padding: "12px 16px",
+                  background: "rgba(210, 195, 246, 0.06)",
+                  border: "1px solid var(--color-glass-border)",
+                  borderRadius: "var(--radius-md)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  fontSize: "var(--text-xs)",
+                }}>
+                  <ShieldCheck size={18} style={{ color: "var(--color-primary)", flexShrink: 0 }} />
+                  <span style={{ color: "var(--color-fg-2)" }}>
+                    Chỉ số được đối soát minh bạch từ công tơ riêng của Phòng {stay?.roomNumber}. Bạn có thể đối chiếu trực tiếp tại tủ đồng hồ kỹ thuật hành lang tầng.
+                  </span>
+                </div>
               </div>
             )}
           </motion.div>
         )}
 
-        {/* ── TAB CONTENT 3: MAINTENANCE ─────────────────────────────────── */}
+        {/* ── TAB CONTENT 3: MAINTENANCE (#maintenance) ───────────────────── */}
         {activeTab === "maintenance" && (
           <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+            <div id="maintenance" style={{ scrollMarginTop: 90 }} />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>
                 Danh sách các yêu cầu sửa chữa và báo cáo sự cố cơ sở vật chất.
@@ -710,21 +968,146 @@ export function TenantPortalView() {
             </div>
 
             {maintenanceRequests.length === 0 ? (
-              <div className="card" style={{ padding: "36px 20px", textAlign: "center" }}>
-                <Wrench size={32} style={{ color: "var(--color-fg-3)", margin: "0 auto 10px" }} />
-                <p className="text-muted" style={{ margin: "0 0 12px", fontSize: "var(--text-sm)" }}>
-                  Hiện tại không có sự cố nào được ghi nhận.
-                </p>
-                {stay && (
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    style={{ fontSize: "var(--text-xs)", margin: "0 auto" }}
-                    onClick={() => setShowMaintenanceModal(true)}
-                  >
-                    Báo sự cố nếu phòng gặp trục trặc
-                  </button>
-                )}
+              <div className="card" style={{ padding: "32px 24px" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 18, flexWrap: "wrap", marginBottom: 20 }}>
+                  <div style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: "var(--radius-md)",
+                    background: "rgba(16, 185, 129, 0.15)",
+                    color: "#10b981",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}>
+                    <CheckCircle size={28} weight="fill" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 260 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <h3 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: 0 }}>
+                        Cơ sở vật chất phòng hiện đang hoạt động tốt
+                      </h3>
+                      <span className="badge ready" style={{ fontSize: 10 }}>Không có sự cố</span>
+                    </div>
+                    <p className="text-muted" style={{ margin: 0, fontSize: "var(--text-xs)", lineHeight: 1.6 }}>
+                      Hiện tại phòng của bạn không có sự cố nào được ghi nhận. Nếu gặp bất kỳ vấn đề gì về đường điện, ống nước hay thiết bị, hãy tạo yêu cầu để thợ kỹ thuật hỗ trợ kịp thời.
+                    </p>
+                  </div>
+
+                  {stay && (
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      style={{ fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 6, padding: "8px 16px" }}
+                      onClick={() => setShowMaintenanceModal(true)}
+                    >
+                      <Plus size={14} weight="bold" /> Báo sự cố mới
+                    </button>
+                  )}
+                </div>
+
+                {/* Emergency Contacts Bento 24/7 */}
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: "var(--text-xs)", fontWeight: 700, color: "var(--color-fg-3)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 10 }}>
+                    Danh bạ Hỗ trợ Kỹ thuật &amp; Khẩn cấp 24/7
+                  </div>
+
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                    gap: 12,
+                  }}>
+                    {/* Hotline 1: Quản lý tòa nhà */}
+                    <div style={{
+                      padding: "14px 16px",
+                      background: "rgba(255, 255, 255, 0.025)",
+                      borderRadius: "var(--radius-md)",
+                      border: "1px solid var(--color-glass-border)",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                        <Phone size={16} style={{ color: "var(--color-primary)" }} />
+                        <strong style={{ fontSize: "var(--text-xs)", color: "var(--color-fg)" }}>Chủ nhà / Quản lý</strong>
+                      </div>
+                      <div style={{ fontSize: "var(--text-sm)", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--color-primary)" }}>
+                        {tenant?.phone || "0988.xxx.xxx"}
+                      </div>
+                      <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                        Tiếp nhận thông tin phòng &amp; an ninh
+                      </div>
+                    </div>
+
+                    {/* Hotline 2: Kỹ thuật điện nước */}
+                    <div style={{
+                      padding: "14px 16px",
+                      background: "rgba(255, 255, 255, 0.025)",
+                      borderRadius: "var(--radius-md)",
+                      border: "1px solid var(--color-glass-border)",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                        <Wrench size={16} style={{ color: "#f59e0b" }} />
+                        <strong style={{ fontSize: "var(--text-xs)", color: "#f59e0b" }}>Kỹ thuật Điện &amp; Nước</strong>
+                      </div>
+                      <div style={{ fontSize: "var(--text-sm)", fontWeight: 700, fontFamily: "var(--font-mono)", color: "#f59e0b" }}>
+                        Hotline Tòa nhà
+                      </div>
+                      <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                        Kiểm tra chập cháy, mất nước cục bộ
+                      </div>
+                    </div>
+
+                    {/* Hotline 3: Cứu hỏa PCCC */}
+                    <div style={{
+                      padding: "14px 16px",
+                      background: "rgba(239, 68, 68, 0.06)",
+                      borderRadius: "var(--radius-md)",
+                      border: "1px solid rgba(239, 68, 68, 0.25)",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                        <Fire size={16} weight="fill" style={{ color: "#ef4444" }} />
+                        <strong style={{ fontSize: "var(--text-xs)", color: "#ef4444" }}>Cứu nạn PCCC</strong>
+                      </div>
+                      <div style={{ fontSize: "var(--text-lg)", fontWeight: 800, fontFamily: "var(--font-mono)", color: "#ef4444" }}>
+                        114
+                      </div>
+                      <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                        Khẩn cấp khi phát hiện cháy nổ
+                      </div>
+                    </div>
+
+                    {/* Hotline 4: Cấp cứu y tế */}
+                    <div style={{
+                      padding: "14px 16px",
+                      background: "rgba(16, 185, 129, 0.06)",
+                      borderRadius: "var(--radius-md)",
+                      border: "1px solid rgba(16, 185, 129, 0.25)",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                        <FirstAid size={16} weight="fill" style={{ color: "#10b981" }} />
+                        <strong style={{ fontSize: "var(--text-xs)", color: "#10b981" }}>Cấp cứu Y tế</strong>
+                      </div>
+                      <div style={{ fontSize: "var(--text-lg)", fontWeight: 800, fontFamily: "var(--font-mono)", color: "#10b981" }}>
+                        115
+                      </div>
+                      <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                        Sự cố sức khỏe và cấp cứu 24/7
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hướng dẫn an toàn nhanh */}
+                <div style={{
+                  padding: "12px 16px",
+                  background: "rgba(255, 255, 255, 0.02)",
+                  borderRadius: "var(--radius-md)",
+                  border: "1px solid var(--color-glass-border)",
+                  fontSize: "var(--text-xs)",
+                  color: "var(--color-fg-3)",
+                  lineHeight: 1.6,
+                }}>
+                  <strong style={{ color: "var(--color-fg)" }}>Xử lý khẩn cấp ban đầu:</strong> Nếu xảy ra chập điện, hãy gạt ngắt ngay Aptomat tổng trong phòng; nếu vỡ ống nước, vặn chặt van bi cấp nước góc nhà vệ sinh trước khi gọi hỗ trợ.
+                </div>
               </div>
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
@@ -732,6 +1115,10 @@ export function TenantPortalView() {
                   const cfg = MNT_STATUS_CONFIG[req.status] || MNT_STATUS_CONFIG.pending;
                   const priority = PRIORITY_BADGES[req.priority] || PRIORITY_BADGES.medium;
                   const catLabel = CATEGORY_LABELS[req.category] || req.category;
+
+                  const isPending = req.status === "pending";
+                  const isInProgress = req.status === "in_progress";
+                  const isResolved = req.status === "resolved";
 
                   return (
                     <div key={req.id} className="card" style={{ padding: "18px 20px" }}>
@@ -757,6 +1144,46 @@ export function TenantPortalView() {
                           <cfg.Icon size={13} weight="fill" />
                           {cfg.label}
                         </span>
+                      </div>
+
+                      {/* 4-Stage Step Progress Tracker */}
+                      <div style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(4, 1fr)",
+                        gap: 8,
+                        margin: "12px 0 10px",
+                        padding: "10px 14px",
+                        background: "rgba(255, 255, 255, 0.025)",
+                        borderRadius: "var(--radius-md)",
+                        border: "1px solid var(--color-glass-border)",
+                        fontSize: "11px",
+                      }}>
+                        {[
+                          { step: 1, label: "Đã gửi", active: true },
+                          { step: 2, label: "Tiếp nhận", active: isInProgress || isResolved },
+                          { step: 3, label: "Đang xử lý", active: isInProgress || isResolved },
+                          { step: 4, label: "Hoàn tất", active: isResolved },
+                        ].map((s) => (
+                          <div key={s.step} style={{ display: "flex", alignItems: "center", gap: 6, opacity: s.active ? 1 : 0.45 }}>
+                            <div style={{
+                              width: 18,
+                              height: 18,
+                              borderRadius: "50%",
+                              background: s.active ? "var(--color-primary)" : "rgba(255, 255, 255, 0.12)",
+                              color: s.active ? "#151026" : "var(--color-fg-3)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "10px",
+                              fontWeight: 700,
+                            }}>
+                              {s.active ? "✓" : s.step}
+                            </div>
+                            <span style={{ fontWeight: s.active ? 600 : 400, color: s.active ? "var(--color-fg)" : "var(--color-fg-3)" }}>
+                              {s.label}
+                            </span>
+                          </div>
+                        ))}
                       </div>
 
                       {req.description && (
@@ -1100,7 +1527,220 @@ export function TenantPortalView() {
         )}
       </AnimatePresence>
 
-      {/* ── 8. PRINTABLE INVOICE MODAL ────────────────────────────────────── */}
+      {/* ── 8. INVOICE DETAIL MODAL ─────────────────────────────────────── */}
+      <AnimatePresence>
+        {detailInvoice && (
+          <motion.div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.7)",
+              backdropFilter: "blur(8px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 120,
+              padding: 16,
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setDetailInvoice(null)}
+          >
+            <motion.div
+              className="card"
+              style={{ maxWidth: 540, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: 24 }}
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+                <div>
+                  <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, display: "flex", alignItems: "center", gap: 8, margin: 0 }}>
+                    <Receipt size={22} style={{ color: "var(--color-primary)" }} />
+                    Chi tiết hóa đơn • Kỳ {detailInvoice.billingPeriodStart}
+                  </h2>
+                  <p className="text-muted" style={{ fontSize: "var(--text-xs)", margin: "4px 0 0" }}>
+                    Phòng {detailInvoice.roomNumber} • Hạn nộp: {detailInvoice.dueDate || "Ngày 10 cùng tháng"}
+                  </p>
+                </div>
+                <button type="button" className="btn-ghost" style={{ padding: 6 }} onClick={() => setDetailInvoice(null)} aria-label="Đóng">
+                  <X size={15} />
+                </button>
+              </div>
+
+              {/* Breakdown table */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: "var(--text-xs)", fontWeight: 700, color: "var(--color-fg-3)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>
+                  Bóc tách các khoản thu
+                </div>
+                <div className="table-responsive" style={{ border: "1px solid var(--color-glass-border)", borderRadius: "var(--radius-md)" }}>
+                  <table className="data-table" style={{ fontSize: "var(--text-xs)" }}>
+                    <thead>
+                      <tr>
+                        <th>Khoản mục</th>
+                        <th style={{ textAlign: "right" }}>Đơn giá</th>
+                        <th style={{ textAlign: "center" }}>Số lượng</th>
+                        <th style={{ textAlign: "right" }}>Thành tiền</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detailInvoice.items && detailInvoice.items.length > 0 ? (
+                        detailInvoice.items.map((item) => (
+                          <tr key={item.id}>
+                            <td>
+                              <strong style={{ color: "var(--color-fg)" }}>
+                                {ITEM_TYPE_LABELS[item.itemType] || item.description || "Khoản thu"}
+                              </strong>
+                              {item.description && item.description !== ITEM_TYPE_LABELS[item.itemType] && (
+                                <div className="text-muted" style={{ fontSize: 11 }}>{item.description}</div>
+                              )}
+                            </td>
+                            <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>
+                              {money.format(item.unitPriceSnapshot)}
+                            </td>
+                            <td style={{ textAlign: "center", fontFamily: "var(--font-mono)" }}>
+                              {item.quantity}
+                            </td>
+                            <td style={{ textAlign: "right", fontWeight: 700, fontFamily: "var(--font-mono)" }}>
+                              {money.format(item.amount)}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="text-muted" style={{ textAlign: "center", padding: "14px" }}>
+                            Tổng tiền phòng định kỳ: {money.format(detailInvoice.totalAmount)}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Summary box */}
+              {(() => {
+                const remaining = Math.max(0, detailInvoice.totalAmount - (detailInvoice.paidAmount || 0));
+                return (
+                  <div style={{
+                    display: "grid",
+                    gap: 8,
+                    padding: "14px 16px",
+                    background: "rgba(255, 255, 255, 0.03)",
+                    borderRadius: "var(--radius-md)",
+                    border: "1px solid var(--color-glass-border)",
+                    fontSize: "var(--text-xs)",
+                    marginBottom: 16,
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span className="text-muted">Tổng số tiền hóa đơn:</span>
+                      <strong style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)" }}>
+                        {money.format(detailInvoice.totalAmount)}
+                      </strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span className="text-muted">Đã thanh toán:</span>
+                      <strong style={{ color: "var(--color-success)", fontFamily: "var(--font-mono)" }}>
+                        {money.format(detailInvoice.paidAmount || 0)}
+                      </strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 8 }}>
+                      <span style={{ fontWeight: 700, color: remaining > 0 ? "#ef4444" : "var(--color-success)" }}>
+                        {remaining > 0 ? "Còn nợ cần thanh toán:" : "Trạng thái thanh toán:"}
+                      </span>
+                      <strong style={{
+                        fontSize: "var(--text-base)",
+                        fontFamily: "var(--font-mono)",
+                        fontWeight: 800,
+                        color: remaining > 0 ? "#ef4444" : "var(--color-success)",
+                      }}>
+                        {remaining > 0 ? money.format(remaining) : "Đã thanh toán đủ"}
+                      </strong>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Payment history */}
+              {detailInvoice.payments && detailInvoice.payments.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: "var(--text-xs)", fontWeight: 700, color: "var(--color-fg-3)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>
+                    Lịch sử các lần nộp tiền ({detailInvoice.payments.length})
+                  </div>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    {detailInvoice.payments.map((p) => (
+                      <div
+                        key={p.id}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "8px 12px",
+                          background: "rgba(255, 255, 255, 0.02)",
+                          borderRadius: 6,
+                          fontSize: "var(--text-xs)",
+                        }}
+                      >
+                        <div>
+                          <strong style={{ color: "var(--color-success)" }}>+{money.format(p.amount)}</strong>
+                          <span className="text-muted" style={{ marginLeft: 8 }}>
+                            {new Date(p.paidAt).toLocaleDateString("vi-VN")}
+                          </span>
+                        </div>
+                        <span className="text-muted" style={{ fontSize: 11 }}>
+                          {p.method === "bank_transfer" ? "Chuyển khoản VietQR" : "Tiền mặt"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                {detailInvoice.status !== "cancelled" && (
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--text-xs)" }}
+                    onClick={() => {
+                      const target = detailInvoice;
+                      setDetailInvoice(null);
+                      setQrInvoice(target);
+                    }}
+                  >
+                    <QrCode size={16} /> Quét mã VietQR
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--text-xs)" }}
+                  onClick={() => {
+                    const target = detailInvoice;
+                    setDetailInvoice(null);
+                    setPrintInvoice(target);
+                  }}
+                >
+                  <Printer size={16} /> In / PDF
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  style={{ fontSize: "var(--text-xs)" }}
+                  onClick={() => setDetailInvoice(null)}
+                >
+                  Đóng
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── 9. PRINTABLE INVOICE MODAL ────────────────────────────────────── */}
       <PrintableInvoiceModal invoice={printInvoice} onClose={() => setPrintInvoice(null)} />
     </main>
   );

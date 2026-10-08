@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
@@ -61,6 +62,17 @@ export function AppHeader() {
   const { theme, toggle } = useTheme();
   const pathname = usePathname();
 
+  const [currentHash, setCurrentHash] = useState("");
+
+  useEffect(() => {
+    const handleHash = () => {
+      setCurrentHash(window.location.hash.toLowerCase());
+    };
+    handleHash();
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
+
   const roleText =
     user?.role === "owner" ? "Chủ nhà" :
     user?.role === "manager" ? "Quản lý" : "Khách thuê";
@@ -86,7 +98,24 @@ export function AppHeader() {
         <nav aria-label="Điều hướng chính">
           <ul className="nav-links">
             {(!user ? guestNavItems : user.role === "tenant" ? tenantNavItems : navItems).map(({ href, label, Icon, match }, i) => {
-              const isActive = match(pathname);
+              const isActive = (() => {
+                if (user?.role === "tenant") {
+                  if (href === "/") {
+                    return pathname === "/" && (!currentHash || currentHash === "#");
+                  }
+                  const itemHash = href.includes("#") ? href.slice(href.indexOf("#")) : "";
+                  return pathname === "/" && currentHash === itemHash;
+                }
+                if (!user) {
+                  if (href === "/") {
+                    return pathname === "/" && (!currentHash || currentHash === "#");
+                  }
+                  const itemHash = href.includes("#") ? href.slice(href.indexOf("#")) : "";
+                  return pathname === "/" && currentHash === itemHash;
+                }
+                return match(pathname);
+              })();
+
               return (
                 <motion.li
                   key={href}
@@ -95,7 +124,17 @@ export function AppHeader() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.35, delay: i * 0.04, ease: "easeOut" }}
                 >
-                  <Link href={href} aria-current={isActive ? "page" : undefined}>
+                  <Link
+                    href={href}
+                    aria-current={isActive ? "page" : undefined}
+                    onClick={() => {
+                      if (href.includes("#")) {
+                        setTimeout(() => {
+                          window.dispatchEvent(new Event("hashchange"));
+                        }, 30);
+                      }
+                    }}
+                  >
                     <Icon size={14} weight={isActive ? "fill" : "regular"} />
                     <span>{label}</span>
                   </Link>
