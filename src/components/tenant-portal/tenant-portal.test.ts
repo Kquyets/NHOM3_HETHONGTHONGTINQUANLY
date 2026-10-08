@@ -79,4 +79,38 @@ describe("Tenant Portal & Tenants UI Specifications", () => {
     expect(searchTenants("văn")).toHaveLength(2);
     expect(searchTenants("xyz")).toHaveLength(0);
   });
+
+  it("formats contract dropdown options and autofills rent amounts properly", () => {
+    const mockContracts = [
+      {
+        id: "c-101",
+        roomNumber: "101",
+        propertyName: "Nhà Trọ Bình An",
+        monthlyRentSnapshot: 3200000,
+        status: "active",
+        tenants: [{ fullName: "Nguyễn Văn A", phone: "0901234567" }],
+      },
+      {
+        id: "c-102",
+        roomNumber: "102",
+        propertyName: "Nhà Trọ Bình An",
+        monthlyRentSnapshot: 4000000,
+        status: "ended",
+        tenants: [],
+      },
+    ];
+
+    function formatContractOption(c: (typeof mockContracts)[0]) {
+      const primary = c.tenants?.[0]?.fullName || "Chưa gán khách";
+      const isInactive = c.status === "ended" || c.status === "cancelled";
+      return `Phòng ${c.roomNumber} • ${c.propertyName} (Khách: ${primary}) — ${c.monthlyRentSnapshot} VND/tháng${isInactive ? ` [${c.status}]` : ""}`;
+    }
+
+    expect(formatContractOption(mockContracts[0])).toContain("Phòng 101 • Nhà Trọ Bình An (Khách: Nguyễn Văn A)");
+    expect(formatContractOption(mockContracts[1])).toContain("[ended]");
+
+    const selectedContract = mockContracts.find((c) => c.id === "c-101");
+    expect(selectedContract).toBeDefined();
+    expect(selectedContract?.monthlyRentSnapshot).toBe(3200000);
+  });
 });

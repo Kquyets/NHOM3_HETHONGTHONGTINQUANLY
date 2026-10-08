@@ -37,6 +37,7 @@ import type {
   InvoiceStatus,
   PaymentMethod,
 } from "../../modules/invoices/invoice.service";
+import type { ContractRow } from "../../modules/contracts/contract.service";
 
 const money = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -99,6 +100,7 @@ export default function InvoicesPage() {
   const router = useRouter();
 
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
+  const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -149,8 +151,33 @@ export default function InvoicesPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await apiClient<{ invoices: InvoiceRow[] }>("/api/invoices");
-      setInvoices(res.invoices);
+      const [invRes, conRes] = await Promise.all([
+        apiClient<{ invoices: InvoiceRow[] }>("/api/invoices"),
+        apiClient<{ contracts: ContractRow[] }>("/api/contracts"),
+      ]);
+      setInvoices(invRes.invoices);
+      setContracts(conRes.contracts);
+
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const queryContractId = params.get("contractId");
+        if (queryContractId) {
+          setCContractId(queryContractId);
+          setShowCreate(true);
+          const found = conRes.contracts.find((c) => c.id === queryContractId);
+          if (found) {
+            setCItems([
+              {
+                itemType: "rent",
+                description: "Tiền thuê phòng",
+                quantity: 1,
+                unitPriceSnapshot: found.monthlyRentSnapshot,
+                amount: found.monthlyRentSnapshot,
+              },
+            ]);
+          }
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không thể tải danh sách hóa đơn.");
     } finally {
@@ -363,8 +390,48 @@ export default function InvoicesPage() {
               <form onSubmit={handleCreateInvoice}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label htmlFor="inv-contract">Contract ID *</label>
-                    <input id="inv-contract" type="text" className="form-control" placeholder="ID hợp đồng" value={cContractId} onChange={(e) => setCContractId(e.target.value)} required autoFocus />
+                    <label htmlFor="inv-contract">Hợp đồng thuê phòng *</label>
+                    <select
+                      id="inv-contract"
+                      className="form-control"
+                      value={cContractId}
+                      onChange={(e) => {
+                        const selectedId = e.target.value;
+                        setCContractId(selectedId);
+                        const found = contracts.find((c) => c.id === selectedId);
+                        if (found) {
+                          setCItems((prev) =>
+                            prev.map((it, idx) =>
+                              idx === 0 && it.itemType === "rent"
+                                ? {
+                                    ...it,
+                                    unitPriceSnapshot: found.monthlyRentSnapshot,
+                                    amount: it.quantity * found.monthlyRentSnapshot,
+                                  }
+                                : it
+                            )
+                          );
+                        }
+                      }}
+                      required
+                      autoFocus
+                    >
+                      <option value="">-- Chọn hợp đồng phòng trọ --</option>
+                      {contracts.map((c) => {
+                        const primaryTenant = c.tenants?.[0]?.fullName || "Chưa gán khách";
+                        const isInactive = c.status === "ended" || c.status === "cancelled";
+                        return (
+                          <option key={c.id} value={c.id} disabled={isInactive}>
+                            Phòng {c.roomNumber} • {c.propertyName} (Khách: {primaryTenant}) — {money.format(c.monthlyRentSnapshot)}/tháng {isInactive ? `[${c.status}]` : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    {cContractId && (
+                      <div style={{ fontSize: "11px", color: "var(--color-fg-3)", marginTop: 4, display: "flex", gap: 6, alignItems: "center" }}>
+                        <span>ID: <code style={{ fontFamily: "var(--font-mono)" }}>{cContractId.slice(0, 8)}...</code></span>
+                      </div>
+                    )}
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="inv-period">Kỳ thu tiền (Ngày 01) *</label>

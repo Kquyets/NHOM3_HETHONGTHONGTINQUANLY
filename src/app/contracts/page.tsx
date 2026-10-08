@@ -25,6 +25,9 @@ import {
   WarningCircle,
   Phone,
   IdentificationBadge,
+  Receipt,
+  Copy,
+  Check,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
@@ -610,6 +613,17 @@ export default function ContractsPage() {
 
   // Manage occupants modal state
   const [managingOccupantsContract, setManagingOccupantsContract] = useState<ContractRow | null>(null);
+  const [copiedContractId, setCopiedContractId] = useState<string | null>(null);
+
+  const handleCopyContractId = async (id: string) => {
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopiedContractId(id);
+      setTimeout(() => setCopiedContractId(null), 2000);
+    } catch {
+      // ignore
+    }
+  };
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -903,6 +917,20 @@ export default function ContractsPage() {
                               <Buildings size={11} />
                               {contract.propertyName}
                             </span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                              <span style={{ fontSize: 11, color: "var(--color-fg-3)", fontFamily: "var(--font-mono)" }}>
+                                #{contract.id.slice(0, 8)}
+                              </span>
+                              <button
+                                type="button"
+                                className="btn-ghost"
+                                style={{ padding: "1px 5px", fontSize: 10 }}
+                                onClick={() => void handleCopyContractId(contract.id)}
+                                title="Sao chép toàn bộ mã hợp đồng"
+                              >
+                                {copiedContractId === contract.id ? <Check size={11} color="#16a34a" /> : <Copy size={11} />}
+                              </button>
+                            </span>
                           </span>
                         </td>
 
@@ -981,6 +1009,19 @@ export default function ContractsPage() {
                             >
                               <Printer size={13} /> In HĐ
                             </button>
+
+                            {/* Create invoice shortcut */}
+                            {contract.status === "active" && (
+                              <button
+                                type="button"
+                                className="btn-secondary"
+                                style={{ padding: "4px 8px", fontSize: "var(--text-xs)", display: "inline-flex", alignItems: "center", gap: 4 }}
+                                onClick={() => router.push(`/invoices?contractId=${contract.id}`)}
+                                title="Tạo hóa đơn thu tiền cho hợp đồng này"
+                              >
+                                <Receipt size={13} /> Lập hóa đơn
+                              </button>
+                            )}
 
                             {/* Manage Occupants Button */}
                             <button
