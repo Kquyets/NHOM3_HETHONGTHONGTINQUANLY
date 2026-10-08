@@ -6,7 +6,9 @@ export default defineConfig([
   ...nextVitals,
   ...nextTs,
   globalIgnores([
+    "node_modules/**",
     ".next/**",
+    "public/**",
     "out/**",
     "build/**",
     "coverage/**",
