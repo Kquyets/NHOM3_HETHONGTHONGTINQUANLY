@@ -77,6 +77,9 @@ describe("core database schema", () => {
       "owner_role",
       "name",
       "address",
+      "bank_code",
+      "bank_account",
+      "account_holder",
       "created_at",
       "updated_at",
     ]);
