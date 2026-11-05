@@ -107,7 +107,7 @@ Nhà trọ → Phòng → Khách thuê → Hợp đồng → Điện/Nước →
 | Backend / API     | Next.js API      | REST API, business logic, xử lý nghiệp vụ                |
 | Database chính    | PostgreSQL       | Dữ liệu nghiệp vụ có tính quan hệ                        |
 | Database phụ      | MongoDB Atlas    | AI conversation log, notification log, dữ liệu linh hoạt |
-| ORM               | TODO: Chưa quyết định (Prisma / Drizzle) | Kết nối và migration PostgreSQL    |
+| ORM               | Drizzle ORM      | Kết nối PostgreSQL và định nghĩa schema                |
 | Auth              | TODO: Chưa quyết định (NextAuth.js / JWT) | Xác thực và phân quyền           |
 | Container         | Docker           | Đóng gói ứng dụng, chuẩn hóa môi trường                  |
 | Quản lý mã nguồn  | Git + GitHub     | Version control, phối hợp phát triển                     |
@@ -124,9 +124,9 @@ Nhà trọ → Phòng → Khách thuê → Hợp đồng → Điện/Nước →
 
 ### Nguyên tắc phân chia dữ liệu
 
-**PostgreSQL** lưu toàn bộ dữ liệu nghiệp vụ có tính quan hệ, cần tính nhất quán (ACID):
+**PostgreSQL** lưu dữ liệu nghiệp vụ có tính quan hệ, cần tính nhất quán (ACID). Schema khởi tạo hiện có tại [`drizzle/0000_core_schema.sql`](drizzle/0000_core_schema.sql), gồm tài khoản, nhà trọ, phòng, khách thuê, hợp đồng, chỉ số điện/nước, hóa đơn và thanh toán. Schema Drizzle nằm tại `src/lib/database/schema.ts`.
 
-| Bảng (dự kiến) | Dữ liệu                                                    |
+| Một số bảng chính | Dữ liệu |
 | -------------- | ---------------------------------------------------------- |
 | `users`        | Tài khoản người dùng hệ thống, role                        |
 | `properties`   | Thông tin nhà trọ (tên, địa chỉ, chủ nhà)                 |
@@ -137,7 +137,7 @@ Nhà trọ → Phòng → Khách thuê → Hợp đồng → Điện/Nước →
 | `invoices`     | Hóa đơn tổng (phòng, tháng, tổng tiền, trạng thái)        |
 | `payments`     | Lịch sử thanh toán (hóa đơn, ngày, số tiền, phương thức)  |
 
-> Schema chi tiết (tên trường, kiểu dữ liệu, quan hệ) do **Thanh** thiết kế và thống nhất với **Quyết** trước khi triển khai.
+> Khi thay đổi schema, thống nhất trong nhóm và cập nhật cả schema Drizzle lẫn file SQL tương ứng. Sử dụng lệnh `npm run db:migrate` để áp dụng tạo bảng cho cơ sở dữ liệu local.
 
 **MongoDB Atlas** chỉ dùng cho dữ liệu thực sự phù hợp với mô hình document:
 
@@ -529,49 +529,99 @@ Một module chỉ được xem là **hoàn thành** khi đủ tất cả điề
 
 ## 15. Cách chạy project
 
-**Yêu cầu môi trường:**
+### Công cụ cần có
 
-```
-Node.js >= 20.9
-Docker Desktop
-Git
-npm
-```
+- **Node.js 20.9 trở lên** và npm đi kèm: chạy Next.js, TypeScript và các script của dự án.
+- **Git**: lấy mã nguồn và làm việc theo branch.
+- **Docker Desktop** (Windows/macOS) hoặc Docker Engine + Compose plugin (Linux): chạy PostgreSQL local. Có thể bỏ qua nếu đã có PostgreSQL bên ngoài.
+- **VS Code** (khuyến nghị): mở dự án TypeScript/Next.js. Có thể dùng editor khác; không cần cài extension để chạy ứng dụng.
+- **GitHub**: tài khoản cần thiết để clone/push và tạo Pull Request.
 
-**Bước 1: Cài dependencies**
+Không cần cài PostgreSQL riêng nếu dùng Docker. MongoDB, dịch vụ AI, thanh toán và thông báo chưa được cấu hình trong bản hiện tại.
+
+### Cài đặt và chạy local
+
+1. Clone repository, sau đó mở terminal tại thư mục dự án.
+
+2. Cài dependency đúng theo lockfile:
 
 ```bash
 npm ci
 ```
 
-**Bước 2: Tạo cấu hình local**
+3. Tạo `.env.local` từ mẫu:
 
 ```bash
+# macOS / Linux / Git Bash
 cp .env.example .env.local
 ```
 
-Điền `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` và `DATABASE_URL` trong `.env.local`. Dùng cùng user, password và database trong cả `DATABASE_URL` lẫn ba biến `POSTGRES_*`.
+PowerShell:
 
-**Bước 3: Khởi động PostgreSQL**
+```powershell
+Copy-Item .env.example .env.local
+```
+
+Điền các giá trị local, ví dụ:
+
+```env
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=nhom3
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/nhom3
+```
+
+Giữ user, password và tên database nhất quán giữa `DATABASE_URL` và các biến `POSTGRES_*`. Không dùng thông tin mẫu này cho môi trường dùng chung hoặc production.
+
+4. Khởi động PostgreSQL 17 bằng Docker Compose:
 
 ```bash
-docker compose --env-file .env.local config
 docker compose --env-file .env.local up -d postgres
 ```
 
-Compose cấu hình health check cho PostgreSQL. Khi container ở trạng thái `healthy`, kiểm tra kết nối Drizzle:
+Compose có health check để chờ PostgreSQL sẵn sàng. Khi PostgreSQL báo `healthy`, thực hiện các bước tạo bảng và dữ liệu mẫu:
+
+Kiểm tra trạng thái container:
+
+```bash
+docker compose --env-file .env.local ps
+```
+
+5. Tạo bảng và di trú cơ sở dữ liệu (Migration):
+
+```bash
+npm run db:migrate
+```
+
+Lệnh này sẽ tự động nạp `drizzle/0000_core_schema.sql` vào database local được cấu hình trong `.env.local` và lưu lịch sử vào bảng `schema_migrations`.
+
+6. Nạp dữ liệu mẫu cho demo (Seeding - tuỳ chọn):
+
+```bash
+npm run db:seed
+```
+
+7. Kiểm tra kết nối database:
 
 ```bash
 npm run db:check
 ```
 
-Chạy API backend ở chế độ phát triển:
+8. Chạy ứng dụng ở chế độ phát triển:
 
 ```bash
 npm run dev
 ```
 
-Các lệnh kiểm tra trước khi bàn giao:
+Mở URL được Next.js hiển thị trong terminal (mặc định `http://localhost:3000`). Để dừng PostgreSQL khi không dùng:
+
+```bash
+docker compose --env-file .env.local down
+```
+
+Muốn xóa cả dữ liệu PostgreSQL local và tạo lại từ đầu, chạy `docker compose --env-file .env.local down -v`; thao tác này xóa volume database.
+
+### Lệnh kiểm tra
 
 ```bash
 npm run lint
@@ -580,13 +630,13 @@ npm test
 npm run build
 ```
 
-Foundation hiện chỉ cấu hình kết nối PostgreSQL/Drizzle và định dạng response API. Chưa có bảng, migration hay endpoint nghiệp vụ; cần thống nhất schema với Thanh trước. Tích hợp Auth.js là bước riêng tiếp theo.
+Các lệnh trên chạy lint, kiểm tra TypeScript, test và production build. Một số module nghiệp vụ/API và đăng nhập vẫn đang được triển khai; xem trạng thái endpoint tại mục [API Contract](#7-api-contract).
 
 ---
 
 ## 16. Environment Variables
 
-Sao chép `.env.example` thành `.env.local` và điền giá trị local. Không commit `.env.local`.
+Sao chép `.env.example` thành `.env.local` và điền cấu hình PostgreSQL local theo mục [Cách chạy project](#15-cách-chạy-project). Không commit `.env.local`.
 
 ```env
 POSTGRES_USER=
