@@ -1,3 +1,4 @@
+import { scryptSync } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import { hashPassword, verifyPassword } from "./password";
@@ -10,6 +11,25 @@ describe("password credentials", () => {
     expect(hash).not.toContain("correct horse battery staple");
     expect(await verifyPassword("correct horse battery staple", hash)).toBe(true);
     expect(await verifyPassword("wrong password", hash)).toBe(false);
+  });
+
+  it("verifies legacy scrypt hashes from earlier database seeds", async () => {
+    const saltHex = "0123456789abcdef0123456789abcdef";
+    const digestHex = scryptSync("DemoPassword123!", Buffer.from(saltHex, "hex"), 64, {
+      N: 16384,
+      r: 8,
+      p: 1,
+      maxmem: 64 * 1024 * 1024,
+    }).toString("hex");
+    const legacyHash = `scrypt$16384$8$1$${saltHex}$${digestHex}`;
+
+    expect(await verifyPassword("DemoPassword123!", legacyHash)).toBe(true);
+    expect(await verifyPassword("WrongPassword123!", legacyHash)).toBe(false);
+  });
+
+  it("rejects malformed or out-of-range scrypt hashes safely", async () => {
+    expect(await verifyPassword("DemoPassword123!", "scrypt$16384$8$1$bad$bad")).toBe(false);
+    expect(await verifyPassword("DemoPassword123!", "scrypt$1073741824$8$1$0123456789abcdef0123456789abcdef$" + "00".repeat(64))).toBe(false);
   });
 });
 

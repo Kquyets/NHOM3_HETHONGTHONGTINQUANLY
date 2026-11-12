@@ -16,6 +16,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
+import { formatAuthError, validateLoginForm } from "../../lib/auth-form";
 import { useTheme } from "../../lib/theme-context";
 import { AuthShowcase } from "../../components/auth/auth-showcase";
 
@@ -30,9 +31,10 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
+  const skipAutoRedirectRef = useRef(false);
 
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading && user && !skipAutoRedirectRef.current) {
       router.replace("/");
     }
   }, [isLoading, user, router]);
@@ -44,12 +46,21 @@ export default function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const validation = validateLoginForm(email, password);
+    if (!validation.ok) {
+      setError(validation.error);
+      return;
+    }
+
+    skipAutoRedirectRef.current = true;
     setSubmitting(true);
     try {
-      await login(email, password);
+      await login(validation.email, validation.password);
     } catch (err) {
+      skipAutoRedirectRef.current = false;
       setError(
-        err instanceof Error ? err.message : "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.",
+        formatAuthError(err, "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin."),
       );
     } finally {
       setSubmitting(false);

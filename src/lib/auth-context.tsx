@@ -13,9 +13,11 @@ import { useRouter } from "next/navigation";
 
 import {
   apiClient,
+  ApiRequestError,
   clearStoredTokens,
   getStoredRefreshToken,
   getStoredToken,
+  refreshStoredTokens,
   setStoredTokens,
 } from "./api-client";
 import type { UserPublic } from "../modules/auth/auth.service";
@@ -37,6 +39,35 @@ export type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+export async function bootstrapAuthSession(): Promise<UserPublic | null> {
+  let token = getStoredToken();
+  const refreshToken = getStoredRefreshToken();
+
+  if (!token && !refreshToken) {
+    return null;
+  }
+
+  if (!token && refreshToken) {
+    token = await refreshStoredTokens();
+    if (!token) {
+      return null;
+    }
+  }
+
+  try {
+    const data = await apiClient<{ user: UserPublic }>("/api/auth/me");
+    return data.user;
+  } catch (err) {
+    if (
+      err instanceof ApiRequestError &&
+      (err.status === 401 || err.status === 403 || err.status === 404)
+    ) {
+      clearStoredTokens();
+    }
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserPublic | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,62 +75,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    const token = getStoredToken();
 
-    if (!token) {
-      const timer = setTimeout(() => {
-        if (active) setIsLoading(false);
-      }, 0);
-      return () => {
-        active = false;
-        clearTimeout(timer);
-      };
-    }
-
-    async function verifySession(authToken: string) {
-      try {
-        const data = await apiClient<{ user: UserPublic }>("/api/auth/me", {
-          token: authToken,
-        });
-        if (active) {
-          setUser(data.user);
-        }
-      } catch {
-        const refreshToken = getStoredRefreshToken();
-        if (refreshToken) {
-          try {
-            const refreshed = await apiClient<{
-              tokens: { accessToken: string; refreshToken: string };
-            }>("/api/auth/refresh", {
-              method: "POST",
-              body: JSON.stringify({ refreshToken }),
-              skipAuth: true,
-            });
-            setStoredTokens(refreshed.tokens.accessToken, refreshed.tokens.refreshToken);
-            const me = await apiClient<{ user: UserPublic }>("/api/auth/me", {
-              token: refreshed.tokens.accessToken,
-            });
-            if (active) {
-              setUser(me.user);
-              setIsLoading(false);
-              return;
-            }
-          } catch {
-            // Refresh token invalid or expired
-          }
-        }
-        clearStoredTokens();
-        if (active) {
-          setUser(null);
-        }
-      } finally {
-        if (active) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void verifySession(token);
+    void bootstrapAuthSession().then((resolvedUser) => {
+      if (!active) return;
+      setUser(resolvedUser);
+      setIsLoading(false);
+    });
 
     return () => {
       active = false;
@@ -122,13 +103,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         tokens: { accessToken: string; refreshToken: string };
       }>("/api/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
         skipAuth: true,
       });
 
       setStoredTokens(data.tokens.accessToken, data.tokens.refreshToken);
       setUser(data.user);
-      router.push("/");
+      router.replace("/");
     },
     [router],
   );
@@ -146,19 +127,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         tokens: { accessToken: string; refreshToken: string };
       }>("/api/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password, role, fullName, phone }),
+        body: JSON.stringify({ email: email.trim(), password, role, fullName, phone }),
         skipAuth: true,
       });
 
       setStoredTokens(data.tokens.accessToken, data.tokens.refreshToken);
       setUser(data.user);
-      router.push("/");
+      router.replace("/");
     },
     [router],
   );
 
   const logout = useCallback(async () => {
     const refreshToken = getStoredRefreshToken();
+    clearStoredTokens();
+
     if (refreshToken) {
       try {
         await apiClient("/api/auth/logout", {
@@ -170,9 +153,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Best effort
       }
     }
-    clearStoredTokens();
+
     setUser(null);
-    router.push("/login");
+    router.replace("/login");
   }, [router]);
 
   const value = useMemo(

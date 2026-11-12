@@ -6,6 +6,7 @@ import {
   clearStoredTokens,
   getStoredRefreshToken,
   getStoredToken,
+  refreshStoredTokens,
   setStoredTokens,
 } from "./api-client";
 
@@ -106,6 +107,148 @@ describe("api-client", () => {
         message: "Token expired",
         status: 401,
       });
+    });
+
+    it("automatically refreshes expired access token once across concurrent 401 requests", async () => {
+      setStoredTokens("old-access", "11111111-1111-4111-8111-111111111111.secret1");
+
+      let refreshCalls = 0;
+      const mockFetch = vi.fn(async (url: string, init?: RequestInit) => {
+        const authHeader = (init?.headers as Record<string, string> | undefined)?.Authorization;
+
+        if (url === "/api/auth/refresh") {
+          refreshCalls += 1;
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              success: true,
+              data: {
+                tokens: {
+                  accessToken: "new-access",
+                  refreshToken: "22222222-2222-4222-8222-222222222222.secret2",
+                },
+              },
+            }),
+          };
+        }
+
+        if (authHeader === "Bearer new-access") {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ success: true, data: { endpoint: url, ok: true } }),
+          };
+        }
+
+        return {
+          ok: false,
+          status: 401,
+          json: async () => ({
+            success: false,
+            error: { code: "UNAUTHORIZED", message: "Token expired", details: [] },
+          }),
+        };
+      });
+      vi.stubGlobal("fetch", mockFetch);
+
+      const [first, second] = await Promise.all([
+        apiClient<{ endpoint: string; ok: boolean }>("/api/dashboard"),
+        apiClient<{ endpoint: string; ok: boolean }>("/api/notifications"),
+      ]);
+
+      expect(first).toEqual({ endpoint: "/api/dashboard", ok: true });
+      expect(second).toEqual({ endpoint: "/api/notifications", ok: true });
+      expect(refreshCalls).toBe(1);
+      expect(getStoredToken()).toBe("new-access");
+      expect(getStoredRefreshToken()).toBe("22222222-2222-4222-8222-222222222222.secret2");
+    });
+
+    it("clears stored tokens and throws ApiRequestError when refresh fails with 401", async () => {
+      setStoredTokens("old-access", "11111111-1111-4111-8111-111111111111.revoked");
+
+      const mockFetch = vi.fn(async (url: string) => {
+        if (url === "/api/auth/refresh") {
+          return {
+            ok: false,
+            status: 401,
+            json: async () => ({
+              success: false,
+              error: { code: "UNAUTHORIZED", message: "Refresh revoked", details: [] },
+            }),
+          };
+        }
+
+        return {
+          ok: false,
+          status: 401,
+          json: async () => ({
+            success: false,
+            error: { code: "UNAUTHORIZED", message: "Token expired", details: [] },
+          }),
+        };
+      });
+      vi.stubGlobal("fetch", mockFetch);
+
+      await expect(apiClient("/api/protected")).rejects.toMatchObject({
+        code: "UNAUTHORIZED",
+        status: 401,
+      });
+      expect(getStoredToken()).toBeNull();
+      expect(getStoredRefreshToken()).toBeNull();
+    });
+
+    it("does not retry endlessly if the retried request also returns 401", async () => {
+      setStoredTokens("old-access", "11111111-1111-4111-8111-111111111111.secret1");
+
+      let protectedCalls = 0;
+      let refreshCalls = 0;
+      const mockFetch = vi.fn(async (url: string) => {
+        if (url === "/api/auth/refresh") {
+          refreshCalls += 1;
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              success: true,
+              data: {
+                tokens: {
+                  accessToken: "new-access",
+                  refreshToken: "22222222-2222-4222-8222-222222222222.secret2",
+                },
+              },
+            }),
+          };
+        }
+
+        protectedCalls += 1;
+        return {
+          ok: false,
+          status: 401,
+          json: async () => ({
+            success: false,
+            error: { code: "UNAUTHORIZED", message: "Still unauthorized", details: [] },
+          }),
+        };
+      });
+      vi.stubGlobal("fetch", mockFetch);
+
+      await expect(apiClient("/api/protected")).rejects.toMatchObject({
+        code: "UNAUTHORIZED",
+        message: "Still unauthorized",
+        status: 401,
+      });
+      expect(refreshCalls).toBe(1);
+      expect(protectedCalls).toBe(2);
+    });
+
+    it("refreshStoredTokens returns null cleanly when no refresh token is stored", async () => {
+      const mockFetch = vi.fn();
+      vi.stubGlobal("fetch", mockFetch);
+
+      await expect(refreshStoredTokens()).resolves.toBeNull();
+      expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 });

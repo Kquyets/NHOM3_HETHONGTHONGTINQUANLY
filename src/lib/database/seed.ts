@@ -1,7 +1,6 @@
-import { Pool } from "pg";
-
 import { getDatabaseUrl } from "../../config/env";
 import { hashPassword } from "../auth/password";
+import { createDatabasePool } from "./client";
 import { assertLocalDatabaseUrl } from "./migration";
 
 export function assertLocalSeedUrl(databaseUrl: string): void {
@@ -84,7 +83,7 @@ export async function seedLocalDatabase(customUrl?: string): Promise<{
   const databaseUrl = customUrl ?? getDatabaseUrl();
   assertLocalSeedUrl(databaseUrl);
 
-  const pool = new Pool({ connectionString: databaseUrl });
+  const pool = createDatabasePool(databaseUrl);
   const client = await pool.connect();
 
   try {

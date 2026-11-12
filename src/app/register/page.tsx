@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
@@ -20,6 +20,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
+import { formatAuthError, validateRegisterForm } from "../../lib/auth-form";
 import { useTheme } from "../../lib/theme-context";
 import { AuthShowcase } from "../../components/auth/auth-showcase";
 
@@ -38,6 +39,7 @@ export default function RegisterPage() {
   const [role, setRole] = useState<"owner" | "manager" | "tenant">("owner");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const skipAutoRedirectRef = useRef(false);
 
   // Password strength
   const pwStrength =
@@ -57,7 +59,7 @@ export default function RegisterPage() {
   ][pwStrength];
 
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading && user && !skipAutoRedirectRef.current) {
       router.replace("/");
     }
   }, [isLoading, user, router]);
@@ -66,21 +68,26 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
 
-    if (password.length < 8) {
-      setError("Mật khẩu phải có ít nhất 8 ký tự.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp.");
+    const validation = validateRegisterForm({ email, password, confirmPassword });
+    if (!validation.ok) {
+      setError(validation.error);
       return;
     }
 
+    skipAutoRedirectRef.current = true;
     setSubmitting(true);
     try {
-      await register(email, password, role, fullName.trim() || undefined, phone.trim() || undefined);
+      await register(
+        validation.email,
+        password,
+        role,
+        fullName.trim() || undefined,
+        phone.trim() || undefined,
+      );
     } catch (err) {
+      skipAutoRedirectRef.current = false;
       setError(
-        err instanceof Error ? err.message : "Đăng ký thất bại. Vui lòng thử lại.",
+        formatAuthError(err, "Đăng ký thất bại. Vui lòng thử lại."),
       );
     } finally {
       setSubmitting(false);
