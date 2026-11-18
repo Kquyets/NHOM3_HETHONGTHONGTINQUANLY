@@ -49,7 +49,16 @@ vi.mock("../../lib/database/schema", () => ({
     note: "note",
     createdAt: "createdAt",
   },
-  contracts: { id: "id", roomId: "roomId" },
+  meterReadings: {
+    id: "id",
+    roomId: "roomId",
+    utilityType: "utilityType",
+    billingPeriod: "billingPeriod",
+    previousValue: "previousValue",
+    currentValue: "currentValue",
+    unitPriceSnapshot: "unitPriceSnapshot",
+  },
+  contracts: { id: "id", roomId: "roomId", monthlyRentSnapshot: "monthlyRentSnapshot", status: "status" },
   rooms: { id: "id", propertyId: "propertyId", roomNumber: "roomNumber" },
   properties: { id: "id", ownerId: "ownerId", name: "name", address: "address" },
   propertyMembers: { id: "id", propertyId: "propertyId", userId: "userId", status: "status" },
@@ -97,6 +106,7 @@ import {
   listInvoices,
   getInvoice,
   createInvoice,
+  batchGenerateInvoices,
   updateInvoiceStatus,
   addPayment,
   deleteInvoice,
@@ -269,6 +279,73 @@ describe("addPayment", () => {
         method: "cash",
       }),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// batchGenerateInvoices
+// ---------------------------------------------------------------------------
+describe("batchGenerateInvoices", () => {
+  it("batches invoices for active contracts", async () => {
+    // 1. activeContracts
+    mockDb.select.mockReturnValueOnce(
+      chain([
+        {
+          id: "contract-1",
+          roomId: "room-1",
+          rentalPrice: 3000000,
+          roomNumber: "101",
+        },
+      ]),
+    );
+    // 2. check existing invoice
+    mockDb.select.mockReturnValueOnce(chain([]));
+    // 3. check electricity meter reading
+    mockDb.select.mockReturnValueOnce(
+      chain([
+        {
+          id: "meter-1",
+          previousValue: "100",
+          currentValue: "150",
+          unitPriceSnapshot: 3800,
+        },
+      ]),
+    );
+    // 4. insert invoice
+    mockDb.insert
+      .mockReturnValueOnce(chain([mockInvoice])) // invoice
+      .mockReturnValueOnce(chain([])); // invoiceItems
+
+    const result = await batchGenerateInvoices(OWNER.userId, OWNER.role, {
+      propertyId: "prop-1",
+      billingPeriodStart: "2025-03-01",
+    });
+
+    expect(result.generatedCount).toBe(1);
+    expect(result.skippedCount).toBe(0);
+  });
+
+  it("skips when invoice already exists", async () => {
+    mockDb.select.mockReturnValueOnce(
+      chain([
+        {
+          id: "contract-1",
+          roomId: "room-1",
+          rentalPrice: 3000000,
+          roomNumber: "101",
+        },
+      ]),
+    );
+    // existing invoice exists
+    mockDb.select.mockReturnValueOnce(chain([{ id: "existing-inv" }]));
+
+    const result = await batchGenerateInvoices(OWNER.userId, OWNER.role, {
+      propertyId: "prop-1",
+      billingPeriodStart: "2025-03-01",
+    });
+
+    expect(result.generatedCount).toBe(0);
+    expect(result.skippedCount).toBe(1);
   });
 });
 

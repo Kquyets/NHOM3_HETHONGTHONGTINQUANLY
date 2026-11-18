@@ -23,6 +23,8 @@ import {
   DownloadSimple,
   Bank,
   Printer,
+  Sparkle,
+  User,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
@@ -108,6 +110,31 @@ export default function InvoicesPage() {
   // Selected invoice for detail modal
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDetail | null>(null);
 
+  // Property & Month selection (LOZIDO-style)
+  const [properties, setProperties] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>("all");
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
+
+  // Batch generate invoices state
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [batchPropertyId, setBatchPropertyId] = useState("");
+  const [batchPeriod, setBatchPeriod] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  });
+  const [batchDueDate, setBatchDueDate] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-10`;
+  });
+  const [batchWater, setBatchWater] = useState(100000);
+  const [batchWifi, setBatchWifi] = useState(50000);
+  const [batchParking, setBatchParking] = useState(100000);
+  const [submittingBatch, setSubmittingBatch] = useState(false);
+  const [batchSuccessMsg, setBatchSuccessMsg] = useState<string | null>(null);
+
   // Create invoice state
   const [showCreate, setShowCreate] = useState(false);
   const [submittingCreate, setSubmittingCreate] = useState(false);
@@ -163,7 +190,50 @@ export default function InvoicesPage() {
     if (!user) { router.replace("/login"); return; }
     if (user.role === "tenant") { router.replace("/"); return; }
     void loadInvoices();
+
+    async function loadProperties() {
+      try {
+        const res = await apiClient<{ properties: Array<{ id: string; name: string }> }>("/api/properties");
+        if (res.properties && res.properties.length > 0) {
+          setProperties(res.properties);
+          setBatchPropertyId(res.properties[0].id);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    void loadProperties();
   }, [user, authLoading, router, loadInvoices]);
+
+  const handleBatchGenerate = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!batchPropertyId) return;
+    try {
+      setSubmittingBatch(true);
+      setError(null);
+      const res = await apiClient<{ generatedCount: number; skippedCount: number }>("/api/invoices/batch", {
+        method: "POST",
+        body: JSON.stringify({
+          propertyId: batchPropertyId,
+          billingPeriodStart: batchPeriod,
+          dueDate: batchDueDate || null,
+          waterPerPerson: Number(batchWater),
+          wifiPerRoom: Number(batchWifi),
+          parkingPerVehicle: Number(batchParking),
+        }),
+      });
+      setBatchSuccessMsg(
+        `Thành công! Đã tự động lập ${res.generatedCount} hóa đơn mới (${res.skippedCount} phòng đã có hóa đơn kỳ này nên được bỏ qua).`,
+      );
+      setShowBatchModal(false);
+      await loadInvoices();
+      setTimeout(() => setBatchSuccessMsg(null), 6000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Lập hóa đơn tự động thất bại.");
+    } finally {
+      setSubmittingBatch(false);
+    }
+  };
 
   const viewInvoiceDetail = async (invoiceId: string) => {
     try {
@@ -255,13 +325,48 @@ export default function InvoicesPage() {
     );
   }
 
+  // 12 months for strip navigation
+  const currentYear = new Date().getFullYear();
+  const monthsStrip = Array.from({ length: 12 }, (_, i) => {
+    const m = String(i + 1).padStart(2, "0");
+    return {
+      key: `${currentYear}-${m}`,
+      label: `T.${i + 1} ${currentYear}`,
+    };
+  });
+
   const filteredInvoices = invoices.filter((inv) => {
+    const matchMonth = selectedMonth === "all" || inv.billingPeriodStart.startsWith(selectedMonth);
+    const matchProperty =
+      selectedPropertyId === "all" ||
+      inv.propertyName === selectedPropertyId ||
+      properties.find((p) => p.id === selectedPropertyId)?.name === inv.propertyName;
     const matchStatus = filterStatus === "all" || inv.status === filterStatus;
     const matchSearch =
       inv.roomNumber.toLowerCase().includes(search.toLowerCase()) ||
-      inv.propertyName.toLowerCase().includes(search.toLowerCase());
-    return matchStatus && matchSearch;
+      inv.propertyName.toLowerCase().includes(search.toLowerCase()) ||
+      (inv.tenantName && inv.tenantName.toLowerCase().includes(search.toLowerCase())) ||
+      (inv.tenantPhone && inv.tenantPhone.includes(search));
+    return matchMonth && matchProperty && matchStatus && matchSearch;
   });
+
+  const kpiInvoices = invoices.filter((inv) => {
+    const matchMonth = selectedMonth === "all" || inv.billingPeriodStart.startsWith(selectedMonth);
+    const matchProperty =
+      selectedPropertyId === "all" ||
+      inv.propertyName === selectedPropertyId ||
+      properties.find((p) => p.id === selectedPropertyId)?.name === inv.propertyName;
+    return matchMonth && matchProperty;
+  });
+
+  const totalExpectedRevenue = kpiInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+  const totalCollectedRevenue = kpiInvoices.reduce((sum, inv) => sum + (inv.paidAmount ?? 0), 0);
+  const totalRemainingDue = kpiInvoices.reduce((sum, inv) => {
+    if (inv.status === "paid" || inv.status === "cancelled") return sum;
+    const paid = inv.paidAmount ?? 0;
+    return sum + Math.max(0, inv.totalAmount - paid);
+  }, 0);
+  const paidCount = kpiInvoices.filter((inv) => inv.status === "paid").length;
 
   const exportCSV = () => {
     if (invoices.length === 0) return;
@@ -329,6 +434,18 @@ export default function InvoicesPage() {
             </motion.button>
             <motion.button
               type="button"
+              className="btn-secondary"
+              onClick={() => setShowBatchModal(true)}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              style={{ display: "flex", alignItems: "center", gap: 6 }}
+              title="Tự động tính tiền phòng và dịch vụ cho cả nhà trọ"
+            >
+              <Sparkle size={14} weight="fill" style={{ color: "var(--color-primary)" }} />
+              Lập HĐ tự động
+            </motion.button>
+            <motion.button
+              type="button"
               className={showCreate ? "btn-secondary" : "btn-primary"}
               onClick={() => setShowCreate(!showCreate)}
               whileHover={{ scale: 1.03 }}
@@ -345,6 +462,28 @@ export default function InvoicesPage() {
           {error && (
             <motion.div className="alert-error" role="alert" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25 }} style={{ marginBottom: "var(--space-2)" }}>
               {error}
+            </motion.div>
+          )}
+          {batchSuccessMsg && (
+            <motion.div
+              style={{
+                background: "#ecfdf5",
+                border: "1px solid #a7f3d0",
+                color: "#065f46",
+                padding: "10px 14px",
+                borderRadius: "var(--radius-md)",
+                marginBottom: "var(--space-2)",
+                fontSize: "var(--text-sm)",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              <CheckCircle size={16} weight="fill" color="#10b981" />
+              {batchSuccessMsg}
             </motion.div>
           )}
         </AnimatePresence>
@@ -503,9 +642,206 @@ export default function InvoicesPage() {
           )}
         </AnimatePresence>
 
+        {/* Batch Generate Invoices Modal Panel */}
+        <AnimatePresence>
+          {showBatchModal && (
+            <SlidePanel title="Lập hóa đơn tự động cả nhà trọ" onClose={() => setShowBatchModal(false)}>
+              <form onSubmit={handleBatchGenerate}>
+                <p style={{ fontSize: "var(--text-sm)", color: "var(--color-fg-2)", marginBottom: "var(--space-2)" }}>
+                  Hệ thống sẽ quét tất cả các hợp đồng còn hiệu lực, tự động đối chiếu số điện mới nhất và cộng định mức dịch vụ để lập hóa đơn một lần cho toàn bộ phòng trong nhà trọ.
+                </p>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="b-prop">Chọn nhà trọ *</label>
+                    <select
+                      id="b-prop"
+                      className="form-control"
+                      value={batchPropertyId}
+                      onChange={(e) => setBatchPropertyId(e.target.value)}
+                      required
+                    >
+                      {properties.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="b-period">Kỳ hóa đơn (Ngày 01) *</label>
+                    <input
+                      id="b-period"
+                      type="date"
+                      className="form-control"
+                      value={batchPeriod}
+                      onChange={(e) => setBatchPeriod(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="b-due">Hạn thanh toán</label>
+                    <input
+                      id="b-due"
+                      type="date"
+                      className="form-control"
+                      value={batchDueDate}
+                      onChange={(e) => setBatchDueDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="b-water">Tiền nước sinh hoạt (VND/người/tháng)</label>
+                    <input
+                      id="b-water"
+                      type="number"
+                      min="0"
+                      step="5000"
+                      className="form-control"
+                      value={batchWater}
+                      onChange={(e) => setBatchWater(Number(e.target.value))}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="b-wifi">Tiền Internet / Wifi (VND/phòng/tháng)</label>
+                    <input
+                      id="b-wifi"
+                      type="number"
+                      min="0"
+                      step="5000"
+                      className="form-control"
+                      value={batchWifi}
+                      onChange={(e) => setBatchWifi(Number(e.target.value))}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="b-parking">Tiền gửi xe (VND/xe/tháng)</label>
+                    <input
+                      id="b-parking"
+                      type="number"
+                      min="0"
+                      step="5000"
+                      className="form-control"
+                      value={batchParking}
+                      onChange={(e) => setBatchParking(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button type="button" className="btn-ghost" onClick={() => setShowBatchModal(false)}>Hủy</button>
+                  <motion.button type="submit" className="btn-primary" disabled={submittingBatch} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+                    {submittingBatch ? "Đang xử lý..." : "Bắt đầu lập hóa đơn"}
+                  </motion.button>
+                </div>
+              </form>
+            </SlidePanel>
+          )}
+        </AnimatePresence>
+
+        {/* Month Selector Strip (LOZIDO-style) */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          overflowX: "auto",
+          paddingBottom: 8,
+          marginBottom: "var(--space-2)",
+          scrollbarWidth: "none",
+        }}>
+          <button
+            type="button"
+            className={selectedMonth === "all" ? "btn-primary" : "btn-ghost"}
+            style={{ padding: "5px 12px", borderRadius: 20, fontSize: "var(--text-xs)", whiteSpace: "nowrap" }}
+            onClick={() => setSelectedMonth("all")}
+          >
+            Tất cả tháng
+          </button>
+          {monthsStrip.map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              className={selectedMonth === m.key ? "btn-primary" : "btn-ghost"}
+              style={{
+                padding: "5px 12px",
+                borderRadius: 20,
+                fontSize: "var(--text-xs)",
+                whiteSpace: "nowrap",
+                fontWeight: selectedMonth === m.key ? 700 : 500,
+                border: selectedMonth === m.key ? "none" : "1px solid var(--color-border-subtle, rgba(0,0,0,0.1))",
+              }}
+              onClick={() => setSelectedMonth(m.key)}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Top KPI Summary Cards (LOZIDO-style) */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
+          <div className="card" style={{ padding: "var(--space-2)" }}>
+            <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginBottom: 4 }}>Tổng doanh thu dự kiến</div>
+            <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, color: "var(--color-primary)" }}>
+              {money.format(totalExpectedRevenue)}
+            </div>
+            <div style={{ fontSize: "11px", color: "var(--color-fg-3)", marginTop: 4 }}>
+              {kpiInvoices.length} hóa đơn ({selectedMonth === "all" ? "Tất cả kỳ" : `Kỳ ${selectedMonth}`})
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: "var(--space-2)" }}>
+            <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginBottom: 4 }}>Doanh thu đã ghi nhận</div>
+            <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, color: "#10b981" }}>
+              {money.format(totalCollectedRevenue)}
+            </div>
+            <div style={{ fontSize: "11px", color: "var(--color-fg-3)", marginTop: 4 }}>
+              {paidCount} hóa đơn đã thanh toán
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: "var(--space-2)" }}>
+            <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginBottom: 4 }}>Khoản cần thu</div>
+            <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, color: "#f59e0b" }}>
+              {money.format(totalRemainingDue)}
+            </div>
+            <div style={{ fontSize: "11px", color: "var(--color-fg-3)", marginTop: 4 }}>
+              {kpiInvoices.filter((i) => i.status !== "paid" && i.status !== "cancelled").length} hóa đơn chưa thu đủ
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: "var(--space-2)" }}>
+            <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginBottom: 4 }}>Tỷ lệ thu nợ</div>
+            <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, color: totalExpectedRevenue > 0 && totalCollectedRevenue / totalExpectedRevenue >= 0.8 ? "#10b981" : "#3b82f6" }}>
+              {totalExpectedRevenue > 0 ? `${Math.round((totalCollectedRevenue / totalExpectedRevenue) * 100)}%` : "0%"}
+            </div>
+            <div style={{ fontSize: "11px", color: "var(--color-fg-3)", marginTop: 4 }}>
+              Đã thu / Tổng dự kiến
+            </div>
+          </div>
+        </div>
+
         {/* Filter & Search */}
         <div style={{ display: "flex", gap: 10, marginBottom: "var(--space-2)", flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ position: "relative", minWidth: 260 }}>
+          {properties.length > 0 && (
+            <div style={{ minWidth: 180 }}>
+              <select
+                className="form-control"
+                value={selectedPropertyId}
+                onChange={(e) => setSelectedPropertyId(e.target.value)}
+              >
+                <option value="all">Tất cả nhà trọ</option>
+                {properties.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div style={{ position: "relative", minWidth: 240, flex: 1 }}>
             <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-fg-3)", display: "flex", pointerEvents: "none" }}>
               <MagnifyingGlass size={15} />
             </span>
@@ -513,7 +849,7 @@ export default function InvoicesPage() {
               type="search"
               className="form-control"
               style={{ paddingLeft: 34 }}
-              placeholder="Tìm theo phòng hoặc nhà trọ..."
+              placeholder="Tìm theo phòng, người thuê hoặc SĐT..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -544,7 +880,7 @@ export default function InvoicesPage() {
           <div className="card">
             <div className="empty-state">
               <div className="empty-icon"><Receipt size={28} /></div>
-              <p className="text-muted" style={{ margin: 0 }}>Chưa có hóa đơn nào.</p>
+              <p className="text-muted" style={{ margin: 0 }}>Chưa có hóa đơn nào cho tiêu chí đã chọn.</p>
             </div>
           </div>
         ) : (
@@ -553,10 +889,11 @@ export default function InvoicesPage() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Phòng / Nhà</th>
-                    <th>Kỳ thu</th>
-                    <th>Hạn nộp</th>
+                    <th>Phòng &amp; Khách thuê</th>
+                    <th>Kỳ thu / Hạn nộp</th>
                     <th>Tổng tiền</th>
+                    <th>Đã thu</th>
+                    <th>Cần thu</th>
                     <th>Trạng thái</th>
                     <th style={{ textAlign: "right" }}>Thao tác</th>
                   </tr>
@@ -564,6 +901,8 @@ export default function InvoicesPage() {
                 <tbody>
                   {filteredInvoices.map((inv, i) => {
                     const cfg = STATUS_CONFIG[inv.status];
+                    const paid = inv.paidAmount ?? 0;
+                    const due = Math.max(0, inv.totalAmount - paid);
                     return (
                       <motion.tr key={inv.id} custom={i} initial="hidden" animate="visible" variants={fadeUp}>
                         <td style={{ fontWeight: 600 }}>
@@ -575,11 +914,24 @@ export default function InvoicesPage() {
                             <span style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)", display: "flex", alignItems: "center", gap: 4 }}>
                               <Buildings size={11} />{inv.propertyName}
                             </span>
+                            {inv.tenantName && (
+                              <span style={{ fontSize: "var(--text-xs)", color: "var(--color-primary)", display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                                <User size={11} />{inv.tenantName} {inv.tenantPhone ? `• ${inv.tenantPhone}` : ""}
+                              </span>
+                            )}
                           </span>
                         </td>
-                        <td className="text-muted">{inv.billingPeriodStart}</td>
-                        <td className="text-muted">{inv.dueDate ?? "—"}</td>
+                        <td>
+                          <div style={{ fontSize: "var(--text-xs)" }}>
+                            <div style={{ fontWeight: 600 }}>Kỳ: {inv.billingPeriodStart}</div>
+                            <div className="text-muted">Hạn: {inv.dueDate ?? "—"}</div>
+                          </div>
+                        </td>
                         <td style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{money.format(inv.totalAmount)}</td>
+                        <td style={{ color: "#10b981", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{money.format(paid)}</td>
+                        <td style={{ color: due > 0 ? "#f59e0b" : "var(--color-fg-3)", fontVariantNumeric: "tabular-nums", fontWeight: due > 0 ? 700 : 400 }}>
+                          {money.format(due)}
+                        </td>
                         <td>
                           <span className={cfg.cls} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                             <cfg.Icon size={10} weight="fill" />{cfg.label}
