@@ -13,6 +13,12 @@ export type TenantRow = {
   fullName: string;
   phone: string | null;
   birthDate: string | null;
+  hometown: string | null;
+  vehicleNumber: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  idCardFrontUrl: string | null;
+  idCardBackUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -22,12 +28,24 @@ export type CreateTenantInput = {
   phone?: string | null;
   birthDate?: string | null;
   userId?: string | null;
+  hometown?: string | null;
+  vehicleNumber?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  idCardFrontUrl?: string | null;
+  idCardBackUrl?: string | null;
 };
 
 export type UpdateTenantInput = {
   fullName?: string;
   phone?: string | null;
   birthDate?: string | null;
+  hometown?: string | null;
+  vehicleNumber?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  idCardFrontUrl?: string | null;
+  idCardBackUrl?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -46,6 +64,12 @@ const SELECT_COLUMNS = {
   fullName: tenants.fullName,
   phone: tenants.phone,
   birthDate: tenants.birthDate,
+  hometown: tenants.hometown,
+  vehicleNumber: tenants.vehicleNumber,
+  emergencyContactName: tenants.emergencyContactName,
+  emergencyContactPhone: tenants.emergencyContactPhone,
+  idCardFrontUrl: tenants.idCardFrontUrl,
+  idCardBackUrl: tenants.idCardBackUrl,
   createdAt: tenants.createdAt,
   updatedAt: tenants.updatedAt,
 } as const;
@@ -111,6 +135,12 @@ export async function createTenant(
       phone: input.phone?.trim() ?? null,
       birthDate: input.birthDate ?? null,
       userId: input.userId ?? null,
+      hometown: input.hometown?.trim() ?? null,
+      vehicleNumber: input.vehicleNumber?.trim() ?? null,
+      emergencyContactName: input.emergencyContactName?.trim() ?? null,
+      emergencyContactPhone: input.emergencyContactPhone?.trim() ?? null,
+      idCardFrontUrl: input.idCardFrontUrl?.trim() ?? null,
+      idCardBackUrl: input.idCardBackUrl?.trim() ?? null,
       linkedUserRole: "tenant",
     })
     .returning(SELECT_COLUMNS);
@@ -153,6 +183,30 @@ export async function updateTenant(
 
   if (input.birthDate !== undefined) {
     updates.birthDate = input.birthDate;
+  }
+
+  if (input.hometown !== undefined) {
+    updates.hometown = input.hometown?.trim() ?? null;
+  }
+
+  if (input.vehicleNumber !== undefined) {
+    updates.vehicleNumber = input.vehicleNumber?.trim() ?? null;
+  }
+
+  if (input.emergencyContactName !== undefined) {
+    updates.emergencyContactName = input.emergencyContactName?.trim() ?? null;
+  }
+
+  if (input.emergencyContactPhone !== undefined) {
+    updates.emergencyContactPhone = input.emergencyContactPhone?.trim() ?? null;
+  }
+
+  if (input.idCardFrontUrl !== undefined) {
+    updates.idCardFrontUrl = input.idCardFrontUrl?.trim() ?? null;
+  }
+
+  if (input.idCardBackUrl !== undefined) {
+    updates.idCardBackUrl = input.idCardBackUrl?.trim() ?? null;
   }
 
   const db = getDatabase();

@@ -26,7 +26,18 @@ export async function POST(request: NextRequest): Promise<Response> {
       );
     }
 
-    const { fullName, phone, birthDate, userId } = body as Record<string, unknown>;
+    const {
+      fullName,
+      phone,
+      birthDate,
+      userId,
+      hometown,
+      vehicleNumber,
+      emergencyContactName,
+      emergencyContactPhone,
+      idCardFrontUrl,
+      idCardBackUrl,
+    } = body as Record<string, unknown>;
 
     if (typeof fullName !== "string" || !fullName.trim()) {
       return errorResponse(
@@ -39,6 +50,12 @@ export async function POST(request: NextRequest): Promise<Response> {
       phone: typeof phone === "string" ? phone : null,
       birthDate: typeof birthDate === "string" ? birthDate : null,
       userId: typeof userId === "string" ? userId : null,
+      hometown: typeof hometown === "string" ? hometown : null,
+      vehicleNumber: typeof vehicleNumber === "string" ? vehicleNumber : null,
+      emergencyContactName: typeof emergencyContactName === "string" ? emergencyContactName : null,
+      emergencyContactPhone: typeof emergencyContactPhone === "string" ? emergencyContactPhone : null,
+      idCardFrontUrl: typeof idCardFrontUrl === "string" ? idCardFrontUrl : null,
+      idCardBackUrl: typeof idCardBackUrl === "string" ? idCardBackUrl : null,
     });
 
     return successResponse({ tenant }, { status: 201 });

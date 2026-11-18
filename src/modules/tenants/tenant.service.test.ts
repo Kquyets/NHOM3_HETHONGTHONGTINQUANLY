@@ -21,6 +21,12 @@ vi.mock("../../lib/database/schema", () => ({
     nationalIdEncrypted: "nationalIdEncrypted",
     phone: "phone",
     birthDate: "birthDate",
+    hometown: "hometown",
+    vehicleNumber: "vehicleNumber",
+    emergencyContactName: "emergencyContactName",
+    emergencyContactPhone: "emergencyContactPhone",
+    idCardFrontUrl: "idCardFrontUrl",
+    idCardBackUrl: "idCardBackUrl",
     createdAt: "createdAt",
     updatedAt: "updatedAt",
     $inferInsert: {},
@@ -128,6 +134,10 @@ describe("createTenant", () => {
     const result = await createTenant(OWNER.userId, OWNER.role, {
       fullName: "Nguyễn Văn A",
       phone: "0901234567",
+      hometown: "Bắc Ninh",
+      vehicleNumber: "99K1-8888",
+      emergencyContactName: "Nguyễn Văn B",
+      emergencyContactPhone: "0912345678",
     });
     expect(result.fullName).toBe("Nguyễn Văn A");
   });

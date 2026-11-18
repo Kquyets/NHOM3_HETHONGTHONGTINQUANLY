@@ -34,12 +34,28 @@ export async function PATCH(request: NextRequest, { params }: Params): Promise<R
       );
     }
 
-    const { fullName, phone, birthDate } = body as Record<string, unknown>;
+    const {
+      fullName,
+      phone,
+      birthDate,
+      hometown,
+      vehicleNumber,
+      emergencyContactName,
+      emergencyContactPhone,
+      idCardFrontUrl,
+      idCardBackUrl,
+    } = body as Record<string, unknown>;
 
     const tenant = await updateTenant(ctx.userId, ctx.role, tenantId, {
       fullName: typeof fullName === "string" ? fullName : undefined,
       phone: phone === null ? null : typeof phone === "string" ? phone : undefined,
       birthDate: birthDate === null ? null : typeof birthDate === "string" ? birthDate : undefined,
+      hometown: hometown === null ? null : typeof hometown === "string" ? hometown : undefined,
+      vehicleNumber: vehicleNumber === null ? null : typeof vehicleNumber === "string" ? vehicleNumber : undefined,
+      emergencyContactName: emergencyContactName === null ? null : typeof emergencyContactName === "string" ? emergencyContactName : undefined,
+      emergencyContactPhone: emergencyContactPhone === null ? null : typeof emergencyContactPhone === "string" ? emergencyContactPhone : undefined,
+      idCardFrontUrl: idCardFrontUrl === null ? null : typeof idCardFrontUrl === "string" ? idCardFrontUrl : undefined,
+      idCardBackUrl: idCardBackUrl === null ? null : typeof idCardBackUrl === "string" ? idCardBackUrl : undefined,
     });
 
     return successResponse({ tenant });

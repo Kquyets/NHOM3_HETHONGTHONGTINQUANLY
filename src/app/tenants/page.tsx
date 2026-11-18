@@ -15,6 +15,9 @@ import {
   MagnifyingGlass,
   Check,
   DownloadSimple,
+  MapPin,
+  Image as ImageIcon,
+  FirstAid,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
@@ -73,6 +76,18 @@ function SlidePanel({
   );
 }
 
+type TenantFormData = {
+  fullName: string;
+  phone: string;
+  birthDate: string;
+  hometown: string;
+  vehicleNumber: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  idCardFrontUrl: string;
+  idCardBackUrl: string;
+};
+
 /* ── Tenant Form ─────────────────────────────────────────────────── */
 function TenantForm({
   initial,
@@ -83,30 +98,51 @@ function TenantForm({
 }: {
   initial?: Partial<TenantRow>;
   submitting: boolean;
-  onSubmit: (data: { fullName: string; phone: string; birthDate: string }) => void;
+  onSubmit: (data: TenantFormData) => void;
   onCancel: () => void;
   submitLabel: string;
 }) {
   const [fullName, setFullName] = useState(initial?.fullName ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
   const [birthDate, setBirthDate] = useState(initial?.birthDate ?? "");
+  const [hometown, setHometown] = useState(initial?.hometown ?? "");
+  const [vehicleNumber, setVehicleNumber] = useState(initial?.vehicleNumber ?? "");
+  const [emergencyContactName, setEmergencyContactName] = useState(initial?.emergencyContactName ?? "");
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState(initial?.emergencyContactPhone ?? "");
+  const [idCardFrontUrl, setIdCardFrontUrl] = useState(initial?.idCardFrontUrl ?? "");
+  const [idCardBackUrl, setIdCardBackUrl] = useState(initial?.idCardBackUrl ?? "");
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const err = validateVietnamesePhone(phone);
-    if (err) {
-      setPhoneError(err);
-      return;
+    if (phone) {
+      const err = validateVietnamesePhone(phone);
+      if (err) {
+        setPhoneError(err);
+        return;
+      }
     }
     setPhoneError(null);
-    onSubmit({ fullName, phone, birthDate });
+    onSubmit({
+      fullName,
+      phone,
+      birthDate,
+      hometown,
+      vehicleNumber,
+      emergencyContactName,
+      emergencyContactPhone,
+      idCardFrontUrl,
+      idCardBackUrl,
+    });
   };
 
   return (
     <form onSubmit={handleSubmit}>
+      {/* 1. Thông tin cá nhân */}
+      <h3 style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--color-primary)", marginBottom: "var(--space-2)" }}>
+        1. Thông tin cá nhân cơ bản
+      </h3>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)" }}>
-        {/* Họ tên */}
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label htmlFor="tenant-name">Họ và tên *</label>
           <div style={{ position: "relative" }}>
@@ -127,7 +163,6 @@ function TenantForm({
           </div>
         </div>
 
-        {/* Điện thoại */}
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label htmlFor="tenant-phone">Số điện thoại</label>
           <div style={{ position: "relative" }}>
@@ -154,7 +189,6 @@ function TenantForm({
           )}
         </div>
 
-        {/* Ngày sinh */}
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label htmlFor="tenant-birth">Ngày sinh</label>
           <div style={{ position: "relative" }}>
@@ -173,7 +207,127 @@ function TenantForm({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: "var(--space-2)" }}>
+      {/* 2. Quê quán & Phương tiện */}
+      <h3 style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--color-primary)", marginTop: "var(--space-3)", marginBottom: "var(--space-2)" }}>
+        2. Thường trú (Khai báo tạm trú) & Bãi đỗ xe
+      </h3>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-2)" }}>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label htmlFor="tenant-hometown">Nơi thường trú / Quê quán (Khai báo tạm trú CA)</label>
+          <div style={{ position: "relative" }}>
+            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-fg-3)", display: "flex", pointerEvents: "none" }}>
+              <MapPin size={15} />
+            </span>
+            <input
+              id="tenant-hometown"
+              type="text"
+              className="form-control"
+              style={{ paddingLeft: 34 }}
+              placeholder="VD: Xã Yên Phong, Huyện Yên Phong, Bắc Ninh"
+              value={hometown}
+              onChange={(e) => setHometown(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label htmlFor="tenant-vehicle">Biển số phương tiện (Xe máy / xe đạp điện)</label>
+          <input
+            id="tenant-vehicle"
+            type="text"
+            className="form-control"
+            placeholder="VD: 29B1-123.45 / 99K1-8888"
+            value={vehicleNumber}
+            onChange={(e) => setVehicleNumber(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* 3. Liên hệ khẩn cấp */}
+      <h3 style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--color-primary)", marginTop: "var(--space-3)", marginBottom: "var(--space-2)" }}>
+        3. Liên hệ khẩn cấp (Người thân)
+      </h3>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-2)" }}>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label htmlFor="emergency-name">Họ tên người thân khẩn cấp</label>
+          <div style={{ position: "relative" }}>
+            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-fg-3)", display: "flex", pointerEvents: "none" }}>
+              <FirstAid size={15} />
+            </span>
+            <input
+              id="emergency-name"
+              type="text"
+              className="form-control"
+              style={{ paddingLeft: 34 }}
+              placeholder="VD: Bố - Nguyễn Văn B"
+              value={emergencyContactName}
+              onChange={(e) => setEmergencyContactName(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label htmlFor="emergency-phone">SĐT người thân khẩn cấp</label>
+          <div style={{ position: "relative" }}>
+            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-fg-3)", display: "flex", pointerEvents: "none" }}>
+              <Phone size={15} />
+            </span>
+            <input
+              id="emergency-phone"
+              type="tel"
+              className="form-control"
+              style={{ paddingLeft: 34 }}
+              placeholder="VD: 0912 345 678"
+              value={emergencyContactPhone}
+              onChange={(e) => setEmergencyContactPhone(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Quản lý ảnh CCCD */}
+      <h3 style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--color-primary)", marginTop: "var(--space-3)", marginBottom: "var(--space-2)" }}>
+        4. Ảnh căn cước công dân (CCCD 2 mặt)
+      </h3>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-2)" }}>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label htmlFor="cccd-front">Ảnh mặt trước CCCD (URL)</label>
+          <div style={{ position: "relative" }}>
+            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-fg-3)", display: "flex", pointerEvents: "none" }}>
+              <ImageIcon size={15} />
+            </span>
+            <input
+              id="cccd-front"
+              type="url"
+              className="form-control"
+              style={{ paddingLeft: 34 }}
+              placeholder="https://...cccd-mat-truoc.jpg"
+              value={idCardFrontUrl}
+              onChange={(e) => setIdCardFrontUrl(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label htmlFor="cccd-back">Ảnh mặt sau CCCD (URL)</label>
+          <div style={{ position: "relative" }}>
+            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-fg-3)", display: "flex", pointerEvents: "none" }}>
+              <ImageIcon size={15} />
+            </span>
+            <input
+              id="cccd-back"
+              type="url"
+              className="form-control"
+              style={{ paddingLeft: 34 }}
+              placeholder="https://...cccd-mat-sau.jpg"
+              value={idCardBackUrl}
+              onChange={(e) => setIdCardBackUrl(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: "var(--space-3)" }}>
         <button type="button" className="btn-ghost" onClick={onCancel}>
           Hủy
         </button>
@@ -210,6 +364,7 @@ export default function TenantsPage() {
 
   const [editingTenant, setEditingTenant] = useState<TenantRow | null>(null);
   const [submittingEdit, setSubmittingEdit] = useState(false);
+  const [viewingIdCardsTenant, setViewingIdCardsTenant] = useState<TenantRow | null>(null);
 
   const loadTenants = useCallback(async () => {
     try {
@@ -231,7 +386,7 @@ export default function TenantsPage() {
     void loadTenants();
   }, [user, authLoading, router, loadTenants]);
 
-  const handleCreate = async (data: { fullName: string; phone: string; birthDate: string }) => {
+  const handleCreate = async (data: TenantFormData) => {
     try {
       setSubmittingAdd(true);
       await apiClient("/api/tenants", {
@@ -240,6 +395,12 @@ export default function TenantsPage() {
           fullName: data.fullName.trim(),
           phone: data.phone.trim() || null,
           birthDate: data.birthDate || null,
+          hometown: data.hometown.trim() || null,
+          vehicleNumber: data.vehicleNumber.trim() || null,
+          emergencyContactName: data.emergencyContactName.trim() || null,
+          emergencyContactPhone: data.emergencyContactPhone.trim() || null,
+          idCardFrontUrl: data.idCardFrontUrl.trim() || null,
+          idCardBackUrl: data.idCardBackUrl.trim() || null,
         }),
       });
       setShowAdd(false);
@@ -251,7 +412,7 @@ export default function TenantsPage() {
     }
   };
 
-  const handleUpdate = async (data: { fullName: string; phone: string; birthDate: string }) => {
+  const handleUpdate = async (data: TenantFormData) => {
     if (!editingTenant) return;
     try {
       setSubmittingEdit(true);
@@ -261,6 +422,12 @@ export default function TenantsPage() {
           fullName: data.fullName.trim(),
           phone: data.phone.trim() || null,
           birthDate: data.birthDate || null,
+          hometown: data.hometown.trim() || null,
+          vehicleNumber: data.vehicleNumber.trim() || null,
+          emergencyContactName: data.emergencyContactName.trim() || null,
+          emergencyContactPhone: data.emergencyContactPhone.trim() || null,
+          idCardFrontUrl: data.idCardFrontUrl.trim() || null,
+          idCardBackUrl: data.idCardBackUrl.trim() || null,
         }),
       });
       setEditingTenant(null);
@@ -315,6 +482,10 @@ export default function TenantsPage() {
       "Họ và Tên",
       "Số điện thoại",
       "Ngày sinh",
+      "Thường trú (Khai báo tạm trú)",
+      "Biển số phương tiện",
+      "Người thân khẩn cấp",
+      "SĐT khẩn cấp",
       "Ngày tạo hồ sơ",
     ];
     const rows = filtered.map((t) => [
@@ -322,6 +493,10 @@ export default function TenantsPage() {
       t.fullName,
       t.phone || "",
       formatDate(t.birthDate),
+      t.hometown || "",
+      t.vehicleNumber || "",
+      t.emergencyContactName || "",
+      t.emergencyContactPhone || "",
       t.createdAt ? new Date(t.createdAt).toLocaleDateString("vi-VN") : "",
     ]);
 
@@ -512,9 +687,11 @@ export default function TenantsPage() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Họ và tên</th>
-                    <th>Số điện thoại</th>
-                    <th>Ngày sinh</th>
+                    <th>Khách thuê</th>
+                    <th>Thường trú / Khai báo tạm trú</th>
+                    <th>Biển số xe</th>
+                    <th>Liên hệ khẩn cấp</th>
+                    <th>CCCD 2 mặt</th>
                     <th style={{ textAlign: "right" }}>Thao tác</th>
                   </tr>
                 </thead>
@@ -527,10 +704,10 @@ export default function TenantsPage() {
                       animate="visible"
                       variants={fadeUp}
                     >
-                      <td style={{ fontWeight: 600 }}>
-                        <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{
-                            width: 28, height: 28, borderRadius: "var(--radius-md)",
+                            width: 32, height: 32, borderRadius: "var(--radius-md)",
                             background: "var(--color-primary-light)",
                             display: "flex", alignItems: "center", justifyContent: "center",
                             fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--color-primary)",
@@ -538,18 +715,84 @@ export default function TenantsPage() {
                           }}>
                             {tenant.fullName.charAt(0).toUpperCase()}
                           </span>
-                          {tenant.fullName}
-                        </span>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>{tenant.fullName}</div>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginTop: 2 }}>
+                              {tenant.phone ? (
+                                <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                  <Phone size={11} /> {tenant.phone}
+                                </span>
+                              ) : null}
+                              {tenant.birthDate && <span>• NS: {formatDate(tenant.birthDate)}</span>}
+                            </div>
+                          </div>
+                        </div>
                       </td>
-                      <td className="text-muted">
-                        {tenant.phone ? (
-                          <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                            <Phone size={12} />
-                            {tenant.phone}
+
+                      <td>
+                        {tenant.hometown ? (
+                          <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "var(--text-xs)", color: "var(--color-fg-2)" }}>
+                            <MapPin size={13} style={{ color: "var(--color-primary)", flexShrink: 0 }} />
+                            <span>{tenant.hometown}</span>
                           </span>
-                        ) : "—"}
+                        ) : (
+                          <span style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>Chưa khai báo</span>
+                        )}
                       </td>
-                      <td className="text-muted">{formatDate(tenant.birthDate)}</td>
+
+                      <td>
+                        {tenant.vehicleNumber ? (
+                          <span style={{
+                            display: "inline-block",
+                            padding: "2px 8px",
+                            borderRadius: 4,
+                            backgroundColor: "var(--color-bg-subtle)",
+                            border: "1px solid var(--color-border)",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "var(--text-xs)",
+                            fontWeight: 600,
+                            letterSpacing: "0.5px",
+                          }}>
+                            {tenant.vehicleNumber}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>—</span>
+                        )}
+                      </td>
+
+                      <td>
+                        {tenant.emergencyContactName ? (
+                          <div style={{ fontSize: "var(--text-xs)" }}>
+                            <span style={{ fontWeight: 500, color: "var(--color-fg-2)" }}>{tenant.emergencyContactName}</span>
+                            {tenant.emergencyContactPhone && (
+                              <div style={{ color: "var(--color-fg-3)", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                                <Phone size={10} /> {tenant.emergencyContactPhone}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>—</span>
+                        )}
+                      </td>
+
+                      <td>
+                        {tenant.idCardFrontUrl || tenant.idCardBackUrl ? (
+                          <motion.button
+                            type="button"
+                            className="badge ready"
+                            style={{ border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px" }}
+                            onClick={() => setViewingIdCardsTenant(tenant)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            <ImageIcon size={12} />
+                            <span>Xem CCCD</span>
+                          </motion.button>
+                        ) : (
+                          <span style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>Chưa có ảnh</span>
+                        )}
+                      </td>
+
                       <td style={{ textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                           <motion.button
@@ -559,7 +802,7 @@ export default function TenantsPage() {
                             onClick={() => { setEditingTenant(tenant); setShowAdd(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            title="Chỉnh sửa"
+                            title="Chỉnh sửa hồ sơ"
                           >
                             <PencilSimple size={11} />
                             Sửa
@@ -601,6 +844,106 @@ export default function TenantsPage() {
           </motion.div>
         )}
       </main>
+
+      {/* CCCD Photo Preview Modal */}
+      {viewingIdCardsTenant && (
+        <div
+          className="modal-backdrop"
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: 16,
+          }}
+          onClick={() => setViewingIdCardsTenant(null)}
+        >
+          <div
+            className="modal-card"
+            style={{
+              backgroundColor: "var(--color-bg)",
+              borderRadius: "var(--radius-lg)",
+              padding: "var(--space-3)",
+              maxWidth: 720,
+              width: "100%",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.3)",
+              border: "1px solid var(--color-border)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)", borderBottom: "1px solid var(--color-border)", paddingBottom: 12 }}>
+              <div>
+                <h3 style={{ fontSize: "var(--text-md)", fontWeight: 700, margin: 0 }}>
+                  Ảnh CCCD — {viewingIdCardsTenant.fullName}
+                </h3>
+                <p style={{ margin: "4px 0 0", fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>
+                  {viewingIdCardsTenant.hometown ? `Thường trú: ${viewingIdCardsTenant.hometown}` : "Chưa có thông tin thường trú"}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-ghost"
+                style={{ padding: "4px 8px" }}
+                onClick={() => setViewingIdCardsTenant(null)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div>
+                <div style={{ fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--color-fg-2)", marginBottom: 8 }}>
+                  Mặt trước CCCD:
+                </div>
+                {viewingIdCardsTenant.idCardFrontUrl ? (
+                  <img
+                    src={viewingIdCardsTenant.idCardFrontUrl}
+                    alt="CCCD mặt trước"
+                    style={{ width: "100%", height: 200, objectFit: "cover", borderRadius: 8, border: "1px solid var(--color-border)" }}
+                  />
+                ) : (
+                  <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--color-bg-subtle)", borderRadius: 8, color: "var(--color-fg-3)", fontSize: "var(--text-xs)" }}>
+                    Chưa cập nhật mặt trước
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div style={{ fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--color-fg-2)", marginBottom: 8 }}>
+                  Mặt sau CCCD:
+                </div>
+                {viewingIdCardsTenant.idCardBackUrl ? (
+                  <img
+                    src={viewingIdCardsTenant.idCardBackUrl}
+                    alt="CCCD mặt sau"
+                    style={{ width: "100%", height: 200, objectFit: "cover", borderRadius: 8, border: "1px solid var(--color-border)" }}
+                  />
+                ) : (
+                  <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--color-bg-subtle)", borderRadius: 8, color: "var(--color-fg-3)", fontSize: "var(--text-xs)" }}>
+                    Chưa cập nhật mặt sau
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => setViewingIdCardsTenant(null)}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
