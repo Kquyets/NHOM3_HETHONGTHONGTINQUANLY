@@ -13,9 +13,12 @@ import {
   ChartBar,
   Wrench,
   Users,
+  Lightning,
+  ShieldCheck,
 } from "@phosphor-icons/react";
 import { AppHeader } from "../../components/layout/app-header";
 import { apiClient } from "../../lib/api-client";
+import { useAuth } from "../../lib/auth-context";
 
 type ChatItem = {
   id: string;
@@ -26,7 +29,7 @@ type ChatItem = {
   timestamp: Date;
 };
 
-const TEMPLATE_CATEGORIES = [
+const OWNER_TEMPLATE_CATEGORIES = [
   {
     icon: Receipt,
     label: "Công nợ & Hóa đơn",
@@ -77,6 +80,55 @@ const TEMPLATE_CATEGORIES = [
     queries: [
       "Danh bạ khách thuê đang ở trọ",
       "Tìm khách thuê theo phòng",
+    ],
+  },
+];
+
+const TENANT_TEMPLATE_CATEGORIES = [
+  {
+    icon: Receipt,
+    label: "Hóa đơn & Tiền phòng",
+    queries: [
+      "Hóa đơn tháng này của phòng tôi là bao nhiêu?",
+      "Hạn thanh toán tiền phòng khi nào?",
+      "Tôi có khoản nợ hay hóa đơn nào chưa đóng không?",
+    ],
+  },
+  {
+    icon: Lightning,
+    label: "Điện & Nước phòng tôi",
+    queries: [
+      "Chỉ số điện nước phòng tôi tháng này thế nào?",
+      "Đơn giá điện và nước tính như thế nào?",
+      "Cách kiểm tra số điện nước chốt hàng tháng",
+    ],
+  },
+  {
+    icon: ShieldCheck,
+    label: "Nội quy & An ninh",
+    queries: [
+      "Giờ giấc đóng mở cửa và an ninh nhà trọ thế nào?",
+      "Quy định về rác thải và vệ sinh chung khu trọ",
+      "Khách hoặc bạn bè đến chơi qua đêm cần lưu ý gì?",
+      "Quy định an toàn phòng cháy chữa cháy (PCCC) trong phòng",
+    ],
+  },
+  {
+    icon: Wrench,
+    label: "Báo hỏng & Sửa chữa",
+    queries: [
+      "Làm thế nào để gửi yêu cầu sửa chữa thiết bị?",
+      "Thời gian thợ đến khắc phục sự cố thường là bao lâu?",
+      "Hỏng bóng đèn hoặc vòi nước ai chịu chi phí?",
+    ],
+  },
+  {
+    icon: FileText,
+    label: "Hợp đồng & Tạm trú",
+    queries: [
+      "Hợp đồng thuê phòng của tôi có hiệu lực đến khi nào?",
+      "Thủ tục khai báo tạm trú CT01 cần chuẩn bị những gì?",
+      "Quy định báo trước khi hết hạn hợp đồng hoặc trả phòng",
     ],
   },
 ];
@@ -168,19 +220,41 @@ function renderMarkdown(content: string) {
 }
 
 export default function AiAssistantPage() {
+  const { user } = useAuth();
+  const isTenant = user?.role === "tenant";
+
+  const categories = isTenant ? TENANT_TEMPLATE_CATEGORIES : OWNER_TEMPLATE_CATEGORIES;
+
+  const getInitialMessage = (tenant: boolean, name?: string): ChatItem => ({
+    id: "init",
+    role: "model",
+    text: tenant
+      ? `👋 **Xin chào ${name || "bạn"}! Tôi là Trợ lý AI Cư dân HManagers.**\n\nTôi được kết nối để hỗ trợ bạn tra cứu chi tiết hóa đơn phòng thuê, chỉ số điện nước, giải đáp nội quy an ninh nhà trọ, hướng dẫn báo sự cố sửa chữa và hỗ trợ thủ tục khai báo tạm trú CT01.\n\nBạn có thể nhấp vào một trong các câu hỏi mẫu ở cột bên trái hoặc tự do gõ câu hỏi của mình!`
+      : "👋 **Xin chào! Tôi là Trợ lý AI Vận hành Nhà trọ.**\n\nTôi được kết nối trực tiếp với hệ thống quản lý để cung cấp câu trả lời chính xác theo thời gian thực về phòng trọ, khách thuê, hợp đồng, hóa đơn và doanh thu.\n\nBạn có thể nhấp vào một trong các câu hỏi mẫu ở cột bên trái hoặc tự do gõ câu hỏi của mình!",
+    suggestions: tenant
+      ? [
+          "Hóa đơn tháng này của phòng tôi là bao nhiêu?",
+          "Chỉ số điện nước phòng tôi tháng này",
+          "Nội quy an ninh và giờ giấc nhà trọ",
+        ]
+      : [
+          "Tháng này có bao nhiêu phòng chưa thanh toán?",
+          "Hợp đồng nào sắp hết hạn trong 30 ngày?",
+          "Danh sách các phòng đang trống",
+        ],
+    timestamp: new Date(),
+  });
+
   const [messages, setMessages] = useState<ChatItem[]>([
-    {
-      id: "init",
-      role: "model",
-      text: "👋 **Xin chào! Tôi là Trợ lý AI Vận hành Nhà trọ.**\n\nTôi được kết nối trực tiếp với hệ thống quản lý để cung cấp câu trả lời chính xác theo thời gian thực về phòng trọ, khách thuê, hợp đồng, hóa đơn và doanh thu.\n\nBạn có thể nhấp vào một trong các câu hỏi mẫu ở cột bên trái hoặc tự do gõ câu hỏi của mình!",
-      suggestions: [
-        "Tháng này có bao nhiêu phòng chưa thanh toán?",
-        "Hợp đồng nào sắp hết hạn trong 30 ngày?",
-        "Danh sách các phòng đang trống",
-      ],
-      timestamp: new Date(),
-    },
+    getInitialMessage(false),
   ]);
+
+  useEffect(() => {
+    if (messages.length === 1 && messages[0].id === "init") {
+      setMessages([getInitialMessage(isTenant, user?.fullName ?? undefined)]);
+    }
+  }, [isTenant, user?.fullName]);
+
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -255,11 +329,17 @@ export default function AiAssistantPage() {
         id: "reset",
         role: "model",
         text: "✨ Cuộc trò chuyện đã được làm mới. Hãy nhập câu hỏi để bắt đầu!",
-        suggestions: [
-          "Tháng này có bao nhiêu phòng chưa thanh toán?",
-          "Hợp đồng nào sắp hết hạn trong 30 ngày?",
-          "Doanh thu và tỷ lệ lấp đầy tháng này",
-        ],
+        suggestions: isTenant
+          ? [
+              "Hóa đơn tháng này của phòng tôi là bao nhiêu?",
+              "Chỉ số điện nước phòng tôi tháng này",
+              "Nội quy an ninh và giờ giấc nhà trọ",
+            ]
+          : [
+              "Tháng này có bao nhiêu phòng chưa thanh toán?",
+              "Hợp đồng nào sắp hết hạn trong 30 ngày?",
+              "Doanh thu và tỷ lệ lấp đầy tháng này",
+            ],
         timestamp: new Date(),
       },
     ]);
@@ -296,10 +376,12 @@ export default function AiAssistantPage() {
               </div>
               <div>
                 <h1 style={{ fontSize: "1.45rem", fontWeight: 800, margin: 0, color: "var(--color-fg)" }}>
-                  Trợ lý AI Quản lý Nhà trọ
+                  {isTenant ? "Trợ lý AI Cư dân" : "Trợ lý AI Quản lý Nhà trọ"}
                 </h1>
                 <p style={{ margin: "2px 0 0", fontSize: "0.85rem", color: "var(--color-fg-3)" }}>
-                  Truy vấn ngôn ngữ tự nhiên kết hợp Gemini Function Calling & trích xuất dữ liệu vận hành thời gian thực
+                  {isTenant
+                    ? "Hỗ trợ 24/7 về hóa đơn phòng, chỉ số điện nước, nội quy nhà trọ, báo sự cố và thủ tục tạm trú"
+                    : "Truy vấn ngôn ngữ tự nhiên kết hợp Gemini Function Calling & trích xuất dữ liệu vận hành thời gian thực"}
                 </p>
               </div>
             </div>
@@ -360,7 +442,7 @@ export default function AiAssistantPage() {
               💡 Mẫu câu hỏi nhanh
             </div>
 
-            {TEMPLATE_CATEGORIES.map((cat, cIdx) => {
+            {categories.map((cat, cIdx) => {
               const IconComp = cat.icon;
               return (
                 <div key={cIdx} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -611,7 +693,11 @@ export default function AiAssistantPage() {
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Hỏi bất kỳ điều gì: phòng nào nợ tiền, hợp đồng nào sắp hết hạn, tổng doanh thu..."
+                placeholder={
+                  isTenant
+                    ? "Hỏi về hóa đơn phòng của bạn, chỉ số điện nước, nội quy, báo sự cố, tạm trú..."
+                    : "Hỏi bất kỳ điều gì: phòng nào nợ tiền, hợp đồng nào sắp hết hạn, tổng doanh thu..."
+                }
                 disabled={isLoading}
                 style={{
                   flex: 1,

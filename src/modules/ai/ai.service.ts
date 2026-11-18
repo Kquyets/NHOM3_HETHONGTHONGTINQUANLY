@@ -1,4 +1,6 @@
 import { getGeminiApiKey } from "../../config/env";
+import { getTenantPortalData, type TenantMeterReading } from "../tenant-portal/tenant-portal.service";
+import { listMaintenanceRequests, type MaintenanceRow } from "../maintenance/maintenance.service";
 import {
   toolGetOverviewStats,
   toolLookupContracts,
@@ -356,6 +358,289 @@ export async function processWithLocalEngine(
 }
 
 // ---------------------------------------------------------------------------
+// Tenant-Specific AI Engine (Cư dân / Khách thuê)
+// ---------------------------------------------------------------------------
+
+export async function processTenantAiQuery(
+  userId: string,
+  message: string,
+): Promise<ProcessAiQueryResult> {
+  const lower = message.toLowerCase();
+
+  // 1. Privacy & Security Guard: Block confidential landlord business data
+  const landlordKeywords = [
+    "doanh thu",
+    "lợi nhuận",
+    "lãi",
+    "thu nhập của chủ",
+    "kiếm được bao nhiêu",
+    "phòng khác",
+    "các phòng khác",
+    "nợ của phòng khác",
+    "ai nợ tiền",
+    "tỷ lệ lấp đầy",
+    "danh sách phòng trống",
+    "tổng tiền thu được",
+    "doanh số",
+    "bao nhiêu phòng nợ",
+    "ai chưa thanh toán",
+    "danh sách khách thuê",
+  ];
+
+  if (landlordKeywords.some((k) => lower.includes(k))) {
+    return {
+      reply: `🔒 **Thông tin nội bộ bảo mật của Ban quản lý:**\n\nDữ liệu về doanh thu tổng thể, lợi nhuận và tình hình tài chính của các phòng khác là thông tin nội bộ của Chủ nhà/Ban quản lý, không áp dụng cho tài khoản Khách thuê.\n\nVới tư cách là Cư dân/Khách thuê, tôi có thể hỗ trợ bạn các nội dung sau:\n- 🧾 **Hóa đơn & Tiền phòng:** Tra cứu số tiền cần đóng, hạn nộp, tạo mã VietQR chuyển khoản.\n- ⚡ **Điện & Nước:** Xem số điện, số nước chốt kỳ này và đơn giá.\n- 📋 **Nội quy & An ninh:** Giờ giấc mở/khóa cổng, phòng cháy chữa cháy (PCCC), rác thải.\n- 📑 **Hồ sơ tạm trú CT01:** Hướng dẫn hoàn thiện CCCD và xuất tờ khai tạm trú Công an.\n- 🔧 **Báo sự cố:** Gửi yêu cầu sửa chữa trang thiết bị phòng.`,
+      toolsUsed: ["tenant_privacy_guard"],
+      suggestions: [
+        "Hóa đơn tháng này của phòng tôi là bao nhiêu?",
+        "Chỉ số điện nước phòng tôi tháng này",
+        "Nội quy an ninh và giờ giấc nhà trọ",
+      ],
+    };
+  }
+
+  // 2. Fetch tenant portal data
+  let portalData;
+  let maintenance: MaintenanceRow[] = [];
+  try {
+    const [pData, mList] = await Promise.all([
+      getTenantPortalData(userId),
+      listMaintenanceRequests({ userId, role: "tenant" }).catch(() => []),
+    ]);
+    portalData = pData;
+    maintenance = mList;
+  } catch {
+    portalData = null;
+    maintenance = [];
+  }
+
+  const tenant = portalData?.tenant;
+  const stay = portalData?.stay;
+  const invoices = portalData?.invoices || [];
+  const unpaidInvoices = invoices.filter((i) => i.status !== "paid" && i.status !== "cancelled");
+  const meters: TenantMeterReading[] = portalData?.meters || [];
+
+  // A. Rent & Invoice intent
+  if (
+    lower.includes("hóa đơn") ||
+    lower.includes("tiền phòng") ||
+    lower.includes("tiền nhà") ||
+    lower.includes("chưa thanh toán") ||
+    lower.includes("nợ") ||
+    lower.includes("thanh toán") ||
+    lower.includes("chuyển khoản") ||
+    lower.includes("vietqr") ||
+    lower.includes("stk") ||
+    lower.includes("tài khoản")
+  ) {
+    if (unpaidInvoices.length > 0) {
+      const inv = unpaidInvoices[0];
+      const remaining = Math.max(0, inv.totalAmount - (inv.paidAmount || 0));
+      let reply = `🧾 **Thông tin Hóa đơn phòng ${inv.roomNumber}:**\n`;
+      reply += `- **Kỳ hóa đơn:** ${inv.billingPeriodStart}\n`;
+      reply += `- **Tổng số tiền:** **${formatVND(inv.totalAmount)}**\n`;
+      if (inv.paidAmount && inv.paidAmount > 0) {
+        reply += `- **Đã thanh toán:** ${formatVND(inv.paidAmount)}\n`;
+        reply += `- **Còn phải trả:** **${formatVND(remaining)}**\n`;
+      }
+      reply += `- **Hạn thanh toán:** ${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("vi-VN") : "Đầu tháng"}\n`;
+      reply += `- **Trạng thái:** ${inv.status === "partially_paid" ? "Đã đóng một phần" : "Chưa thanh toán"}\n\n`;
+
+      if (inv.bankAccount && inv.bankCode) {
+        reply += `💳 **Thông tin chuyển khoản:**\n`;
+        reply += `- **Ngân hàng:** ${inv.bankCode}\n`;
+        reply += `- **Số tài khoản:** \`${inv.bankAccount}\`\n`;
+        reply += `- **Chủ tài khoản:** **${inv.accountHolder || "Chủ nhà"}**\n`;
+        reply += `\n*Bạn có thể bấm nút "VietQR" trên Cổng thông tin để quét mã QR thanh toán nhanh chóng và tự động điền đúng nội dung.*`;
+      }
+      return {
+        reply,
+        toolsUsed: ["lookup_tenant_invoices"],
+        suggestions: [
+          "Chỉ số điện nước phòng tôi tháng này",
+          "Nội quy an ninh và giờ giấc nhà trọ",
+          "Hướng dẫn khai báo tạm trú CT01",
+        ],
+      };
+    } else {
+      return {
+        reply: `🎉 **Tuyệt vời! Hiện tại bạn không có hóa đơn nào còn nợ.**\nTất cả các hóa đơn tiền phòng và dịch vụ của phòng ${stay ? stay.roomNumber : ""} đều đã được hoàn tất thanh toán đủ. Cảm ơn bạn đã luôn hoàn thành đúng hạn!`,
+        toolsUsed: ["lookup_tenant_invoices"],
+        suggestions: [
+          "Chỉ số điện nước phòng tôi tháng này",
+          "Hợp đồng thuê phòng của tôi đến khi nào?",
+          "Nội quy an ninh và giờ giấc nhà trọ",
+        ],
+      };
+    }
+  }
+
+  // B. Utility Meters (Điện & Nước)
+  if (
+    lower.includes("điện") ||
+    lower.includes("nước") ||
+    lower.includes("chỉ số") ||
+    lower.includes("số điện") ||
+    lower.includes("số nước") ||
+    lower.includes("tiêu thụ") ||
+    lower.includes("đồng hồ")
+  ) {
+    if (meters.length > 0) {
+      let reply = `⚡💧 **Lịch sử Chỉ số Điện & Nước gần nhất (Phòng ${stay?.roomNumber || ""}):**\n\n`;
+      meters.slice(0, 4).forEach((m: TenantMeterReading) => {
+        const typeName = m.utilityType === "electricity" ? "Điện ⚡" : "Nước 💧";
+        const unit = m.utilityType === "electricity" ? "kWh" : "m³";
+        reply += `- **${typeName}** (Kỳ ${m.billingPeriod}): Số cũ **${m.previousValue}** ➔ Số mới **${m.currentValue}** (Tiêu thụ: **${m.consumption} ${unit}** • Đơn giá: ${formatVND(m.unitPriceSnapshot)}/${unit}).\n`;
+      });
+      reply += `\n*Chỉ số được chủ nhà chốt hàng tháng để tính vào hóa đơn tiền phòng định kỳ.*`;
+      return {
+        reply,
+        toolsUsed: ["lookup_tenant_meters"],
+        suggestions: [
+          "Hóa đơn tháng này của phòng tôi là bao nhiêu?",
+          "Cách tiết kiệm điện nước trong phòng trọ",
+          "Nội quy an ninh và giờ giấc nhà trọ",
+        ],
+      };
+    } else {
+      return {
+        reply: `⚡💧 **Chỉ số Điện & Nước:**\nHiện chưa có bản ghi chốt số điện nước mới nào cho phòng của bạn. Chủ nhà sẽ cập nhật số công tơ vào kỳ chốt số hàng tháng (thường từ ngày 25 đến cuối tháng).`,
+        toolsUsed: ["lookup_tenant_meters"],
+        suggestions: [
+          "Hóa đơn tháng này của phòng tôi là bao nhiêu?",
+          "Nội quy an ninh và giờ giấc nhà trọ",
+        ],
+      };
+    }
+  }
+
+  // C. House Rules, Security & PCCC
+  if (
+    lower.includes("nội quy") ||
+    lower.includes("giờ giấc") ||
+    lower.includes("đóng cửa") ||
+    lower.includes("mở cửa") ||
+    lower.includes("rác") ||
+    lower.includes("vệ sinh") ||
+    lower.includes("bạn bè") ||
+    lower.includes("khách") ||
+    lower.includes("qua đêm") ||
+    lower.includes("an ninh") ||
+    lower.includes("pccc") ||
+    lower.includes("cháy") ||
+    lower.includes("tiết kiệm")
+  ) {
+    return {
+      reply: `📋 **Nội quy & An toàn Cư dân tại cơ sở ${stay?.propertyName || "Nhà trọ"}:**\n\n` +
+        `1. 🚪 **Giờ giấc & Ra vào:** Khóa cổng chính sau **23:00**. Cư dân dùng vân tay/thẻ từ/chìa khóa riêng để ra vào, vui lòng luôn khép cổng cẩn thận để đảm bảo an ninh chung.\n` +
+        `2. 🔇 **Giữ trật tự chung:** Không bật nhạc lớn, hát karaoke hoặc tụ tập gây ồn ào sau **22:00**, tránh ảnh hưởng đến các phòng xung quanh.\n` +
+        `3. 👥 **Khách & Bạn bè đến chơi:** Khách đến chơi vui lòng để xe đúng nơi quy định. Nếu có người thân ở lại qua đêm, vui lòng báo trước với Ban Quản lý để khai báo lưu trú theo quy định.\n` +
+        `4. 🗑️ **Rác thải & Vệ sinh:** Đựng rác trong túi kín, vứt rác tại khu vực tập kết đúng giờ. Giữ gìn vệ sinh chung hành lang, cầu thang.\n` +
+        `5. 🧯 **An toàn PCCC & Điện:** Không sạc xe điện qua đêm ở hành lang thoát hiểm; tắt quạt, điều hòa và bếp điện khi rời khỏi phòng; trang bị bình chữa cháy mini và nắm rõ lối thoát hiểm tòa nhà.`,
+      toolsUsed: ["resident_guidelines"],
+      suggestions: [
+        "Hóa đơn tháng này của phòng tôi là bao nhiêu?",
+        "Làm thế nào để báo sự cố hỏng hóc thiết bị?",
+        "Hướng dẫn khai báo tạm trú CT01",
+      ],
+    };
+  }
+
+  // D. Maintenance (Sự cố / Báo hỏng)
+  if (
+    lower.includes("sự cố") ||
+    lower.includes("hỏng") ||
+    lower.includes("sửa") ||
+    lower.includes("bảo trì") ||
+    lower.includes("thiết bị") ||
+    lower.includes("vòi nước") ||
+    lower.includes("bóng đèn") ||
+    lower.includes("mất điện") ||
+    lower.includes("mất nước")
+  ) {
+    let reply = `🔧 **Báo sự cố & Sửa chữa thiết bị phòng ${stay?.roomNumber || ""}:**\n\n`;
+    if (maintenance.length > 0) {
+      reply += `Bạn đang có **${maintenance.length}** yêu cầu đã gửi:\n`;
+      maintenance.slice(0, 3).forEach((req: MaintenanceRow) => {
+        const statusText = req.status === "resolved" ? "Đã xử lý xong ✅" : req.status === "in_progress" ? "Đang xử lý ⏳" : req.status === "cancelled" ? "Đã hủy ❌" : "Chờ tiếp nhận 🟡";
+        reply += `- **${req.title}** (${statusText})\n`;
+      });
+      reply += `\n`;
+    }
+    reply += `📌 **Cách gửi yêu cầu sửa chữa mới:**\n` +
+      `1. Nhấp vào nút **"Báo sự cố"** màu tím ở đầu Cổng thông tin (hoặc góc phần Sự cố & Sửa chữa).\n` +
+      `2. Nhập tiêu đề, mô tả vị trí hỏng (bóng đèn, vòi nước, điều hòa, v.v.).\n` +
+      `3. Đính kèm ảnh chụp thực tế để thợ kỹ thuật chuẩn bị trước linh kiện thay thế.\n` +
+      `4. Bấm **"Gửi yêu cầu"** — Chủ nhà và kỹ thuật viên sẽ nhận được thông báo ngay lập tức!`;
+    return {
+      reply,
+      toolsUsed: ["lookup_tenant_maintenance"],
+      suggestions: [
+        "Thời gian xử lý sự cố thường mất bao lâu?",
+        "Chi phí sửa chữa do ai chi trả?",
+        "Hóa đơn phòng tháng này của tôi",
+      ],
+    };
+  }
+
+  // E. Contract & CT01 Temporary Residence
+  if (
+    lower.includes("hợp đồng") ||
+    lower.includes("thời hạn") ||
+    lower.includes("hết hạn") ||
+    lower.includes("trả phòng") ||
+    lower.includes("cọc") ||
+    lower.includes("tạm trú") ||
+    lower.includes("ct01") ||
+    lower.includes("công an") ||
+    lower.includes("cccd")
+  ) {
+    let reply = `📑 **Hồ sơ Hợp đồng & Tạm trú (Phòng ${stay?.roomNumber || ""}):**\n\n`;
+    if (stay) {
+      reply += `- **Phòng:** ${stay.roomNumber} — ${stay.propertyName}\n`;
+      reply += `- **Tiền phòng:** ${formatVND(stay.monthlyRent)}/tháng • Tiền cọc: ${formatVND(stay.deposit)}\n`;
+      reply += `- **Trạng thái hợp đồng:** ${stay.contractStatus === "active" ? "Đang có hiệu lực ✅" : stay.contractStatus}\n`;
+      if (stay.startDate) {
+        reply += `- **Thời hạn:** Từ ${new Date(stay.startDate).toLocaleDateString("vi-VN")} đến ${stay.endDate ? new Date(stay.endDate).toLocaleDateString("vi-VN") : "Chưa xác định"}\n\n`;
+      }
+    }
+    reply += `📋 **Thủ tục Khai báo Tạm trú (Mẫu CT01):**\n` +
+      `- Cư dân cần cập nhật **Số CCCD**, ảnh chụp **2 mặt CCCD** và **Nơi thường trú** trong mục *Hồ sơ tạm trú & Xe*.\n` +
+      `- Sau khi điền, bạn có thể bấm **"Mẫu CT01"** để xem và in tờ khai đã điền sẵn theo quy định của Bộ Công an.\n` +
+      `- Ban Quản lý sẽ nộp hồ sơ đăng ký tạm trú lên Cơ quan Công an hoặc bạn có thể nộp trực tiếp qua ứng dụng **VNeID**.\n\n` +
+      `*Lưu ý: Khi có kế hoạch trả phòng hoặc không gia hạn hợp đồng, vui lòng thông báo cho chủ nhà trước ít nhất 30 ngày.*`;
+    return {
+      reply,
+      toolsUsed: ["lookup_tenant_contract_profile"],
+      suggestions: [
+        "Hóa đơn tháng này của phòng tôi là bao nhiêu?",
+        "Chỉ số điện nước phòng tôi tháng này",
+        "Nội quy an ninh và giờ giấc nhà trọ",
+      ],
+    };
+  }
+
+  // General / Default response for tenant
+  const greeting = tenant?.fullName ? `Xin chào **${tenant.fullName}**!` : "Xin chào bạn!";
+  return {
+    reply: `👋 ${greeting} Tôi là **Trợ lý AI Cư dân** của cơ sở **${stay?.propertyName || "nhà trọ"}** (Phòng **${stay?.roomNumber || ""}**).\n\n` +
+      `Tôi có thể hỗ trợ bạn các vấn đề thực tế hàng ngày:\n` +
+      `- 🧾 Tra cứu **Hóa đơn tiền phòng**, số dư cần đóng và mã VietQR.\n` +
+      `- ⚡ Kiểm tra **Chỉ số điện nước** và lượng tiêu thụ mới nhất.\n` +
+      `- 📋 Hướng dẫn **Nội quy ra vào**, giờ giấc an ninh và PCCC.\n` +
+      `- 🔧 Hướng dẫn **Báo sự cố hỏng hóc** thiết bị phòng.\n` +
+      `- 📑 Tra cứu thông tin hợp đồng và hướng dẫn **Khai báo tạm trú CT01**.\n\n` +
+      `Bạn có thể bấm vào một trong các câu hỏi gợi ý bên dưới hoặc gõ câu hỏi cụ thể của mình nhé!`,
+    toolsUsed: ["tenant_portal_overview"],
+    suggestions: [
+      "Hóa đơn tháng này của phòng tôi là bao nhiêu?",
+      "Chỉ số điện nước phòng tôi tháng này",
+      "Nội quy an ninh và giờ giấc nhà trọ",
+    ],
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Main Service Entry Point (Hybrid: Gemini API + Local Fallback)
 // ---------------------------------------------------------------------------
 
@@ -364,6 +649,54 @@ export async function processAiQuery(input: ProcessAiQueryInput): Promise<Proces
   const ctx: AuthContext = { userId, role };
   const apiKey = getGeminiApiKey();
 
+  // Route 1: Tenant resident assistant
+  if (role === "tenant") {
+    if (apiKey) {
+      try {
+        const { GoogleGenAI } = await import("@google/genai");
+        const client = new GoogleGenAI({ apiKey });
+        const localResult = await processTenantAiQuery(userId, message);
+
+        // If privacy guard was triggered, return immediately without calling model
+        if (localResult.toolsUsed.includes("tenant_privacy_guard")) {
+          return localResult;
+        }
+
+        const prompt = `Bạn là Trợ lý AI Cư dân chuyên nghiệp, thân thiện hỗ trợ khách thuê nhà trọ tại Việt Nam.
+Người dùng là Khách thuê (Role: tenant).
+Câu hỏi của khách thuê: "${message}"
+
+Dữ liệu thực tế của phòng khách thuê trích xuất từ database:
+${localResult.reply}
+
+Công cụ đã dùng: ${localResult.toolsUsed.join(", ")}
+
+Nhiệm vụ của bạn:
+- Dựa trên dữ liệu thực tế trên, trả lời thân thiện, lịch sự, chuẩn xác, định dạng Markdown đẹp mắt.
+- TUYỆT ĐỐI KHÔNG tiết lộ doanh thu của chủ nhà, lợi nhuận, danh sách phòng khác hoặc nợ của khách thuê khác.
+- Đưa ra hướng dẫn hoặc hành động tiếp theo hữu ích cho khách thuê.`;
+
+        const response = await client.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: prompt,
+        });
+
+        const text = response.text?.trim();
+        if (text) {
+          return {
+            reply: text,
+            toolsUsed: localResult.toolsUsed,
+            suggestions: localResult.suggestions,
+          };
+        }
+      } catch {
+        // fallback to local tenant engine
+      }
+    }
+    return processTenantAiQuery(userId, message);
+  }
+
+  // Route 2: Owner / Manager assistant
   // If Gemini API Key is available, use Gemini generative model with tools
   if (apiKey) {
     try {

@@ -38,6 +38,7 @@ import { useAuth } from "../../lib/auth-context";
 import { buildVietQrUrl, getBankInfo, formatBankDisplayName } from "../../utils/vietqr";
 import { PrintableInvoiceModal } from "../invoices/printable-invoice-modal";
 import { PrintableContractModal } from "../contracts/printable-contract-modal";
+import { PrintableCt01Modal } from "./printable-ct01-modal";
 import type { InvoiceDetail, InvoiceStatus } from "../../modules/invoices/invoice.service";
 import type { TenantPortalData, TenantProfile } from "../../modules/tenant-portal/tenant-portal.service";
 import type { ContractRow } from "../../modules/contracts/contract.service";
@@ -136,6 +137,7 @@ export function TenantPortalView() {
   // Printable modals
   const [printInvoice, setPrintInvoice] = useState<InvoiceDetail | null>(null);
   const [printContract, setPrintContract] = useState<ContractRow | null>(null);
+  const [showCt01Modal, setShowCt01Modal] = useState(false);
 
   // Profile self-service modal state
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -160,6 +162,7 @@ export function TenantPortalView() {
         setQrInvoice(null);
         setPrintInvoice(null);
         setPrintContract(null);
+        setShowCt01Modal(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -689,18 +692,34 @@ export function TenantPortalView() {
                   <h2 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: 0 }}>
                     Hồ sơ tạm trú & Xe
                   </h2>
-                  <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>Thông tin định danh</span>
+                  {tenant?.citizenId && tenant?.idCardFrontUrl && tenant?.idCardBackUrl ? (
+                    <span className="badge ready" style={{ fontSize: "10px" }}>Đã nộp đủ hồ sơ CT01</span>
+                  ) : (
+                    <span className="badge maintenance" style={{ fontSize: "10px" }}>Cần bổ sung hồ sơ CT01</span>
+                  )}
                 </div>
               </div>
 
-              <button
-                type="button"
-                className="btn-ghost"
-                style={{ padding: "4px 8px", fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}
-                onClick={() => setShowProfileModal(true)}
-              >
-                <PencilSimple size={13} /> Sửa
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  style={{ padding: "4px 8px", fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}
+                  onClick={() => setShowCt01Modal(true)}
+                  title="Xem & In tờ khai thay đổi thông tin cư trú CT01"
+                >
+                  <FileText size={13} color="var(--color-primary)" /> Mẫu CT01
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  style={{ padding: "4px 8px", fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}
+                  onClick={() => setShowProfileModal(true)}
+                  title="Cập nhật hồ sơ & khai báo tạm trú"
+                >
+                  <PencilSimple size={13} /> Sửa
+                </button>
+              </div>
             </div>
 
             <div style={{ display: "grid", gap: 8, fontSize: "var(--text-xs)" }}>
@@ -725,7 +744,7 @@ export function TenantPortalView() {
                 <strong className="portal-info-value">{tenant?.vehicleNumber || "Chưa đăng ký"}</strong>
               </div>
               <div className="portal-info-row">
-                <span className="portal-info-label">Quê quán:</span>
+                <span className="portal-info-label">Thường trú / Quê quán:</span>
                 <span className="portal-info-value">{tenant?.hometown || "Chưa cập nhật"}</span>
               </div>
               <div className="portal-info-row">
@@ -1186,7 +1205,7 @@ export function TenantPortalView() {
           >
             <motion.div
               className="card"
-              style={{ maxWidth: 480, width: "100%", maxHeight: "90vh", overflowY: "auto" }}
+              style={{ maxWidth: 480, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: "22px 26px", boxSizing: "border-box" }}
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
@@ -1433,7 +1452,7 @@ export function TenantPortalView() {
           >
             <motion.div
               className="card"
-              style={{ maxWidth: 540, width: "100%", maxHeight: "90vh", overflowY: "auto" }}
+              style={{ maxWidth: 580, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: "24px 28px", boxSizing: "border-box" }}
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
@@ -1443,16 +1462,49 @@ export function TenantPortalView() {
                 <div>
                   <h2 id="profile-modal-title" style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
                     <IdentificationCard size={20} color="var(--color-primary)" weight="fill" />
-                    Cập nhật Hồ sơ cá nhân & Khai báo tạm trú
+                    Hồ sơ cá nhân & Khai báo tạm trú
                   </h2>
                   <p className="text-muted" style={{ fontSize: "var(--text-xs)", margin: "4px 0 0" }}>
-                    Cung cấp số CCCD, ảnh chụp 2 mặt, quê quán và biển số xe để Ban quản lý làm thủ tục tạm trú CT01 và bãi gửi xe.
+                    Cung cấp số CCCD, ảnh chụp 2 mặt, thường trú và biển số xe để Ban quản lý làm thủ tục tạm trú CT01 và cấp thẻ xe.
                   </p>
                 </div>
                 <button type="button" className="btn-ghost" style={{ padding: 6 }} onClick={() => setShowProfileModal(false)} aria-label="Đóng">
                   <X size={14} />
                 </button>
               </div>
+
+              {stay && (
+                <div style={{
+                  background: "rgba(37,99,235,0.06)",
+                  border: "1px solid rgba(37,99,235,0.18)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "10px 14px",
+                  fontSize: "var(--text-xs)",
+                  lineHeight: 1.5,
+                  marginBottom: 12,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}>
+                  <div>
+                    <strong>Nơi đăng ký tạm trú:</strong> Phòng {stay.roomNumber} — {stay.propertyName}
+                    <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                      {stay.propertyAddress || "Theo thông tin cơ sở nhà trọ"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    style={{ padding: "4px 8px", fontSize: 11, display: "inline-flex", alignItems: "center", gap: 4, background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
+                    onClick={() => setShowCt01Modal(true)}
+                    title="Xem tờ khai tạm trú CT01"
+                  >
+                    <FileText size={13} color="var(--color-primary)" /> Mẫu CT01
+                  </button>
+                </div>
+              )}
 
               <form onSubmit={handleSaveProfile} style={{ display: "grid", gap: 12 }}>
                 {profileError && (
@@ -1636,19 +1688,19 @@ export function TenantPortalView() {
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
                   <div>
-                    <label className="field-label" htmlFor="pHometown">Quê quán (Tỉnh / Thành)</label>
+                    <label className="field-label" htmlFor="pHometown">Nơi thường trú / Quê quán (Khai báo tạm trú)</label>
                     <input
                       id="pHometown"
                       type="text"
                       disabled={submittingProfile}
                       className="input-field"
-                      placeholder="VD: Nam Định, Hà Tĩnh..."
+                      placeholder="VD: Xã ..., Huyện ..., Tỉnh ..."
                       value={pHometown}
                       onChange={(e) => setPHometown(e.target.value)}
                     />
                   </div>
                   <div>
-                    <label className="field-label" htmlFor="pVehicleNumber">Biển số xe máy</label>
+                    <label className="field-label" htmlFor="pVehicleNumber">Biển số xe máy (Đăng ký gửi xe)</label>
                     <input
                       id="pVehicleNumber"
                       type="text"
@@ -1693,22 +1745,34 @@ export function TenantPortalView() {
                   </div>
                 </div>
 
-                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
+                <div style={{ display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
                   <button
                     type="button"
                     className="btn-ghost"
-                    onClick={() => setShowProfileModal(false)}
-                    disabled={submittingProfile}
+                    style={{ fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 5 }}
+                    onClick={() => setShowCt01Modal(true)}
+                    title="Xem & In tờ khai CT01 phục vụ công an"
                   >
-                    Hủy
+                    <FileText size={14} color="var(--color-primary)" /> Xem tờ khai CT01
                   </button>
-                  <button
-                    type="submit"
-                    className="btn-primary"
-                    disabled={submittingProfile || !pFullName.trim()}
-                  >
-                    {submittingProfile ? "Đang lưu..." : "Lưu thông tin"}
-                  </button>
+
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() => setShowProfileModal(false)}
+                      disabled={submittingProfile}
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn-primary"
+                      disabled={submittingProfile || !pFullName.trim()}
+                    >
+                      {submittingProfile ? "Đang lưu..." : "Lưu thông tin"}
+                    </button>
+                  </div>
                 </div>
               </form>
             </motion.div>
@@ -1741,7 +1805,7 @@ export function TenantPortalView() {
           >
             <motion.div
               className="card"
-              style={{ maxWidth: 480, width: "100%", maxHeight: "90vh", overflowY: "auto" }}
+              style={{ maxWidth: 480, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: "22px 26px", boxSizing: "border-box" }}
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
@@ -1921,6 +1985,14 @@ export function TenantPortalView() {
       {printContract && (
         <PrintableContractModal contract={printContract} onClose={() => setPrintContract(null)} />
       )}
+
+      {/* Printable CT01 Temporary Residence Declaration Modal */}
+      <PrintableCt01Modal
+        isOpen={showCt01Modal}
+        tenant={tenant}
+        stay={stay}
+        onClose={() => setShowCt01Modal(false)}
+      />
     </main>
   );
 }

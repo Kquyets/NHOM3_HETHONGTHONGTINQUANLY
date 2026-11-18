@@ -9,10 +9,10 @@ export async function POST(request: NextRequest): Promise<Response> {
   try {
     const ctx = getAuthContext(request);
 
-    if (ctx.role !== "owner" && ctx.role !== "manager") {
+    if (ctx.role !== "owner" && ctx.role !== "manager" && ctx.role !== "tenant") {
       throw new AppError(
         "FORBIDDEN",
-        "Chức năng Trợ lý AI hiện chỉ dành cho Chủ nhà và Quản lý tòa nhà.",
+        "Bạn không có quyền truy cập chức năng này.",
         [],
       );
     }
