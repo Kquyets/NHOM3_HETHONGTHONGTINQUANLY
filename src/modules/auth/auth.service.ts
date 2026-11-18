@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { getDatabase } from "../../lib/database/client";
 import { refreshTokens, tenants, users } from "../../lib/database/schema";
 import { REFRESH_TOKEN_TTL_MS, signAccessToken } from "../../lib/auth/jwt";
@@ -143,17 +143,49 @@ export async function register(input: RegisterInput): Promise<{ user: UserPublic
 }
 
 /**
- * Authenticate with email + password, return tokens.
+ * Authenticate with email or phone + password, return tokens.
  */
 export async function login(input: LoginInput): Promise<{ user: UserPublic; tokens: AuthTokens }> {
-  const email = normalizeEmail(input.email);
+  const query = input.email.trim();
   const db = getDatabase();
 
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, email))
-    .limit(1);
+  const isEmail = query.includes("@");
+  let user: (typeof users.$inferSelect) | undefined;
+
+  if (isEmail) {
+    const normalized = normalizeEmail(query);
+    const [found] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, normalized))
+      .limit(1);
+    user = found;
+  } else {
+    // Phone query: match stripped or formatted numbers, or fallback email
+    const cleanPhone = query.replace(/[\s.-]/g, "");
+    const altPhone = cleanPhone.startsWith("+84")
+      ? "0" + cleanPhone.slice(3)
+      : cleanPhone.startsWith("84") && cleanPhone.length > 9
+        ? "0" + cleanPhone.slice(2)
+        : cleanPhone.startsWith("0")
+          ? "+84" + cleanPhone.slice(1)
+          : cleanPhone;
+
+    const [found] = await db
+      .select()
+      .from(users)
+      .where(
+        or(
+          eq(users.phone, query),
+          eq(users.phone, cleanPhone),
+          eq(users.phone, altPhone),
+          eq(users.email, query.toLowerCase()),
+          eq(users.email, `${cleanPhone}@hmanagers.local`),
+        ),
+      )
+      .limit(1);
+    user = found;
+  }
 
   // Constant-time guard: always hash even if user not found to prevent timing attacks
   const hashToCompare = user?.passwordHash ?? "$2a$12$invalidhashtopreventtimingattack";

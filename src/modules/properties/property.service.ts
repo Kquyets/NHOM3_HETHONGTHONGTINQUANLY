@@ -1,6 +1,7 @@
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import { getDatabase } from "../../lib/database/client";
 import { properties, propertyMembers, users } from "../../lib/database/schema";
+import { hashPassword } from "../../lib/auth/password";
 import { AppError } from "../../errors/app-error";
 import { createNotification } from "../notifications/notification.service";
 
@@ -415,6 +416,195 @@ export async function addPropertyMember(
     role: "manager",
     status: "active",
     createdAt: new Date(),
+  };
+}
+
+export interface CreateStaffInput {
+  fullName: string;
+  phone: string;
+  email?: string;
+  password?: string;
+  propertyIds: string[];
+}
+
+export type CreateStaffResult = {
+  user: {
+    id: string;
+    email: string;
+    fullName: string | null;
+    phone: string | null;
+    role: string;
+  };
+  initialPassword?: string;
+  assignments: Array<{
+    propertyId: string;
+    propertyName: string;
+  }>;
+  isNewUser: boolean;
+};
+
+/**
+ * Directly create a manager account and assign properties, or link existing account.
+ */
+export async function createAndAssignStaffMember(
+  ownerUserId: string,
+  ownerRole: string,
+  input: CreateStaffInput,
+): Promise<CreateStaffResult> {
+  const cleanPhone = input.phone.trim();
+  if (!cleanPhone) {
+    throw new AppError("VALIDATION_ERROR", "Số điện thoại nhân viên là bắt buộc.", [
+      { field: "phone", message: "Vui lòng nhập số điện thoại." },
+    ]);
+  }
+
+  if (!input.propertyIds || input.propertyIds.length === 0) {
+    throw new AppError("VALIDATION_ERROR", "Vui lòng chọn ít nhất một nhà trọ phân công.", [
+      { field: "propertyIds", message: "Vui lòng chọn ít nhất một nhà trọ." },
+    ]);
+  }
+
+  const db = getDatabase();
+
+  // Verify ownership of all target properties
+  for (const propertyId of input.propertyIds) {
+    await assertOwner(ownerUserId, ownerRole, propertyId);
+  }
+
+  // Check if user already exists by phone or email
+  const normalizedPhone = cleanPhone.replace(/[\s.-]/g, "");
+  const queryEmail = input.email?.trim().toLowerCase();
+
+  const [existingUser] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      fullName: users.fullName,
+      phone: users.phone,
+      role: users.role,
+    })
+    .from(users)
+    .where(
+      or(
+        eq(users.phone, cleanPhone),
+        eq(users.phone, normalizedPhone),
+        queryEmail ? eq(users.email, queryEmail) : sql`1=0`,
+      ),
+    )
+    .limit(1);
+
+  let targetUserId: string;
+  let targetUserEmail: string;
+  let targetUserFullName: string | null;
+  let targetUserPhone: string | null;
+  let targetRole: string;
+  let isNew = false;
+  const initialPassword = input.password?.trim() || "12345678";
+
+  if (existingUser) {
+    targetUserId = existingUser.id;
+    targetUserEmail = existingUser.email;
+    targetUserFullName = existingUser.fullName;
+    targetUserPhone = existingUser.phone;
+    targetRole = existingUser.role;
+  } else {
+    isNew = true;
+    const targetEmail = queryEmail || `${normalizedPhone}@hmanagers.local`;
+    const passwordHash = await hashPassword(initialPassword);
+
+    const [created] = await db
+      .insert(users)
+      .values({
+        email: targetEmail,
+        passwordHash,
+        role: "manager",
+        fullName: input.fullName.trim() || "Quản lý tòa nhà",
+        phone: cleanPhone,
+        status: "active",
+      })
+      .returning({
+        id: users.id,
+        email: users.email,
+        fullName: users.fullName,
+        phone: users.phone,
+        role: users.role,
+      });
+
+    if (!created) {
+      throw new AppError("DATABASE_ERROR", "Không thể tạo tài khoản nhân viên.");
+    }
+
+    targetUserId = created.id;
+    targetUserEmail = created.email;
+    targetUserFullName = created.fullName;
+    targetUserPhone = created.phone;
+    targetRole = created.role;
+  }
+
+  const assignments: Array<{ propertyId: string; propertyName: string }> = [];
+
+  for (const propertyId of input.propertyIds) {
+    // Check if already assigned
+    const [existingMember] = await db
+      .select({ id: propertyMembers.id, status: propertyMembers.status })
+      .from(propertyMembers)
+      .where(
+        and(
+          eq(propertyMembers.propertyId, propertyId),
+          eq(propertyMembers.userId, targetUserId),
+        ),
+      )
+      .limit(1);
+
+    if (existingMember) {
+      if (existingMember.status !== "active") {
+        await db
+          .update(propertyMembers)
+          .set({ status: "active" })
+          .where(eq(propertyMembers.id, existingMember.id));
+      }
+    } else {
+      await db.insert(propertyMembers).values({
+        propertyId,
+        userId: targetUserId,
+        managerRole: "manager",
+        status: "active",
+      });
+    }
+
+    const [prop] = await db
+      .select({ name: properties.name })
+      .from(properties)
+      .where(eq(properties.id, propertyId))
+      .limit(1);
+
+    const propName = prop?.name || "Nhà trọ";
+    assignments.push({ propertyId, propertyName: propName });
+
+    try {
+      await createNotification({
+        userId: targetUserId,
+        title: "Phân quyền quản lý nhà trọ",
+        message: `Bạn đã được phân quyền quản lý cơ sở: ${propName}.`,
+        type: "system",
+        link: "/properties",
+      });
+    } catch {
+      // Non-blocking
+    }
+  }
+
+  return {
+    user: {
+      id: targetUserId,
+      email: targetUserEmail,
+      fullName: targetUserFullName,
+      phone: targetUserPhone,
+      role: targetRole,
+    },
+    initialPassword: isNew ? initialPassword : undefined,
+    assignments,
+    isNewUser: isNew,
   };
 }
 

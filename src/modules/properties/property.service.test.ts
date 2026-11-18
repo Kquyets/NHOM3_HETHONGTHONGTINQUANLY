@@ -24,6 +24,7 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn().mockReturnValue({ type: "eq" }),
   and: vi.fn((...args) => ({ type: "and", args })),
   or: vi.fn((...args) => ({ type: "or", args })),
+  sql: vi.fn((...args) => ({ type: "sql", args })),
 }));
 
 type MockQueryBuilder = {
@@ -69,6 +70,7 @@ import {
   addPropertyMember,
   removePropertyMember,
   listAllStaffForOwner,
+  createAndAssignStaffMember,
 } from "./property.service";
 
 const OWNER = { userId: "owner-1", role: "owner" as const };
@@ -273,5 +275,45 @@ describe("property members management", () => {
     await expect(
       listAllStaffForOwner(MANAGER.userId, MANAGER.role),
     ).rejects.toThrow("Only owners can view global staff.");
+  });
+
+  describe("createAndAssignStaffMember", () => {
+    it("creates a new manager account and assigns to properties", async () => {
+      // assertOwner check
+      mockDb.select.mockReturnValueOnce(chain([{ id: "prop-1" }]));
+      // check existing user -> none
+      mockDb.select.mockReturnValueOnce(chain([]));
+      // insert user
+      mockDb.insert.mockReturnValueOnce(
+        chain([
+          {
+            id: "user-new",
+            email: "0912345678@hmanagers.local",
+            fullName: "Quản lý mới",
+            phone: "0912345678",
+            role: "manager",
+          },
+        ]),
+      );
+      // check existing member -> none
+      mockDb.select.mockReturnValueOnce(chain([]));
+      // insert propertyMembers
+      mockDb.insert.mockReturnValueOnce(chain([{ id: "pm-1" }]));
+      // fetch prop name for notification
+      mockDb.select.mockReturnValueOnce(chain([{ name: "Dãy trọ A" }]));
+
+      const result = await createAndAssignStaffMember(OWNER.userId, OWNER.role, {
+        fullName: "Quản lý mới",
+        phone: "0912345678",
+        propertyIds: ["prop-1"],
+      });
+
+      expect(result.isNewUser).toBe(true);
+      expect(result.user.id).toBe("user-new");
+      expect(result.user.phone).toBe("0912345678");
+      expect(result.initialPassword).toBe("12345678");
+      expect(result.assignments).toHaveLength(1);
+      expect(result.assignments[0].propertyName).toBe("Dãy trọ A");
+    });
   });
 });

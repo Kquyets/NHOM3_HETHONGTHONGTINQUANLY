@@ -4,6 +4,7 @@ import {
   listAllStaffForOwner,
   addPropertyMember,
   removePropertyMember,
+  createAndAssignStaffMember,
 } from "../../../modules/properties/property.service";
 import { errorResponse, successResponse } from "../../../utils/api-response";
 
@@ -18,19 +19,18 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
 }
 
-// POST /api/staff — Assign staff member to properties
+// POST /api/staff — Assign or directly create staff member for properties
 export async function POST(request: NextRequest): Promise<Response> {
   try {
     const ctx = getAuthContext(request);
     const body = await request.json().catch(() => null);
 
-    if (!body || typeof body.emailOrPhone !== "string" || !body.emailOrPhone.trim()) {
+    if (!body || typeof body !== "object") {
       return errorResponse(
-        Object.assign(new Error("emailOrPhone is required."), { code: "VALIDATION_ERROR" }),
+        Object.assign(new Error("Dữ liệu gửi lên không hợp lệ."), { code: "VALIDATION_ERROR" }),
       );
     }
 
-    const emailOrPhone = body.emailOrPhone.trim();
     const propertyIds: string[] = Array.isArray(body.propertyIds)
       ? body.propertyIds
       : body.propertyId
@@ -45,6 +45,36 @@ export async function POST(request: NextRequest): Promise<Response> {
       );
     }
 
+    // Direct account creation or if fullName/phone is provided
+    if (body.createAccount || body.mode === "create" || (body.phone && body.fullName)) {
+      const phone = typeof body.phone === "string" ? body.phone.trim() : "";
+      if (!phone) {
+        return errorResponse(
+          Object.assign(new Error("Số điện thoại là bắt buộc để tạo tài khoản nhân viên."), {
+            code: "VALIDATION_ERROR",
+          }),
+        );
+      }
+
+      const result = await createAndAssignStaffMember(ctx.userId, ctx.role, {
+        fullName: typeof body.fullName === "string" ? body.fullName : "",
+        phone,
+        email: typeof body.email === "string" && body.email.trim() ? body.email.trim() : undefined,
+        password: typeof body.password === "string" && body.password.trim() ? body.password.trim() : "12345678",
+        propertyIds,
+      });
+
+      return successResponse(result, { status: 201 });
+    }
+
+    // Assign existing user by emailOrPhone
+    if (typeof body.emailOrPhone !== "string" || !body.emailOrPhone.trim()) {
+      return errorResponse(
+        Object.assign(new Error("emailOrPhone is required."), { code: "VALIDATION_ERROR" }),
+      );
+    }
+
+    const emailOrPhone = body.emailOrPhone.trim();
     const results = [];
     for (const propertyId of propertyIds) {
       const member = await addPropertyMember(ctx.userId, ctx.role, propertyId, emailOrPhone);

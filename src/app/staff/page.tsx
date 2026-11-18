@@ -16,6 +16,10 @@ import {
   MagnifyingGlass,
   UserPlus,
   Sparkle,
+  Copy,
+  Check,
+  Eye,
+  EyeSlash,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
@@ -56,9 +60,23 @@ export default function StaffPage() {
 
   // Modal State
   const [showAddModal, setShowAddModal] = useState(false);
+  const [addMode, setAddMode] = useState<"create" | "assign">("create");
+  const [staffFullName, setStaffFullName] = useState("");
+  const [staffPhone, setStaffPhone] = useState("");
+  const [staffEmail, setStaffEmail] = useState("");
+  const [staffPassword, setStaffPassword] = useState("12345678");
+  const [showPassword, setShowPassword] = useState(false);
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [createdAccountInfo, setCreatedAccountInfo] = useState<{
+    fullName: string;
+    phone: string;
+    password?: string;
+    properties: string[];
+    isNewUser: boolean;
+  } | null>(null);
+  const [copiedInfo, setCopiedInfo] = useState(false);
 
   // Assign property to existing staff state
   const [assigningStaff, setAssigningStaff] = useState<StaffMember | null>(null);
@@ -99,24 +117,74 @@ export default function StaffPage() {
 
   const handleAddStaff = async (e: FormEvent) => {
     e.preventDefault();
-    if (!emailOrPhone.trim() || selectedPropertyIds.length === 0) {
-      setError("Vui lòng nhập email/SĐT và chọn ít nhất một nhà trọ phân công.");
+    if (selectedPropertyIds.length === 0) {
+      setError("Vui lòng chọn ít nhất một nhà trọ phân công quản lý.");
       return;
     }
 
     try {
       setSubmitting(true);
       setError(null);
-      await apiClient("/api/staff", {
-        method: "POST",
-        body: JSON.stringify({
-          emailOrPhone: emailOrPhone.trim(),
-          propertyIds: selectedPropertyIds,
-        }),
-      });
 
-      setSuccessMsg("Đã phân quyền nhân viên thành công!");
-      setShowAddModal(false);
+      if (addMode === "create") {
+        if (!staffPhone.trim()) {
+          setError("Vui lòng nhập Số điện thoại nhân viên (dùng làm tài khoản đăng nhập).");
+          return;
+        }
+
+        const res = await apiClient<{
+          user: { id: string; fullName: string | null; phone: string | null; email: string };
+          initialPassword?: string;
+          assignments: Array<{ propertyId: string; propertyName: string }>;
+          isNewUser: boolean;
+        }>("/api/staff", {
+          method: "POST",
+          body: JSON.stringify({
+            mode: "create",
+            fullName: staffFullName.trim() || undefined,
+            phone: staffPhone.trim(),
+            email: staffEmail.trim() || undefined,
+            password: staffPassword.trim() || "12345678",
+            propertyIds: selectedPropertyIds,
+          }),
+        });
+
+        setCreatedAccountInfo({
+          fullName: res.user.fullName || "Quản lý",
+          phone: res.user.phone || staffPhone.trim(),
+          password: res.initialPassword,
+          properties: res.assignments.map((a) => a.propertyName),
+          isNewUser: res.isNewUser,
+        });
+
+        setSuccessMsg(
+          res.isNewUser
+            ? `Đã tạo tài khoản Quản lý cho ${res.user.fullName || res.user.phone} thành công!`
+            : `Đã phân quyền quản lý cho ${res.user.fullName || res.user.phone}!`,
+        );
+      } else {
+        if (!emailOrPhone.trim()) {
+          setError("Vui lòng nhập Số điện thoại hoặc Gmail của nhân viên.");
+          return;
+        }
+
+        await apiClient("/api/staff", {
+          method: "POST",
+          body: JSON.stringify({
+            emailOrPhone: emailOrPhone.trim(),
+            propertyIds: selectedPropertyIds,
+          }),
+        });
+
+        setSuccessMsg("Đã phân quyền nhân viên thành công!");
+        setShowAddModal(false);
+      }
+
+      // Reset form fields
+      setStaffFullName("");
+      setStaffPhone("");
+      setStaffEmail("");
+      setStaffPassword("12345678");
       setEmailOrPhone("");
       setSelectedPropertyIds([]);
       await loadData();
@@ -570,14 +638,15 @@ export default function StaffPage() {
                   top: "50%",
                   left: "50%",
                   transform: "translate(-50%, -50%)",
-                  width: "90%",
-                  maxWidth: 480,
+                  width: "92%",
+                  maxWidth: 520,
+                  maxHeight: "90vh",
                   backgroundColor: "var(--color-bg-panel, #ffffff)",
                   borderRadius: 14,
                   boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
                   border: "1px solid var(--color-border)",
                   zIndex: 9999,
-                  overflow: "hidden",
+                  overflowY: "auto",
                 }}
               >
                 <div
@@ -595,103 +664,344 @@ export default function StaffPage() {
                   </h3>
                   <button
                     type="button"
-                    onClick={() => setShowAddModal(false)}
+                    onClick={() => {
+                      setShowAddModal(false);
+                      setCreatedAccountInfo(null);
+                    }}
                     style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-fg-3)" }}
                   >
                     <X size={18} />
                   </button>
                 </div>
 
-                <form onSubmit={handleAddStaff} style={{ padding: "20px" }}>
-                  <div className="form-group" style={{ marginBottom: 16 }}>
-                    <label htmlFor="staff-account" style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>
-                      Email hoặc Số điện thoại tài khoản nhân viên *
-                    </label>
-                    <input
-                      id="staff-account"
-                      type="text"
-                      className="form-control"
-                      placeholder="VD: nhanvien@example.com hoặc 0912345678"
-                      value={emailOrPhone}
-                      onChange={(e) => setEmailOrPhone(e.target.value)}
-                      required
-                      autoFocus
-                    />
-                    <p className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
-                      Lưu ý: Nhân viên cần đã tạo tài khoản trên hệ thống HManagers trước khi được phân quyền.
-                    </p>
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: 20 }}>
-                    <label style={{ fontWeight: 600, fontSize: "var(--text-sm)", display: "block", marginBottom: 8 }}>
-                      Chọn nhà trọ phân công quản lý *
-                    </label>
-                    {properties.length === 0 ? (
-                      <p className="text-muted text-sm">Chưa có nhà trọ nào để phân công.</p>
-                    ) : (
+                {createdAccountInfo ? (
+                  <div style={{ padding: "24px 20px" }}>
+                    <div style={{ textAlign: "center", marginBottom: 18 }}>
                       <div
                         style={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: "50%",
+                          background: "rgba(16, 185, 129, 0.12)",
+                          color: "var(--color-success)",
                           display: "flex",
-                          flexDirection: "column",
-                          gap: 8,
-                          maxHeight: 180,
-                          overflowY: "auto",
-                          padding: 8,
-                          borderRadius: 8,
-                          border: "1px solid var(--color-border)",
-                          backgroundColor: "var(--color-bg-subtle, rgba(0,0,0,0.02))",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          margin: "0 auto 12px",
                         }}
                       >
-                        {properties.map((p) => {
-                          const isChecked = selectedPropertyIds.includes(p.id);
-                          return (
-                            <label
-                              key={p.id}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 8,
-                                fontSize: "var(--text-sm)",
-                                cursor: "pointer",
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedPropertyIds([...selectedPropertyIds, p.id]);
-                                  } else {
-                                    setSelectedPropertyIds(selectedPropertyIds.filter((id) => id !== p.id));
-                                  }
-                                }}
-                              />
-                              <span>🏠 {p.name}</span>
-                            </label>
-                          );
-                        })}
+                        <CheckCircle size={28} weight="fill" />
                       </div>
-                    )}
-                  </div>
+                      <h3 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 6px" }}>
+                        {createdAccountInfo.isNewUser ? "Tài khoản Quản lý đã sẵn sàng!" : "Đã phân quyền Quản lý thành công!"}
+                      </h3>
+                      <p style={{ color: "var(--color-fg-2)", fontSize: 13, margin: 0 }}>
+                        {createdAccountInfo.isNewUser
+                          ? "Bạn có thể sao chép thông tin đăng nhập bên dưới để gửi cho người quản lý."
+                          : "Tài khoản đã được gán quyền quản lý các cơ sở được chỉ định."}
+                      </p>
+                    </div>
 
-                  <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                    <button
-                      type="button"
-                      className="btn-ghost"
-                      onClick={() => setShowAddModal(false)}
-                      disabled={submitting}
+                    <div
+                      style={{
+                        background: "var(--color-bg-subtle, rgba(0,0,0,0.03))",
+                        borderRadius: "var(--radius-md)",
+                        padding: "14px 16px",
+                        border: "1px solid var(--color-border)",
+                        marginBottom: 18,
+                        fontSize: 13.5,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 9,
+                      }}
                     >
-                      Hủy
-                    </button>
-                    <button
-                      type="submit"
-                      className="btn-primary"
-                      disabled={submitting || !emailOrPhone.trim() || selectedPropertyIds.length === 0}
-                    >
-                      {submitting ? "Đang phân quyền..." : "Xác nhận phân quyền"}
-                    </button>
+                      <div>
+                        <span style={{ color: "var(--color-fg-3)" }}>Người quản lý: </span>
+                        <strong>{createdAccountInfo.fullName}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: "var(--color-fg-3)" }}>Tài khoản đăng nhập (SĐT): </span>
+                        <strong style={{ color: "var(--color-primary)" }}>{createdAccountInfo.phone}</strong>
+                      </div>
+                      {createdAccountInfo.password && (
+                        <div>
+                          <span style={{ color: "var(--color-fg-3)" }}>Mật khẩu đăng nhập: </span>
+                          <strong style={{ color: "var(--color-primary)", letterSpacing: "0.03em" }}>
+                            {createdAccountInfo.password}
+                          </strong>
+                        </div>
+                      )}
+                      <div>
+                        <span style={{ color: "var(--color-fg-3)" }}>Cơ sở quản lý: </span>
+                        <span>{createdAccountInfo.properties.join(", ")}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                      {createdAccountInfo.password && (
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          style={{ display: "flex", alignItems: "center", gap: 6 }}
+                          onClick={() => {
+                            const textToCopy = `HManagers - Thông tin tài khoản Quản lý nhà trọ:\n- Người quản lý: ${createdAccountInfo.fullName}\n- Tài khoản đăng nhập (SĐT): ${createdAccountInfo.phone}\n- Mật khẩu: ${createdAccountInfo.password}\n- Cơ sở: ${createdAccountInfo.properties.join(", ")}\nĐăng nhập tại trang web HManagers: ${window.location.origin}/login`;
+                            navigator.clipboard.writeText(textToCopy);
+                            setCopiedInfo(true);
+                            setTimeout(() => setCopiedInfo(false), 2500);
+                          }}
+                        >
+                          {copiedInfo ? <Check size={16} color="var(--color-success)" /> : <Copy size={16} />}
+                          {copiedInfo ? "Đã sao chép!" : "Sao chép gửi Zalo"}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={() => {
+                          setCreatedAccountInfo(null);
+                          setShowAddModal(false);
+                        }}
+                      >
+                        Hoàn tất
+                      </button>
+                    </div>
                   </div>
-                </form>
+                ) : (
+                  <>
+                    {/* Tabs */}
+                    <div style={{ display: "flex", borderBottom: "1px solid var(--color-border)", padding: "0 20px" }}>
+                      <button
+                        type="button"
+                        onClick={() => setAddMode("create")}
+                        style={{
+                          padding: "12px 14px",
+                          fontSize: 13.5,
+                          fontWeight: 600,
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          color: addMode === "create" ? "var(--color-primary)" : "var(--color-fg-3)",
+                          borderBottom: addMode === "create" ? "2px solid var(--color-primary)" : "2px solid transparent",
+                          marginBottom: -1,
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        ✨ Tạo tài khoản Quản lý mới
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAddMode("assign")}
+                        style={{
+                          padding: "12px 14px",
+                          fontSize: 13.5,
+                          fontWeight: 600,
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          color: addMode === "assign" ? "var(--color-primary)" : "var(--color-fg-3)",
+                          borderBottom: addMode === "assign" ? "2px solid var(--color-primary)" : "2px solid transparent",
+                          marginBottom: -1,
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        🔗 Phân quyền tài khoản có sẵn
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleAddStaff} style={{ padding: "20px" }}>
+                      {addMode === "create" ? (
+                        <>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label htmlFor="staffFullName" style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>
+                                Họ và tên quản lý *
+                              </label>
+                              <input
+                                id="staffFullName"
+                                type="text"
+                                className="form-control"
+                                placeholder="VD: Nguyễn Văn B"
+                                value={staffFullName}
+                                onChange={(e) => setStaffFullName(e.target.value)}
+                                required
+                                autoFocus
+                              />
+                            </div>
+
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label htmlFor="staffPhone" style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>
+                                Số điện thoại đăng nhập *
+                              </label>
+                              <input
+                                id="staffPhone"
+                                type="tel"
+                                className="form-control"
+                                placeholder="VD: 0912 345 678"
+                                value={staffPhone}
+                                onChange={(e) => setStaffPhone(e.target.value)}
+                                required
+                              />
+                            </div>
+                          </div>
+
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label htmlFor="staffEmail" style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>
+                                Gmail / Email <span style={{ fontWeight: 400, color: "var(--color-fg-3)" }}>(tùy chọn)</span>
+                              </label>
+                              <input
+                                id="staffEmail"
+                                type="email"
+                                className="form-control"
+                                placeholder="quanly@gmail.com"
+                                value={staffEmail}
+                                onChange={(e) => setStaffEmail(e.target.value)}
+                              />
+                            </div>
+
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label htmlFor="staffPassword" style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>
+                                Mật khẩu khởi tạo *
+                              </label>
+                              <div style={{ position: "relative" }}>
+                                <input
+                                  id="staffPassword"
+                                  type={showPassword ? "text" : "password"}
+                                  className="form-control"
+                                  style={{ paddingRight: 40 }}
+                                  placeholder="Mật khẩu"
+                                  value={staffPassword}
+                                  onChange={(e) => setStaffPassword(e.target.value)}
+                                  required
+                                  minLength={6}
+                                />
+                                <button
+                                  type="button"
+                                  className="input-icon-btn"
+                                  onClick={() => setShowPassword((v) => !v)}
+                                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                                >
+                                  {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div
+                            style={{
+                              background: "rgba(99, 102, 241, 0.08)",
+                              borderRadius: "var(--radius-md)",
+                              padding: "8px 12px",
+                              fontSize: 12,
+                              color: "var(--color-fg-2)",
+                              lineHeight: 1.5,
+                              marginBottom: 16,
+                            }}
+                          >
+                            💡 Người quản lý sẽ dùng <strong>Số điện thoại</strong> và <strong>Mật khẩu</strong> trên để đăng nhập trực tiếp tại trang đăng nhập.
+                          </div>
+                        </>
+                      ) : (
+                        <div className="form-group" style={{ marginBottom: 16 }}>
+                          <label htmlFor="staff-account" style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>
+                            Số điện thoại hoặc Gmail tài khoản nhân viên *
+                          </label>
+                          <input
+                            id="staff-account"
+                            type="text"
+                            className="form-control"
+                            placeholder="VD: 0912 345 678 hoặc quanly@gmail.com"
+                            value={emailOrPhone}
+                            onChange={(e) => setEmailOrPhone(e.target.value)}
+                            required
+                            autoFocus
+                          />
+                          <p className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
+                            Lưu ý: Nhân viên cần đã có tài khoản trên hệ thống HManagers.
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="form-group" style={{ marginBottom: 20 }}>
+                        <label style={{ fontWeight: 600, fontSize: "var(--text-sm)", display: "block", marginBottom: 8 }}>
+                          Chọn nhà trọ phân công quản lý *
+                        </label>
+                        {properties.length === 0 ? (
+                          <p className="text-muted text-sm">Chưa có nhà trọ nào để phân công.</p>
+                        ) : (
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 8,
+                              maxHeight: 160,
+                              overflowY: "auto",
+                              padding: 8,
+                              borderRadius: 8,
+                              border: "1px solid var(--color-border)",
+                              backgroundColor: "var(--color-bg-subtle, rgba(0,0,0,0.02))",
+                            }}
+                          >
+                            {properties.map((p) => {
+                              const isChecked = selectedPropertyIds.includes(p.id);
+                              return (
+                                <label
+                                  key={p.id}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8,
+                                    fontSize: "var(--text-sm)",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedPropertyIds([...selectedPropertyIds, p.id]);
+                                      } else {
+                                        setSelectedPropertyIds(selectedPropertyIds.filter((id) => id !== p.id));
+                                      }
+                                    }}
+                                  />
+                                  <span>🏠 {p.name}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                        <button
+                          type="button"
+                          className="btn-ghost"
+                          onClick={() => setShowAddModal(false)}
+                          disabled={submitting}
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          type="submit"
+                          className="btn-primary"
+                          disabled={
+                            submitting ||
+                            selectedPropertyIds.length === 0 ||
+                            (addMode === "create" ? !staffPhone.trim() || !staffFullName.trim() : !emailOrPhone.trim())
+                          }
+                        >
+                          {submitting
+                            ? "Đang xử lý..."
+                            : addMode === "create"
+                            ? "Tạo tài khoản & Phân quyền"
+                            : "Xác nhận phân quyền"}
+                        </button>
+                      </div>
+                    </form>
+                  </>
+                )}
               </motion.div>
             </>
           )}

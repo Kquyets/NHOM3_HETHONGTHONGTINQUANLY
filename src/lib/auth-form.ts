@@ -1,9 +1,10 @@
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_PATTERN = /^\+?[0-9\s.-]{9,15}$/;
 
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
-  "Invalid email or password.": "Email hoặc mật khẩu không chính xác.",
+  "Invalid email or password.": "Số điện thoại / Gmail hoặc mật khẩu không chính xác.",
   "Account is disabled.": "Tài khoản của bạn đã bị vô hiệu hóa.",
-  "Email is required.": "Vui lòng nhập địa chỉ email.",
+  "Email is required.": "Vui lòng nhập số điện thoại hoặc email.",
   "Password is required.": "Vui lòng nhập mật khẩu.",
   "Email already registered.": "Email này đã được đăng ký.",
   "An account with this email already exists.": "Email này đã được đăng ký.",
@@ -22,18 +23,20 @@ export type RegisterValidationResult =
   | { ok: true; email: string }
   | { ok: false; error: string };
 
-export function validateLoginForm(email: string, password: string): LoginValidationResult {
-  const trimmedEmail = email.trim();
-  if (!trimmedEmail) {
-    return { ok: false, error: "Vui lòng nhập địa chỉ email." };
+export function validateLoginForm(emailOrPhone: string, password: string): LoginValidationResult {
+  const trimmed = emailOrPhone.trim();
+  if (!trimmed) {
+    return { ok: false, error: "Vui lòng nhập địa chỉ email hoặc số điện thoại." };
   }
-  if (!EMAIL_PATTERN.test(trimmedEmail)) {
-    return { ok: false, error: "Địa chỉ email không đúng định dạng." };
+  const cleanPhone = trimmed.replace(/[\s.-]/g, "");
+  const isPhoneValid = /^\+?[0-9]{9,15}$/.test(cleanPhone);
+  if (!isPhoneValid && !EMAIL_PATTERN.test(trimmed)) {
+    return { ok: false, error: "Địa chỉ email hoặc số điện thoại không đúng định dạng." };
   }
   if (!password) {
     return { ok: false, error: "Vui lòng nhập mật khẩu." };
   }
-  return { ok: true, email: trimmedEmail, password };
+  return { ok: true, email: trimmed, password };
 }
 
 export function validateRegisterForm(input: {

@@ -8,6 +8,7 @@ import {
   Eye,
   EyeSlash,
   EnvelopeSimple,
+  Phone,
   LockSimple,
   ArrowRight,
   House,
@@ -156,7 +157,7 @@ export default function LoginPage() {
                 Đăng nhập hệ thống
               </h1>
               <p style={{ color: "var(--color-fg-2)", fontSize: 14 }}>
-                Chào mừng trở lại! Vui lòng nhập email và mật khẩu của bạn.
+                Chào mừng trở lại! Vui lòng nhập Số điện thoại hoặc Gmail và mật khẩu của bạn.
               </p>
             </div>
 
@@ -178,9 +179,9 @@ export default function LoginPage() {
 
             {/* Form */}
             <form onSubmit={handleSubmit} noValidate>
-              {/* Email */}
+              {/* Phone or Email */}
               <div className="form-group">
-                <label htmlFor="email">Địa chỉ Email</label>
+                <label htmlFor="email">Số điện thoại hoặc Gmail</label>
                 <div style={{ position: "relative" }}>
                   <span
                     style={{
@@ -193,19 +194,23 @@ export default function LoginPage() {
                       pointerEvents: "none",
                     }}
                   >
-                    <EnvelopeSimple size={17} />
+                    {/^[0-9+]/.test(email.trim()) ? (
+                      <Phone size={17} />
+                    ) : (
+                      <EnvelopeSimple size={17} />
+                    )}
                   </span>
                   <input
                     ref={emailRef}
                     id="email"
-                    type="email"
+                    type="text"
                     className="form-control"
                     style={{ paddingLeft: 38 }}
-                    placeholder="chu-nha@example.com"
+                    placeholder="0912 345 678 hoặc ten@gmail.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    autoComplete="email"
+                    autoComplete="username"
                   />
                 </div>
               </div>

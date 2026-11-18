@@ -171,6 +171,26 @@ describe("auth.service", () => {
       );
     });
 
+    it("authenticates using phone number successfully", async () => {
+      const user = {
+        id: "uuid-phone",
+        email: "manager@test.com",
+        phone: "0912345678",
+        role: "manager" as const,
+        status: "active" as const,
+        passwordHash: "hashed:phonepass",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockDb.select.mockReturnValueOnce(makeChain([user]));
+      mockDb.insert.mockReturnValueOnce(makeChain([{ id: "rt-phone" }]));
+
+      const result = await login({ email: "0912345678", password: "phonepass" });
+      expect(result.user.id).toBe("uuid-phone");
+      expect(result.user.role).toBe("manager");
+    });
+
     it("throws UNAUTHORIZED on wrong password", async () => {
       const user = {
         id: "uuid-1",

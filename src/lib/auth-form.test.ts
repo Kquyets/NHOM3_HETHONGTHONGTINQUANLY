@@ -9,17 +9,17 @@ import {
 
 describe("auth-form helpers", () => {
   describe("validateLoginForm", () => {
-    it("rejects empty or whitespace-only email", () => {
+    it("rejects empty or whitespace-only email or phone", () => {
       expect(validateLoginForm("   ", "secret")).toEqual({
         ok: false,
-        error: "Vui lòng nhập địa chỉ email.",
+        error: "Vui lòng nhập địa chỉ email hoặc số điện thoại.",
       });
     });
 
-    it("rejects malformed email address", () => {
+    it("rejects malformed email address and phone", () => {
       expect(validateLoginForm("not-an-email", "secret")).toEqual({
         ok: false,
-        error: "Địa chỉ email không đúng định dạng.",
+        error: "Địa chỉ email hoặc số điện thoại không đúng định dạng.",
       });
     });
 
@@ -34,6 +34,19 @@ describe("auth-form helpers", () => {
       expect(validateLoginForm("  owner.demo@example.com  ", "DemoPassword123!")).toEqual({
         ok: true,
         email: "owner.demo@example.com",
+        password: "DemoPassword123!",
+      });
+    });
+
+    it("accepts valid phone numbers for login", () => {
+      expect(validateLoginForm("0912 345 678", "DemoPassword123!")).toEqual({
+        ok: true,
+        email: "0912 345 678",
+        password: "DemoPassword123!",
+      });
+      expect(validateLoginForm("+84912345678", "DemoPassword123!")).toEqual({
+        ok: true,
+        email: "+84912345678",
         password: "DemoPassword123!",
       });
     });
@@ -90,7 +103,7 @@ describe("auth-form helpers", () => {
           new ApiRequestError("Invalid email or password.", "UNAUTHORIZED", 401),
           "Đăng nhập thất bại.",
         ),
-      ).toBe("Email hoặc mật khẩu không chính xác.");
+      ).toBe("Số điện thoại / Gmail hoặc mật khẩu không chính xác.");
 
       expect(
         formatAuthError(
@@ -111,7 +124,7 @@ describe("auth-form helpers", () => {
           new ApiRequestError("Email is required.", "VALIDATION_ERROR", 400),
           "Đăng nhập thất bại.",
         ),
-      ).toBe("Vui lòng nhập địa chỉ email.");
+      ).toBe("Vui lòng nhập số điện thoại hoặc email.");
 
       expect(
         formatAuthError(
