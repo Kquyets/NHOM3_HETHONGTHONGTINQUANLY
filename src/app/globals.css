@@ -869,6 +869,96 @@ table.data-table tbody tr:last-child td {
 }
 
 /* --------------------------------------------------------------------------
+   9b. Matrix / Spreadsheet Table (Utility & Billing High-Density Grid)
+   -------------------------------------------------------------------------- */
+.matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: var(--color-surface);
+  table-layout: auto;
+}
+
+.matrix-table th {
+  padding: 8px 10px;
+  background: var(--color-surface-2);
+  color: var(--color-fg-2);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.matrix-table th.matrix-th-group {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-fg);
+  padding: 8px 8px 4px 8px;
+}
+
+.matrix-table th.matrix-th-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-fg-3);
+  padding: 4px 8px 7px 8px;
+  background: var(--color-surface-2);
+}
+
+.matrix-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border-soft);
+  color: var(--color-fg);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.matrix-table tbody tr {
+  transition: background-color 0.1s ease;
+}
+
+.matrix-table tbody tr:hover td {
+  background: var(--color-surface-2);
+}
+
+.matrix-table .matrix-summary-row td {
+  background: var(--color-surface-2);
+  font-weight: 600;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.matrix-input {
+  width: 100%;
+  max-width: 72px;
+  height: 28px;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  font-family: inherit;
+  color: var(--color-fg);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 4px);
+  text-align: right;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.matrix-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+  box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.25);
+}
+
+.matrix-input-primary {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* --------------------------------------------------------------------------
    10. Badges (Pastel Glass Pill Tags)
    -------------------------------------------------------------------------- */
 .badge {

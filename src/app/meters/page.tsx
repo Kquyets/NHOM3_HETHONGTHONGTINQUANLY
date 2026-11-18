@@ -541,17 +541,17 @@ export default function MetersPage() {
           <motion.button
             type="button"
             className={activeTab === "matrix" ? "btn-primary" : "btn-ghost"}
-            style={{ padding: "6px 16px", fontSize: "var(--text-sm)" }}
+            style={{ padding: "6px 14px", fontSize: "var(--text-sm)" }}
             onClick={() => setActiveTab("matrix")}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            Báo cáo khách sử dụng &amp; Nhập hàng loạt
+            Nhập chỉ số hàng loạt
           </motion.button>
           <motion.button
             type="button"
             className={activeTab === "rates" ? "btn-primary" : "btn-ghost"}
-            style={{ padding: "6px 16px", fontSize: "var(--text-sm)" }}
+            style={{ padding: "6px 14px", fontSize: "var(--text-sm)" }}
             onClick={() => setActiveTab("rates")}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -561,7 +561,7 @@ export default function MetersPage() {
           <motion.button
             type="button"
             className={activeTab === "readings" ? "btn-primary" : "btn-ghost"}
-            style={{ padding: "6px 16px", fontSize: "var(--text-sm)" }}
+            style={{ padding: "6px 14px", fontSize: "var(--text-sm)" }}
             onClick={() => setActiveTab("readings")}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -570,15 +570,15 @@ export default function MetersPage() {
           </motion.button>
         </div>
 
-        {/* ── TAB 1: BULK USAGE MATRIX (LOZIDO STYLE) ───────────────────── */}
+        {/* ── TAB 1: BULK USAGE MATRIX ────────────────────────────────────── */}
         {activeTab === "matrix" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {/* Top filter bar: Select Property & Month */}
             <div style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "12px var(--space-3)",
+              padding: "10px var(--space-3)",
               backgroundColor: "var(--color-bg)",
               borderRadius: "var(--radius-lg)",
               border: "1px solid var(--color-border)",
@@ -593,7 +593,7 @@ export default function MetersPage() {
                   <select
                     id="m-prop"
                     className="form-control"
-                    style={{ minWidth: 200, height: 36, fontSize: "var(--text-xs)" }}
+                    style={{ minWidth: 180, height: 34, fontSize: "var(--text-xs)" }}
                     value={selectedPropertyId}
                     onChange={(e) => setSelectedPropertyId(e.target.value)}
                   >
@@ -607,14 +607,14 @@ export default function MetersPage() {
 
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <label htmlFor="m-month" style={{ fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--color-fg-3)", margin: 0 }}>
-                    Tháng lập phiếu:
+                    Tháng:
                   </label>
                   <div style={{ position: "relative" }}>
                     <input
                       id="m-month"
                       type="month"
                       className="form-control"
-                      style={{ height: 36, fontSize: "var(--text-xs)" }}
+                      style={{ height: 34, fontSize: "var(--text-xs)" }}
                       value={billingMonth}
                       onChange={(e) => setBillingMonth(e.target.value)}
                     />
@@ -622,72 +622,70 @@ export default function MetersPage() {
                 </div>
               </div>
 
-              {/* Rates preview badges */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "var(--text-xs)", color: "var(--color-fg-2)" }}>
-                <span className="badge neutral" style={{ fontSize: 11, padding: "3px 8px" }}>
-                  ⚡ Điện: <strong>{money.format(activeElecRate)}/kWh</strong>
-                </span>
-                <span className="badge neutral" style={{ fontSize: 11, padding: "3px 8px" }}>
-                  💧 Nước: <strong>{money.format(activeWaterRate)}/người</strong>
-                </span>
-                <span className="badge neutral" style={{ fontSize: 11, padding: "3px 8px" }}>
-                  📶 Wifi: <strong>{money.format(fixedWifiRate)}/phòng</strong>
-                </span>
-                <span className="badge neutral" style={{ fontSize: 11, padding: "3px 8px" }}>
-                  🛵 Gửi xe: <strong>{money.format(fixedVehicleRate)}/xe</strong>
-                </span>
+              {/* Rates preview summary */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: "11.5px", color: "var(--color-fg-3)", flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 600, color: "var(--color-fg-2)" }}>Đơn giá:</span>
+                <span>Điện: <strong style={{ color: "var(--color-fg)" }}>{money.format(activeElecRate)}/kWh</strong></span>
+                <span style={{ color: "var(--color-border)" }}>•</span>
+                <span>Nước: <strong style={{ color: "var(--color-fg)" }}>{money.format(activeWaterRate)}/người</strong></span>
+                <span style={{ color: "var(--color-border)" }}>•</span>
+                <span>Wifi: <strong style={{ color: "var(--color-fg)" }}>{money.format(fixedWifiRate)}/tháng</strong></span>
+                <span style={{ color: "var(--color-border)" }}>•</span>
+                <span>Gửi xe: <strong style={{ color: "var(--color-fg)" }}>{money.format(fixedVehicleRate)}/xe</strong></span>
               </div>
             </div>
 
-            {/* Matrix Table with Summary Row at top */}
+            {/* Matrix Table with Clean Layout */}
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-              <div className="table-responsive">
-                <table className="data-table" style={{ width: "100%", textAlign: "left" }}>
+              <div className="table-responsive" style={{ overflowX: "auto" }}>
+                <table className="matrix-table" style={{ width: "100%", textAlign: "left" }}>
                   <thead>
-                    <tr style={{ backgroundColor: "var(--color-bg-subtle)" }}>
-                      <th style={{ minWidth: 120 }}>Tên phòng</th>
-                      <th colSpan={4} style={{ textAlign: "center", borderLeft: "1px solid var(--color-border)", borderRight: "1px solid var(--color-border)" }}>
-                        ⚡ Tiền điện ({money.format(activeElecRate)}/kWh)
+                    <tr>
+                      <th rowSpan={2} style={{ minWidth: 90, verticalAlign: "middle" }}>
+                        Phòng
                       </th>
-                      <th colSpan={2} style={{ textAlign: "center", borderRight: "1px solid var(--color-border)" }}>
-                        💧 Tiền nước ({money.format(activeWaterRate)}/người)
+                      <th colSpan={4} style={{ textAlign: "center", borderLeft: "1px solid var(--color-border)", borderRight: "1px solid var(--color-border)" }} className="matrix-th-group">
+                        Điện ({money.format(activeElecRate)}/kWh)
                       </th>
-                      <th style={{ textAlign: "center", borderRight: "1px solid var(--color-border)" }}>
-                        📶 Wifi ({money.format(fixedWifiRate)}/tháng)
+                      <th colSpan={2} style={{ textAlign: "center", borderRight: "1px solid var(--color-border)" }} className="matrix-th-group">
+                        Nước ({money.format(activeWaterRate)}/người)
                       </th>
-                      <th colSpan={2} style={{ textAlign: "center", borderRight: "1px solid var(--color-border)" }}>
-                        🛵 Giữ xe ({money.format(fixedVehicleRate)}/xe)
+                      <th rowSpan={2} style={{ textAlign: "right", borderRight: "1px solid var(--color-border)", minWidth: 75, verticalAlign: "middle" }}>
+                        <div>Wifi</div>
+                        <div style={{ fontSize: 10, fontWeight: 400, color: "var(--color-fg-3)" }}>{money.format(fixedWifiRate)}</div>
                       </th>
-                      <th style={{ textAlign: "right" }}>Tổng tiền dịch vụ</th>
+                      <th colSpan={2} style={{ textAlign: "center", borderRight: "1px solid var(--color-border)" }} className="matrix-th-group">
+                        Gửi xe ({money.format(fixedVehicleRate)}/xe)
+                      </th>
+                      <th rowSpan={2} style={{ textAlign: "right", minWidth: 95, verticalAlign: "middle" }}>
+                        Tổng dịch vụ
+                      </th>
                     </tr>
-                    <tr style={{ fontSize: "11px", color: "var(--color-fg-3)", borderBottom: "2px solid var(--color-border)" }}>
-                      <th></th>
-                      <th style={{ borderLeft: "1px solid var(--color-border)", width: 75 }}>Số cũ</th>
-                      <th style={{ width: 85 }}>Số mới</th>
-                      <th style={{ width: 65 }}>Sử dụng</th>
-                      <th style={{ borderRight: "1px solid var(--color-border)", width: 95 }}>Thành tiền</th>
-                      <th style={{ width: 75 }}>Số người</th>
-                      <th style={{ borderRight: "1px solid var(--color-border)", width: 95 }}>Thành tiền</th>
-                      <th style={{ borderRight: "1px solid var(--color-border)", width: 95, textAlign: "center" }}>Thành tiền</th>
-                      <th style={{ width: 65 }}>Số xe</th>
-                      <th style={{ borderRight: "1px solid var(--color-border)", width: 95 }}>Thành tiền</th>
-                      <th style={{ textAlign: "right", width: 120 }}>Thành tiền</th>
+                    <tr className="matrix-th-sub">
+                      <th style={{ borderLeft: "1px solid var(--color-border)", width: 60, textAlign: "right" }}>Số cũ</th>
+                      <th style={{ width: 68, textAlign: "right" }}>Số mới</th>
+                      <th style={{ width: 48, textAlign: "right" }}>Dùng</th>
+                      <th style={{ borderRight: "1px solid var(--color-border)", width: 80, textAlign: "right" }}>Tiền điện</th>
+                      <th style={{ width: 50, textAlign: "right" }}>Số người</th>
+                      <th style={{ borderRight: "1px solid var(--color-border)", width: 80, textAlign: "right" }}>Tiền nước</th>
+                      <th style={{ width: 48, textAlign: "right" }}>Số xe</th>
+                      <th style={{ borderRight: "1px solid var(--color-border)", width: 80, textAlign: "right" }}>Tiền xe</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {/* Top Summary Row (Matching LOZIDO) */}
-                    <tr style={{ backgroundColor: "rgba(37, 99, 235, 0.05)", fontWeight: 700, borderBottom: "2px solid var(--color-border)" }}>
-                      <td style={{ color: "var(--color-primary)" }}>Tổng cộng cả nhà:</td>
-                      <td style={{ borderLeft: "1px solid var(--color-border)" }}>—</td>
-                      <td>—</td>
-                      <td style={{ color: "var(--color-primary)", fontVariantNumeric: "tabular-nums" }}>{totalElecKWh.toFixed(0)} kWh</td>
-                      <td style={{ borderRight: "1px solid var(--color-border)", color: "var(--color-primary)", fontVariantNumeric: "tabular-nums" }}>{money.format(totalElecCost)}</td>
-                      <td style={{ fontVariantNumeric: "tabular-nums" }}>{totalWaterOccupants} người</td>
-                      <td style={{ borderRight: "1px solid var(--color-border)", color: "var(--color-primary)", fontVariantNumeric: "tabular-nums" }}>{money.format(totalWaterCost)}</td>
-                      <td style={{ borderRight: "1px solid var(--color-border)", color: "var(--color-primary)", textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{money.format(totalWifiCost)}</td>
-                      <td style={{ fontVariantNumeric: "tabular-nums" }}>{totalVehicleCount} xe</td>
-                      <td style={{ borderRight: "1px solid var(--color-border)", color: "var(--color-primary)", fontVariantNumeric: "tabular-nums" }}>{money.format(totalVehicleCost)}</td>
-                      <td style={{ textAlign: "right", color: "var(--color-primary)", fontSize: "var(--text-sm)", fontVariantNumeric: "tabular-nums" }}>{money.format(grandTotalServices)}</td>
+                    {/* Top Summary Row */}
+                    <tr className="matrix-summary-row">
+                      <td style={{ fontWeight: 700, color: "var(--color-fg)" }}>Tổng cộng:</td>
+                      <td style={{ borderLeft: "1px solid var(--color-border)", textAlign: "center", color: "var(--color-fg-3)" }}>—</td>
+                      <td style={{ textAlign: "center", color: "var(--color-fg-3)" }}>—</td>
+                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{totalElecKWh.toFixed(0)} kWh</td>
+                      <td style={{ borderRight: "1px solid var(--color-border)", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{money.format(totalElecCost)}</td>
+                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{totalWaterOccupants} ng</td>
+                      <td style={{ borderRight: "1px solid var(--color-border)", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{money.format(totalWaterCost)}</td>
+                      <td style={{ borderRight: "1px solid var(--color-border)", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{money.format(totalWifiCost)}</td>
+                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{totalVehicleCount} xe</td>
+                      <td style={{ borderRight: "1px solid var(--color-border)", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{money.format(totalVehicleCost)}</td>
+                      <td style={{ textAlign: "right", fontWeight: 700, color: "var(--color-primary)", fontVariantNumeric: "tabular-nums" }}>{money.format(grandTotalServices)}</td>
                     </tr>
 
                     {/* Room rows */}
@@ -714,20 +712,16 @@ export default function MetersPage() {
                         const roomTotal = elecCost + waterCost + wifiCost + vehicleCost;
 
                         return (
-                          <tr key={room.id} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                          <tr key={room.id}>
                             <td style={{ fontWeight: 600 }}>
-                              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                <Door size={14} style={{ color: "var(--color-fg-3)" }} />
-                                Phòng {room.roomNumber}
-                              </span>
+                              Phòng {room.roomNumber}
                             </td>
 
                             {/* Electricity: prev, curr input, usage, cost */}
                             <td style={{ borderLeft: "1px solid var(--color-border)" }}>
                               <input
                                 type="number"
-                                className="form-control"
-                                style={{ width: 68, height: 28, fontSize: 11, padding: "2px 6px" }}
+                                className="matrix-input"
                                 value={entry.prevElec}
                                 onChange={(e) => updateMatrixField(room.id, "prevElec", parseFloat(e.target.value) || 0)}
                               />
@@ -735,16 +729,15 @@ export default function MetersPage() {
                             <td>
                               <input
                                 type="number"
-                                className="form-control"
-                                style={{ width: 75, height: 28, fontSize: 11, padding: "2px 6px", fontWeight: 600, color: "var(--color-primary)" }}
+                                className="matrix-input matrix-input-primary"
                                 value={entry.currElec}
                                 onChange={(e) => updateMatrixField(room.id, "currElec", parseFloat(e.target.value) || 0)}
                               />
                             </td>
-                            <td style={{ fontVariantNumeric: "tabular-nums", fontSize: 12 }}>
+                            <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 12 }}>
                               {elecUsage.toFixed(0)}
                             </td>
-                            <td style={{ borderRight: "1px solid var(--color-border)", fontVariantNumeric: "tabular-nums", fontSize: 12, fontWeight: 500 }}>
+                            <td style={{ borderRight: "1px solid var(--color-border)", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 12, fontWeight: 500 }}>
                               {money.format(elecCost)}
                             </td>
 
@@ -752,20 +745,19 @@ export default function MetersPage() {
                             <td>
                               <input
                                 type="number"
-                                className="form-control"
-                                style={{ width: 60, height: 28, fontSize: 11, padding: "2px 6px" }}
+                                className="matrix-input"
                                 min={0}
                                 max={20}
                                 value={entry.waterOccupants}
                                 onChange={(e) => updateMatrixField(room.id, "waterOccupants", parseInt(e.target.value, 10) || 0)}
                               />
                             </td>
-                            <td style={{ borderRight: "1px solid var(--color-border)", fontVariantNumeric: "tabular-nums", fontSize: 12 }}>
+                            <td style={{ borderRight: "1px solid var(--color-border)", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 12 }}>
                               {money.format(waterCost)}
                             </td>
 
                             {/* Wifi: cost */}
-                            <td style={{ borderRight: "1px solid var(--color-border)", textAlign: "center", fontVariantNumeric: "tabular-nums", fontSize: 12 }}>
+                            <td style={{ borderRight: "1px solid var(--color-border)", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 12 }}>
                               {money.format(wifiCost)}
                             </td>
 
@@ -773,20 +765,19 @@ export default function MetersPage() {
                             <td>
                               <input
                                 type="number"
-                                className="form-control"
-                                style={{ width: 55, height: 28, fontSize: 11, padding: "2px 6px" }}
+                                className="matrix-input"
                                 min={0}
                                 max={10}
                                 value={entry.vehicleCount}
                                 onChange={(e) => updateMatrixField(room.id, "vehicleCount", parseInt(e.target.value, 10) || 0)}
                               />
                             </td>
-                            <td style={{ borderRight: "1px solid var(--color-border)", fontVariantNumeric: "tabular-nums", fontSize: 12 }}>
+                            <td style={{ borderRight: "1px solid var(--color-border)", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 12 }}>
                               {money.format(vehicleCost)}
                             </td>
 
                             {/* Room total */}
-                            <td style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", fontSize: "var(--text-sm)", color: "var(--color-primary)" }}>
+                            <td style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", fontSize: 13, color: "var(--color-fg)" }}>
                               {money.format(roomTotal)}
                             </td>
                           </tr>
@@ -799,7 +790,7 @@ export default function MetersPage() {
 
               {/* Table Footer */}
               <div style={{
-                padding: "12px var(--space-3)",
+                padding: "10px var(--space-3)",
                 borderTop: "1px solid var(--color-border)",
                 display: "flex",
                 justifyContent: "space-between",
@@ -808,7 +799,7 @@ export default function MetersPage() {
                 color: "var(--color-fg-3)",
               }}>
                 <span>Tổng số phòng tính tiền: <strong>{propertyRooms.length}</strong></span>
-                <span style={{ fontSize: "var(--text-sm)", fontWeight: 700, color: "var(--color-fg)" }}>
+                <span style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--color-fg)" }}>
                   Tổng doanh thu dịch vụ tháng {billingMonth}: <strong style={{ color: "var(--color-primary)" }}>{money.format(grandTotalServices)}</strong>
                 </span>
               </div>
