@@ -1,8 +1,8 @@
 import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { Pool } from "pg";
 
 import { getDatabaseUrl } from "../../config/env";
+import { createDatabasePool } from "./client";
 
 export function assertLocalDatabaseUrl(databaseUrl: string): void {
   const host = new URL(databaseUrl).hostname.toLowerCase();
@@ -21,7 +21,7 @@ export async function migrateLocalDatabase(customUrl?: string): Promise<boolean>
     .filter((f) => f.endsWith(".sql"))
     .sort((a, b) => a.localeCompare(b));
 
-  const pool = new Pool({ connectionString: databaseUrl });
+  const pool = createDatabasePool(databaseUrl);
   try {
     const client = await pool.connect();
     try {

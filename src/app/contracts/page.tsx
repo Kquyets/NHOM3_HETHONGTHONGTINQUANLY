@@ -24,14 +24,16 @@ import {
   DownloadSimple,
   WarningCircle,
   Phone,
-  IdentificationBadge,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
 import { PrintableContractModal } from "../../components/contracts/printable-contract-modal";
+import { LiquidateContractModal } from "../../components/contracts/liquidate-contract-modal";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
-import type { ContractRow, ContractStatus, ContractTenantInfo } from "../../modules/contracts/contract.service";
+import { exportTableToCsv } from "../../utils/export-csv";
+import { validateDateRange, validatePositiveNumber } from "../../utils/form-validation";
+import type { ContractRow, ContractStatus } from "../../modules/contracts/contract.service";
 import type { PropertyRow } from "../../modules/properties/property.service";
 import type { RoomRow } from "../../modules/rooms/room.service";
 import type { TenantRow } from "../../modules/tenants/tenant.service";
@@ -112,6 +114,8 @@ function CreateContractForm({
     endDate: string;
     monthlyRentSnapshot: string;
     depositSnapshot: string;
+    paymentCycleMonths: number;
+    handoverInventory: string;
     tenantIds: string[];
   }) => void;
   onCancel: () => void;
@@ -124,6 +128,8 @@ function CreateContractForm({
   const [endDate, setEndDate] = useState("");
   const [monthlyRent, setMonthlyRent] = useState("");
   const [deposit, setDeposit] = useState("");
+  const [paymentCycleMonths, setPaymentCycleMonths] = useState<number>(1);
+  const [handoverInventory, setHandoverInventory] = useState("");
   const [selectedTenantIds, setSelectedTenantIds] = useState<string[]>([]);
   const [tenantSearch, setTenantSearch] = useState("");
 
@@ -167,14 +173,34 @@ function CreateContractForm({
     );
   };
 
+  const [formError, setFormError] = useState<string | null>(null);
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    const dateErr = validateDateRange(startDate, endDate);
+    if (dateErr) {
+      setFormError(dateErr);
+      return;
+    }
+    const rentErr = validatePositiveNumber(monthlyRent, "Tiền thuê");
+    if (rentErr) {
+      setFormError(rentErr);
+      return;
+    }
+    const depositErr = validatePositiveNumber(deposit, "Tiền cọc");
+    if (depositErr) {
+      setFormError(depositErr);
+      return;
+    }
+    setFormError(null);
     onSubmit({
       roomId,
       startDate,
       endDate,
       monthlyRentSnapshot: monthlyRent,
       depositSnapshot: deposit,
+      paymentCycleMonths,
+      handoverInventory,
       tenantIds: selectedTenantIds,
     });
   };
@@ -321,6 +347,36 @@ function CreateContractForm({
             />
           </div>
         </div>
+
+        {/* Chu kỳ thu tiền */}
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label htmlFor="c-cycle">Chu kỳ thanh toán *</label>
+          <select
+            id="c-cycle"
+            className="form-control"
+            value={paymentCycleMonths}
+            onChange={(e) => setPaymentCycleMonths(Number(e.target.value))}
+          >
+            <option value={1}>1 tháng / lần (Mặc định)</option>
+            <option value={2}>2 tháng / lần</option>
+            <option value={3}>3 tháng / lần (Theo quý)</option>
+            <option value={6}>6 tháng / lần (Nửa năm)</option>
+            <option value={12}>12 tháng / lần (Theo năm)</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Biên bản bàn giao tài sản phòng */}
+      <div className="form-group" style={{ marginBottom: 0 }}>
+        <label htmlFor="c-inventory">Biên bản bàn giao tài sản & đồ đạc đính kèm hợp đồng</label>
+        <textarea
+          id="c-inventory"
+          className="form-control"
+          rows={2}
+          placeholder="VD: Bàn giao 01 điều hòa Daikin kèm remote, 01 bình nóng lạnh Rossi, 01 giường gỗ 1m6, 01 tủ quần áo 2 cánh, 02 chìa khóa phòng..."
+          value={handoverInventory}
+          onChange={(e) => setHandoverInventory(e.target.value)}
+        />
       </div>
 
       {/* Select Tenants for the contract */}
@@ -394,6 +450,13 @@ function CreateContractForm({
           </div>
         )}
       </div>
+
+      {formError && (
+        <div style={{ color: "var(--color-danger, #ef4444)", fontSize: 13, background: "rgba(239, 68, 68, 0.1)", padding: "8px 12px", borderRadius: 6, display: "flex", alignItems: "center", gap: 6 }}>
+          <WarningCircle size={15} />
+          {formError}
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
         <button type="button" className="btn-ghost" onClick={onCancel}>
@@ -607,9 +670,13 @@ export default function ContractsPage() {
 
   // Printable contract modal state
   const [printContract, setPrintContract] = useState<ContractRow | null>(null);
+  const [showServiceContractModal, setShowServiceContractModal] = useState(false);
 
   // Manage occupants modal state
   const [managingOccupantsContract, setManagingOccupantsContract] = useState<ContractRow | null>(null);
+
+  // Liquidate contract modal state
+  const [liquidatingContract, setLiquidatingContract] = useState<ContractRow | null>(null);
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -643,6 +710,8 @@ export default function ContractsPage() {
     endDate: string;
     monthlyRentSnapshot: string;
     depositSnapshot: string;
+    paymentCycleMonths: number;
+    handoverInventory: string;
     tenantIds: string[];
   }) => {
     try {
@@ -655,6 +724,8 @@ export default function ContractsPage() {
           endDate: data.endDate || null,
           monthlyRentSnapshot: Number(data.monthlyRentSnapshot),
           depositSnapshot: Number(data.depositSnapshot),
+          paymentCycleMonths: data.paymentCycleMonths,
+          handoverInventory: data.handoverInventory.trim() || null,
           tenantIds: data.tenantIds,
         }),
       });
@@ -698,29 +769,44 @@ export default function ContractsPage() {
 
   const exportCSV = () => {
     if (contracts.length === 0) return;
-    const headers = ["Mã HĐ", "Phòng", "Tòa nhà", "Khách thuê chính", "Số điện thoại", "Ngày bắt đầu", "Ngày kết thúc", "Tiền thuê (VND)", "Tiền cọc (VND)", "Trạng thái"];
+    const headers = [
+      "Mã HĐ",
+      "Phòng",
+      "Tòa nhà",
+      "Khách thuê chính",
+      "Số điện thoại",
+      "Ngày bắt đầu",
+      "Ngày kết thúc",
+      "Tiền thuê (VND)",
+      "Chu kỳ (tháng)",
+      "Tiền cọc (VND)",
+      "Khấu trừ hư hại",
+      "Khấu trừ điện nước",
+      "Tiền cọc hoàn trả",
+      "Trạng thái",
+    ];
     const rows = filtered.map((c) => [
       c.id,
       `P${c.roomNumber}`,
-      `"${c.propertyName.replace(/"/g, '""')}"`,
-      `"${(c.tenants?.[0]?.fullName || "").replace(/"/g, '""')}"`,
+      c.propertyName,
+      c.tenants?.[0]?.fullName || "",
       c.tenants?.[0]?.phone || "",
       c.startDate,
       c.endDate || "",
       c.monthlyRentSnapshot,
+      c.paymentCycleMonths || 1,
       c.depositSnapshot,
+      c.damageDeduction ?? 0,
+      c.utilityDeduction ?? 0,
+      c.depositRefundAmount ?? c.depositSnapshot,
       STATUS_CONFIG[c.status].label,
     ]);
 
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Danh_sach_hop_dong_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportTableToCsv(
+      `Danh_sach_hop_dong_${new Date().toISOString().slice(0, 10)}`,
+      headers,
+      rows,
+    );
   };
 
   const filtered = contracts.filter((c) => {
@@ -750,7 +836,16 @@ export default function ContractsPage() {
               Quản lý hợp đồng thuê, bàn giao phòng và liên kết khách cư dân vào hệ thống.
             </p>
           </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setShowServiceContractModal(true)}
+              title="Xem & in Mẫu hợp đồng cung cấp dịch vụ phần mềm HManagers (tham khảo quanlytro.me)"
+            >
+              <Buildings size={15} />
+              <span>Mẫu HĐ dịch vụ HManagers</span>
+            </button>
             {contracts.length > 0 && (
               <button
                 type="button"
@@ -952,12 +1047,20 @@ export default function ContractsPage() {
 
                         {/* Rent */}
                         <td style={{ fontVariantNumeric: "tabular-nums", fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)" }}>
-                          {money.format(contract.monthlyRentSnapshot)}
+                          <div style={{ fontWeight: 600 }}>{money.format(contract.monthlyRentSnapshot)}</div>
+                          <span className="badge neutral" style={{ fontSize: 10, padding: "1px 5px", marginTop: 2, display: "inline-block" }}>
+                            {contract.paymentCycleMonths || 1} tháng / lần
+                          </span>
                         </td>
 
                         {/* Deposit */}
                         <td style={{ fontVariantNumeric: "tabular-nums", fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)" }}>
-                          {money.format(contract.depositSnapshot)}
+                          <div>{money.format(contract.depositSnapshot)}</div>
+                          {contract.status === "ended" && contract.depositRefundAmount !== null && contract.depositRefundAmount !== undefined && (
+                            <div style={{ fontSize: 11, color: "var(--color-success)", fontWeight: 600, marginTop: 2 }}>
+                              Hoàn: {money.format(contract.depositRefundAmount)}
+                            </div>
+                          )}
                         </td>
 
                         {/* Status */}
@@ -1007,11 +1110,12 @@ export default function ContractsPage() {
                             {contract.status === "active" && (
                               <button
                                 type="button"
-                                className="btn-ghost"
-                                style={{ padding: "4px 8px", fontSize: "var(--text-xs)" }}
-                                onClick={() => void handleUpdateStatus(contract, "ended")}
+                                className="btn-secondary"
+                                style={{ padding: "4px 8px", fontSize: "var(--text-xs)", color: "var(--color-primary)", gap: 4 }}
+                                onClick={() => setLiquidatingContract(contract)}
+                                title="Quy trình thanh lý hợp đồng & tính toán hoàn trả cọc"
                               >
-                                <ArrowCounterClockwise size={13} /> Kết thúc
+                                <ArrowCounterClockwise size={13} /> Thanh lý cọc
                               </button>
                             )}
 
@@ -1055,7 +1159,17 @@ export default function ContractsPage() {
       {printContract && (
         <PrintableContractModal
           contract={printContract}
+          initialTemplate="rental"
           onClose={() => setPrintContract(null)}
+        />
+      )}
+
+      {/* Service Contract Template Modal (quanlytro.me) */}
+      {showServiceContractModal && (
+        <PrintableContractModal
+          contract={contracts[0] || null}
+          initialTemplate="service"
+          onClose={() => setShowServiceContractModal(false)}
         />
       )}
 
@@ -1066,6 +1180,15 @@ export default function ContractsPage() {
           allTenants={allTenants}
           onClose={() => setManagingOccupantsContract(null)}
           onRefresh={loadInitialData}
+        />
+      )}
+
+      {/* Liquidate Contract Modal */}
+      {liquidatingContract && (
+        <LiquidateContractModal
+          contract={liquidatingContract}
+          onClose={() => setLiquidatingContract(null)}
+          onLiquidated={loadInitialData}
         />
       )}
     </div>

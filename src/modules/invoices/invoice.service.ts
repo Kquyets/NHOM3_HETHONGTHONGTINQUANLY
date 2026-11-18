@@ -5,6 +5,7 @@ import {
   contractTenants,
   invoiceItems,
   invoices,
+  meterReadings,
   payments,
   properties,
   propertyMembers,
@@ -96,6 +97,20 @@ export type AddPaymentInput = {
   note?: string | null;
 };
 
+export type BatchGenerateInvoicesInput = {
+  propertyId: string;
+  billingPeriodStart: string; // YYYY-MM-01
+  dueDate?: string | null;
+  waterPerPerson?: number;
+  wifiPerRoom?: number;
+  parkingPerVehicle?: number;
+};
+
+export type BatchGenerateResult = {
+  generatedCount: number;
+  skippedCount: number;
+};
+
 // ---------------------------------------------------------------------------
 // Authorization helpers
 // ---------------------------------------------------------------------------
@@ -143,6 +158,7 @@ export async function listInvoices(userId: string, role: string): Promise<Invoic
       .innerJoin(properties, eq(properties.id, rooms.propertyId))
       .leftJoin(contractTenants, eq(contractTenants.contractId, contracts.id))
       .leftJoin(tenants, eq(tenants.id, contractTenants.tenantId))
+      .where(eq(properties.ownerId, userId))
       .orderBy(desc(invoices.billingPeriodStart));
   }
 
@@ -173,34 +189,76 @@ export async function getInvoice(
   assertStaff(role);
   const db = getDatabase();
 
-  const [row] = await db
-    .select({
-      id: invoices.id,
-      contractId: invoices.contractId,
-      roomNumber: rooms.roomNumber,
-      propertyName: properties.name,
-      propertyAddress: properties.address,
-      tenantName: tenants.fullName,
-      tenantPhone: tenants.phone,
-      bankCode: properties.bankCode,
-      bankAccount: properties.bankAccount,
-      accountHolder: properties.accountHolder,
-      billingPeriodStart: invoices.billingPeriodStart,
-      issueDate: invoices.issueDate,
-      dueDate: invoices.dueDate,
-      status: invoices.status,
-      totalAmount: invoices.totalAmount,
-      createdAt: invoices.createdAt,
-      updatedAt: invoices.updatedAt,
-    })
-    .from(invoices)
-    .innerJoin(contracts, eq(contracts.id, invoices.contractId))
-    .innerJoin(rooms, eq(rooms.id, contracts.roomId))
-    .innerJoin(properties, eq(properties.id, rooms.propertyId))
-    .leftJoin(contractTenants, eq(contractTenants.contractId, contracts.id))
-    .leftJoin(tenants, eq(tenants.id, contractTenants.tenantId))
-    .where(eq(invoices.id, invoiceId))
-    .limit(1);
+  let row: any;
+  if (role === "owner") {
+    const rows = await db
+      .select({
+        id: invoices.id,
+        contractId: invoices.contractId,
+        roomNumber: rooms.roomNumber,
+        propertyName: properties.name,
+        propertyAddress: properties.address,
+        tenantName: tenants.fullName,
+        tenantPhone: tenants.phone,
+        bankCode: properties.bankCode,
+        bankAccount: properties.bankAccount,
+        accountHolder: properties.accountHolder,
+        billingPeriodStart: invoices.billingPeriodStart,
+        issueDate: invoices.issueDate,
+        dueDate: invoices.dueDate,
+        status: invoices.status,
+        totalAmount: invoices.totalAmount,
+        createdAt: invoices.createdAt,
+        updatedAt: invoices.updatedAt,
+      })
+      .from(invoices)
+      .innerJoin(contracts, eq(contracts.id, invoices.contractId))
+      .innerJoin(rooms, eq(rooms.id, contracts.roomId))
+      .innerJoin(properties, eq(properties.id, rooms.propertyId))
+      .leftJoin(contractTenants, eq(contractTenants.contractId, contracts.id))
+      .leftJoin(tenants, eq(tenants.id, contractTenants.tenantId))
+      .where(and(eq(invoices.id, invoiceId), eq(properties.ownerId, userId)))
+      .limit(1);
+    row = rows[0];
+  } else {
+    const rows = await db
+      .select({
+        id: invoices.id,
+        contractId: invoices.contractId,
+        roomNumber: rooms.roomNumber,
+        propertyName: properties.name,
+        propertyAddress: properties.address,
+        tenantName: tenants.fullName,
+        tenantPhone: tenants.phone,
+        bankCode: properties.bankCode,
+        bankAccount: properties.bankAccount,
+        accountHolder: properties.accountHolder,
+        billingPeriodStart: invoices.billingPeriodStart,
+        issueDate: invoices.issueDate,
+        dueDate: invoices.dueDate,
+        status: invoices.status,
+        totalAmount: invoices.totalAmount,
+        createdAt: invoices.createdAt,
+        updatedAt: invoices.updatedAt,
+      })
+      .from(invoices)
+      .innerJoin(contracts, eq(contracts.id, invoices.contractId))
+      .innerJoin(rooms, eq(rooms.id, contracts.roomId))
+      .innerJoin(properties, eq(properties.id, rooms.propertyId))
+      .leftJoin(contractTenants, eq(contractTenants.contractId, contracts.id))
+      .leftJoin(tenants, eq(tenants.id, contractTenants.tenantId))
+      .innerJoin(
+        propertyMembers,
+        and(
+          eq(propertyMembers.propertyId, properties.id),
+          eq(propertyMembers.userId, userId),
+          eq(propertyMembers.status, "active"),
+        ),
+      )
+      .where(eq(invoices.id, invoiceId))
+      .limit(1);
+    row = rows[0];
+  }
 
   if (!row) throw new AppError("NOT_FOUND", "Không tìm thấy hóa đơn.", []);
 
@@ -310,6 +368,144 @@ export async function createInvoice(
   }
 
   return { ...row, roomNumber: "", propertyName: "" } as InvoiceRow;
+}
+
+export async function batchGenerateInvoices(
+  userId: string,
+  role: string,
+  input: BatchGenerateInvoicesInput,
+): Promise<BatchGenerateResult> {
+  assertStaff(role);
+
+  const parts = input.billingPeriodStart.split("-");
+  if (parts.length !== 3 || parts[2] !== "01") {
+    throw new AppError("VALIDATION_ERROR", "Kỳ tính hóa đơn phải là ngày 01 đầu tháng.", [
+      { field: "billingPeriodStart", message: "Kỳ hóa đơn phải bắt đầu từ ngày 01 của tháng." },
+    ]);
+  }
+
+  const db = getDatabase();
+
+  const activeContracts = await db
+    .select({
+      id: contracts.id,
+      roomId: contracts.roomId,
+      rentalPrice: contracts.monthlyRentSnapshot,
+      roomNumber: rooms.roomNumber,
+    })
+    .from(contracts)
+    .innerJoin(rooms, eq(rooms.id, contracts.roomId))
+    .where(and(eq(rooms.propertyId, input.propertyId), eq(contracts.status, "active")));
+
+  let generatedCount = 0;
+  let skippedCount = 0;
+
+  for (const contract of activeContracts) {
+    const existing = await db
+      .select({ id: invoices.id })
+      .from(invoices)
+      .where(
+        and(
+          eq(invoices.contractId, contract.id),
+          eq(invoices.billingPeriodStart, input.billingPeriodStart),
+        ),
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      skippedCount++;
+      continue;
+    }
+
+    const items: CreateInvoiceItemInput[] = [
+      {
+        itemType: "rent",
+        description: `Tiền thuê phòng ${contract.roomNumber}`,
+        quantity: 1,
+        unitPriceSnapshot: contract.rentalPrice,
+        amount: contract.rentalPrice,
+      },
+    ];
+
+    const elecReading = await db
+      .select({
+        id: meterReadings.id,
+        previousValue: meterReadings.previousValue,
+        currentValue: meterReadings.currentValue,
+        unitPriceSnapshot: meterReadings.unitPriceSnapshot,
+      })
+      .from(meterReadings)
+      .where(
+        and(
+          eq(meterReadings.roomId, contract.roomId),
+          eq(meterReadings.utilityType, "electricity"),
+          eq(meterReadings.billingPeriod, input.billingPeriodStart),
+        ),
+      )
+      .limit(1);
+
+    if (elecReading.length > 0) {
+      const reading = elecReading[0];
+      const usedKwh = Math.max(0, Number(reading.currentValue) - Number(reading.previousValue));
+      const elecAmount = Math.round(usedKwh * reading.unitPriceSnapshot);
+      items.push({
+        meterReadingId: reading.id,
+        itemType: "electricity",
+        description: `Tiền điện (${reading.previousValue} -> ${reading.currentValue} kWh)`,
+        quantity: usedKwh,
+        unitPriceSnapshot: reading.unitPriceSnapshot,
+        amount: elecAmount,
+      });
+    }
+
+    const waterRate = input.waterPerPerson ?? 100000;
+    if (waterRate > 0) {
+      items.push({
+        itemType: "water",
+        description: "Tiền nước sinh hoạt",
+        quantity: 1,
+        unitPriceSnapshot: waterRate,
+        amount: waterRate,
+      });
+    }
+
+    const wifiRate = input.wifiPerRoom ?? 50000;
+    if (wifiRate > 0) {
+      items.push({
+        itemType: "service",
+        description: "Tiền mạng Wifi & Dịch vụ chung",
+        quantity: 1,
+        unitPriceSnapshot: wifiRate,
+        amount: wifiRate,
+      });
+    }
+
+    const parkingRate = input.parkingPerVehicle ?? 100000;
+    if (parkingRate > 0) {
+      items.push({
+        itemType: "service",
+        description: "Tiền gửi xe",
+        quantity: 1,
+        unitPriceSnapshot: parkingRate,
+        amount: parkingRate,
+      });
+    }
+
+    const totalAmount = items.reduce((sum, it) => sum + it.amount, 0);
+
+    await createInvoice(userId, role, {
+      contractId: contract.id,
+      billingPeriodStart: input.billingPeriodStart,
+      issueDate: new Date().toISOString().slice(0, 10),
+      dueDate: input.dueDate ?? null,
+      totalAmount,
+      items,
+    });
+
+    generatedCount++;
+  }
+
+  return { generatedCount, skippedCount };
 }
 
 async function notifyTenantInvoice(

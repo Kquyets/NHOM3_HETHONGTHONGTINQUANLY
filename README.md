@@ -108,15 +108,15 @@ Nhà trọ → Phòng → Khách thuê → Hợp đồng → Điện/Nước →
 | Database chính    | PostgreSQL       | Dữ liệu nghiệp vụ có tính quan hệ                        |
 | Database phụ      | MongoDB Atlas    | AI conversation log, notification log, dữ liệu linh hoạt |
 | ORM               | Drizzle ORM      | Kết nối PostgreSQL và định nghĩa schema                |
-| Auth              | TODO: Chưa quyết định (NextAuth.js / JWT) | Xác thực và phân quyền           |
+| Auth              | JWT + bcryptjs   | Access token, refresh token rotation, xác thực phân quyền |
 | Container         | Docker           | Đóng gói ứng dụng, chuẩn hóa môi trường                  |
 | Quản lý mã nguồn  | Git + GitHub     | Version control, phối hợp phát triển                     |
 | Triển khai backend| Railway          | Host backend và database PostgreSQL production            |
 | Triển khai frontend| Vercel          | Host frontend Next.js                                     |
 | DNS / Bảo mật     | Cloudflare       | DNS, SSL/TLS, bảo vệ cơ bản                              |
-| AI Model          | TODO: Chưa quyết định (Gemini API / OpenAI) | Xử lý ngôn ngữ tự nhiên cho AI Agent |
-| Payment           | TODO: Chưa quyết định | MoMo / VNPAY (giai đoạn Advanced)               |
-| Notification      | TODO: Chưa quyết định | Email / Telegram (giai đoạn Advanced)           |
+| AI Model          | Google Gemini API (`@google/genai`) | Xử lý ngôn ngữ tự nhiên, tra cứu nghiệp vụ, kèm fallback local engine |
+| Payment           | VietQR (NAPAS 247)| Sinh mã QR thanh toán động cho từng hóa đơn theo tài khoản chủ trọ |
+| Notification      | In-App Notification Center | Trung tâm thông báo thời gian thực với chuông cảnh báo |
 
 ---
 
@@ -219,19 +219,27 @@ Status   : 200 | 201 | 400 | 401 | 403 | 404 | 500
 
 ### Danh sách API theo module
 
-| Module      | Endpoints              | Method                       | Status          |
-| ----------- | ---------------------- | ---------------------------- | --------------- |
-| Auth        | `/api/auth/*`          | TODO                         | Chưa triển khai |
-| Property    | `/api/properties`      | TODO                         | Chưa triển khai |
-| Room        | `/api/rooms`           | TODO                         | Chưa triển khai |
-| Tenant      | `/api/tenants`         | TODO                         | Chưa triển khai |
-| Contract    | `/api/contracts`       | TODO                         | Chưa triển khai |
-| Meter       | `/api/meters`          | TODO                         | Chưa triển khai |
-| Invoice     | `/api/invoices`        | TODO                         | Chưa triển khai |
-| Payment     | `/api/payments`        | TODO                         | Chưa triển khai |
-| Dashboard   | `/api/dashboard`       | TODO                         | Chưa triển khai |
-| AI Agent    | `/api/ai/*`            | TODO                         | Chưa triển khai |
-| Notification| `/api/notifications`   | TODO                         | Chưa triển khai |
+| Module      | Endpoints                               | Method                       | Chức năng                                                  | Status        |
+| ----------- | --------------------------------------- | ---------------------------- | ---------------------------------------------------------- | ------------- |
+| Auth        | `/api/auth/register`                    | POST                         | Đăng ký tài khoản (chủ nhà / quản lý / khách thuê)        | Hoàn thành    |
+| Auth        | `/api/auth/login`, `/api/auth/logout`   | POST                         | Đăng nhập, đăng xuất, cấp phát JWT Cookie HTTP-only        | Hoàn thành    |
+| Auth        | `/api/auth/me`, `/api/auth/refresh`     | GET, POST                    | Lấy thông tin phiên hiện tại, làm mới token tự động        | Hoàn thành    |
+| Property    | `/api/properties`, `/[propertyId]`      | GET, POST, PATCH, DELETE     | CRUD nhà trọ, cấu hình tài khoản ngân hàng nhận VietQR     | Hoàn thành    |
+| Room        | `/api/properties/[id]/rooms`, `/rooms/[id]`| GET, POST, PATCH, DELETE  | CRUD phòng, trạng thái phòng (ready / occupied / maint)   | Hoàn thành    |
+| Members     | `/api/properties/[id]/members`          | GET, POST, DELETE            | Quản lý phân quyền ban quản lý từng cơ sở nhà trọ         | Hoàn thành    |
+| Tenant      | `/api/tenants`, `/[tenantId]`           | GET, POST, PATCH, DELETE     | CRUD hồ sơ khách thuê, SĐT, CCCD/CMND                      | Hoàn thành    |
+| Contract    | `/api/contracts`, `/[contractId]`       | GET, POST, PATCH, DELETE     | Tạo hợp đồng thuê, gia hạn, chấm dứt, xem mẫu in chuẩn     | Hoàn thành    |
+| Contract    | `/api/contracts/[id]/tenants`           | POST, DELETE                 | Thêm / xóa người ở trong phòng thuộc hợp đồng              | Hoàn thành    |
+| Meter       | `/api/meters`, `/[readingId]`           | GET, POST, PATCH, DELETE     | Ghi nhận chỉ số điện/nước hàng tháng, tính lượng tiêu thụ  | Hoàn thành    |
+| Utility Rate| `/api/utility-rates`                    | GET, POST                    | Thiết lập đơn giá điện/nước theo từng nhà trọ              | Hoàn thành    |
+| Invoice     | `/api/invoices`, `/[invoiceId]`         | GET, POST, PATCH, DELETE     | Lập hóa đơn tổng hợp, tính tiền phòng + dịch vụ, hủy hđ    | Hoàn thành    |
+| Payment     | `/api/invoices/[id]/payments`, `/payments`| GET, POST                  | Ghi nhận thanh toán hóa đơn, tra cứu lịch sử giao dịch     | Hoàn thành    |
+| Dashboard   | `/api/dashboard`, `/dashboard/overview` | GET                          | Thống kê KPI, tỷ lệ lấp đầy, doanh thu xu hướng 6 tháng    | Hoàn thành    |
+| Tenant Portal| `/api/tenant-portal`                   | GET                          | Cổng tra cứu dành riêng cho khách thuê (hóa đơn, VietQR)   | Hoàn thành    |
+| Maintenance | `/api/maintenance`, `/[requestId]`      | GET, POST, PATCH, DELETE     | Tiếp nhận và xử lý yêu cầu sửa chữa phòng                  | Hoàn thành    |
+| AI Agent    | `/api/ai/chat`                          | POST                         | Trợ lý AI hỏi đáp dữ liệu vận hành bằng tiếng Việt         | Hoàn thành    |
+| Profile     | `/api/profile`, `/api/profile/password` | GET, PATCH, POST             | Cập nhật hồ sơ cá nhân và đổi mật khẩu                     | Hoàn thành    |
+| Notification| `/api/notifications`, `/[id]`           | GET, PATCH                   | Danh sách thông báo hệ thống và đánh dấu đã đọc            | Hoàn thành    |
 
 > Endpoint cụ thể, request/response schema sẽ được cập nhật khi từng module được thiết kế và thống nhất với Frontend.
 
@@ -274,11 +282,18 @@ Trả kết quả cho người dùng
 - Các thao tác ghi dữ liệu quan trọng phải có **bước xác nhận** từ người dùng trước khi thực hiện.
 - AI Agent tuân thủ **validation và business rules** của Backend.
 
-### Tools dự kiến cấp cho AI Agent
+### Danh sách Tools đã cấp cho AI Agent
 
-```
-TODO: Xác định danh sách tools cụ thể khi bắt đầu Phase 6
-```
+Hệ thống AI Agent hỗ trợ gọi các function calling chuẩn hóa để tra cứu thông tin:
+
+1. `toolGetOverviewStats`: Tra cứu số liệu tổng quan (tổng số phòng, tỷ lệ lấp đầy, doanh thu, nợ đọng).
+2. `toolLookupRooms`: Tra cứu danh sách phòng theo số phòng, tòa nhà hoặc trạng thái (trống, đang thuê, bảo trì).
+3. `toolLookupTenants`: Tra cứu thông tin cá nhân và phương thức liên lạc của khách thuê.
+4. `toolLookupContracts`: Tra cứu hợp đồng thuê, danh sách hợp đồng sắp hết hạn trong 30 ngày.
+5. `toolLookupUnpaidInvoices`: Tra cứu danh sách hóa đơn chưa thanh toán, nợ đọng quá hạn.
+6. `toolLookupMaintenanceRequests`: Tra cứu các yêu cầu sửa chữa, phân loại theo danh mục và mức độ ưu tiên.
+
+> Hệ thống tích hợp song song cả **Google Gemini 2.5 Flash** trực tiếp qua SDK `@google/genai` lẫn **Natural Language Intent Engine local** chạy độc lập khi không có kết nối internet hoặc API Key.
 
 ---
 
@@ -601,6 +616,14 @@ Lệnh này sẽ tự động nạp `drizzle/0000_core_schema.sql` vào database
 npm run db:seed
 ```
 
+Sau khi chạy `npm run db:seed`, hệ thống sẽ khởi tạo sẵn 3 tài khoản demo phục vụ thuyết trình:
+
+| Vai trò | Email đăng nhập | Mật khẩu mặc định | Quyền hạn |
+| :--- | :--- | :--- | :--- |
+| **Chủ nhà (Owner)** | `owner.demo@example.com` | `DemoPassword123!` | Toàn quyền quản trị cơ sở, phòng, hợp đồng, tài chính, VietQR |
+| **Quản lý (Manager)** | `manager.demo@example.com` | `DemoPassword123!` | Quản lý nhà trọ An Bình, ghi chỉ số điện nước, lập hóa đơn |
+| **Khách thuê (Tenant)** | `tenant.demo@example.com` | `DemoPassword123!` | Đăng nhập Cổng khách thuê, xem hóa đơn, quét mã VietQR |
+
 7. Kiểm tra kết nối database:
 
 ```bash
@@ -630,7 +653,7 @@ npm test
 npm run build
 ```
 
-Các lệnh trên chạy lint, kiểm tra TypeScript, test và production build. Một số module nghiệp vụ/API và đăng nhập vẫn đang được triển khai; xem trạng thái endpoint tại mục [API Contract](#7-api-contract).
+Các lệnh trên chạy lint, kiểm tra TypeScript, test và production build. Toàn bộ các module nghiệp vụ, API, xác thực và AI Agent đã được triển khai hoàn chỉnh và vượt qua toàn bộ 271 bài kiểm tra tự động. Xem chi tiết endpoint tại mục [API Contract](#7-api-contract).
 
 ---
 

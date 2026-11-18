@@ -28,6 +28,7 @@ vi.mock("../../lib/database/schema", () => ({
     status: "status",
     startDate: "startDate",
     endDate: "endDate",
+    depositSnapshot: "depositSnapshot",
   },
   contractTenants: { contractId: "contractId", tenantId: "tenantId" },
   tenants: { id: "id", fullName: "fullName" },
@@ -40,6 +41,12 @@ vi.mock("../../lib/database/schema", () => ({
     totalAmount: "totalAmount",
   },
   payments: { invoiceId: "invoiceId", amount: "amount" },
+  maintenanceRequests: {
+    propertyId: "propertyId",
+    cost: "cost",
+    payer: "payer",
+    status: "status",
+  },
   meterReadings: {
     propertyId: "propertyId",
     utilityType: "utilityType",
@@ -225,6 +232,11 @@ describe("Dashboard Service", () => {
       { invoiceId: "inv-2", amount: 3200000 },
     ];
 
+    // 5b. Maintenance requests
+    const mockMaintenance = [
+      { cost: 200000, payer: "owner", status: "resolved" },
+    ];
+
     // 6. Meter readings (Electricity: 150 kWh, Water: 12 m3)
     const mockMeterReadings = [
       {
@@ -249,6 +261,7 @@ describe("Dashboard Service", () => {
       .mockReturnValueOnce(chain(mockContractTenants))
       .mockReturnValueOnce(chain(mockInvoices))
       .mockReturnValueOnce(chain(mockPayments))
+      .mockReturnValueOnce(chain(mockMaintenance))
       .mockReturnValueOnce(chain(mockMeterReadings));
 
     const result = await getDashboardSummary({
@@ -275,6 +288,8 @@ describe("Dashboard Service", () => {
     expect(result.financials.totalDebt).toBe(2000000);
     expect(result.financials.unpaidInvoiceCount).toBe(1);
     expect(result.financials.collectionRate).toBe(70.1);
+    expect(result.financials.totalExpenses).toBe(200000);
+    expect(result.financials.netProfit).toBe(4500000);
 
     // 3. Expiring contracts:
     expect(result.expiringContracts.length).toBe(2);
@@ -289,5 +304,13 @@ describe("Dashboard Service", () => {
     // 5. Utilities:
     expect(result.utilities.electricityKwh).toBe(150);
     expect(result.utilities.waterM3).toBe(12);
+
+    // 6. Revenue Trend:
+    expect(result.revenueTrend).toBeDefined();
+    expect(result.revenueTrend.length).toBe(6);
+    const octTrend = result.revenueTrend.find((t) => t.period === "2026-10");
+    expect(octTrend).toBeDefined();
+    expect(octTrend?.billed).toBe(6700000);
+    expect(octTrend?.collected).toBe(4700000);
   });
 });

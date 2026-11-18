@@ -43,6 +43,11 @@ export async function POST(request: NextRequest): Promise<Response> {
       category: body.category as MaintenanceCategory,
       priority: body.priority as MaintenancePriority,
       description: body.description,
+      cost: typeof body.cost === "number" ? body.cost : undefined,
+      payer: body.payer,
+      contractorName: body.contractorName,
+      contractorPhone: body.contractorPhone,
+      photoUrl: body.photoUrl,
     });
 
     return successResponse({ request: created }, { status: 201 });

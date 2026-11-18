@@ -42,9 +42,67 @@ export type RequestOptions = RequestInit & {
   skipAuth?: boolean;
 };
 
+let refreshPromise: Promise<string | null> | null = null;
+
+/**
+ * Exchange the stored refresh token for a fresh token pair.
+ * Deduplicates concurrent callers into a single /api/auth/refresh request.
+ */
+export async function refreshStoredTokens(): Promise<string | null> {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  const refreshToken = getStoredRefreshToken();
+  if (!refreshToken) {
+    return null;
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const response = await fetch("/api/auth/refresh", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      const body = (await response.json().catch(() => null)) as
+        | ApiSuccess<{ tokens: { accessToken: string; refreshToken: string } }>
+        | ApiError
+        | null;
+
+      if (!response.ok || !body || !body.success || !body.data?.tokens?.accessToken) {
+        if (response.status === 400 || response.status === 401 || response.status === 403) {
+          clearStoredTokens();
+        }
+        return null;
+      }
+
+      setStoredTokens(body.data.tokens.accessToken, body.data.tokens.refreshToken);
+      return body.data.tokens.accessToken;
+    } catch {
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
 export async function apiClient<T>(
   endpoint: string,
   options: RequestOptions = {},
+): Promise<T> {
+  return requestWithRetry<T>(endpoint, options, false);
+}
+
+async function requestWithRetry<T>(
+  endpoint: string,
+  options: RequestOptions,
+  hasRetried: boolean,
 ): Promise<T> {
   const { token, skipAuth = false, headers, ...rest } = options;
   const authToken = token !== undefined ? token : getStoredToken();
@@ -62,6 +120,24 @@ export async function apiClient<T>(
     headers: reqHeaders,
     ...rest,
   });
+
+  if (
+    response.status === 401 &&
+    !hasRetried &&
+    !skipAuth &&
+    token === undefined &&
+    endpoint !== "/api/auth/refresh"
+  ) {
+    const latestToken = getStoredToken();
+    if (latestToken && latestToken !== authToken) {
+      return requestWithRetry<T>(endpoint, options, true);
+    }
+
+    const refreshedToken = await refreshStoredTokens();
+    if (refreshedToken) {
+      return requestWithRetry<T>(endpoint, options, true);
+    }
+  }
 
   const body = (await response.json().catch(() => null)) as
     | ApiSuccess<T>

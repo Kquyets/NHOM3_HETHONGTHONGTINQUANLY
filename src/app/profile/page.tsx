@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
@@ -16,21 +16,15 @@ import {
   CheckCircle,
   Eye,
   EyeSlash,
-  Clock,
   Bell,
   Check,
   WarningCircle,
-  Wrench,
-  Receipt,
   FloppyDisk,
   ArrowRight,
-  Shield,
-  Key,
   Door,
   CalendarBlank,
   DeviceMobile,
   CheckFat,
-  IdentificationBadge,
 } from "@phosphor-icons/react";
 
 import { apiClient } from "../../lib/api-client";
@@ -97,19 +91,7 @@ export default function ProfilePage() {
     "var(--color-success, #10b981)",
   ][pwStrength];
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/login");
-    }
-  }, [authLoading, user, router]);
-
-  useEffect(() => {
-    if (user) {
-      void loadProfile();
-    }
-  }, [user]);
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -122,7 +104,19 @@ export default function ProfilePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login");
+    }
+  }, [authLoading, user, router]);
+
+  useEffect(() => {
+    if (user) {
+      void loadProfile();
+    }
+  }, [user, loadProfile]);
 
   const handleUpdateInfo = async (e: FormEvent) => {
     e.preventDefault();

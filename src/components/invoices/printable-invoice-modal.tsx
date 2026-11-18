@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "motion/react";
-import { Printer, X, DownloadSimple, QrCode } from "@phosphor-icons/react";
+import { Printer, X } from "@phosphor-icons/react";
 import type { InvoiceDetail, InvoiceRow } from "../../modules/invoices/invoice.service";
 import { numberToVietnameseWords } from "../../utils/vietnamese-currency-words";
 import { buildVietQrUrl, getBankInfo } from "../../utils/vietqr";
@@ -376,6 +376,7 @@ export function PrintableInvoiceModal({ invoice, onClose }: PrintableInvoiceModa
               </div>
 
               <div style={{ textAlign: "center", flexShrink: 0 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={qrUrl}
                   alt="Mã VietQR thanh toán"

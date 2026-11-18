@@ -3,7 +3,6 @@
 import Link from "next/link";
 import {
   House,
-  Check,
   ShieldCheck,
   Lightning,
   Receipt,

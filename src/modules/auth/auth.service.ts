@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { getDatabase } from "../../lib/database/client";
 import { refreshTokens, tenants, users } from "../../lib/database/schema";
-import { REFRESH_TOKEN_TTL_MS, signAccessToken, verifyRefreshToken } from "../../lib/auth/jwt";
+import { REFRESH_TOKEN_TTL_MS, signAccessToken } from "../../lib/auth/jwt";
 import { hashPassword, verifyPassword } from "../../lib/auth/password";
 import { AppError } from "../../errors/app-error";
 
@@ -143,17 +143,49 @@ export async function register(input: RegisterInput): Promise<{ user: UserPublic
 }
 
 /**
- * Authenticate with email + password, return tokens.
+ * Authenticate with email or phone + password, return tokens.
  */
 export async function login(input: LoginInput): Promise<{ user: UserPublic; tokens: AuthTokens }> {
-  const email = normalizeEmail(input.email);
+  const query = input.email.trim();
   const db = getDatabase();
 
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, email))
-    .limit(1);
+  const isEmail = query.includes("@");
+  let user: (typeof users.$inferSelect) | undefined;
+
+  if (isEmail) {
+    const normalized = normalizeEmail(query);
+    const [found] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, normalized))
+      .limit(1);
+    user = found;
+  } else {
+    // Phone query: match stripped or formatted numbers, or fallback email
+    const cleanPhone = query.replace(/[\s.-]/g, "");
+    const altPhone = cleanPhone.startsWith("+84")
+      ? "0" + cleanPhone.slice(3)
+      : cleanPhone.startsWith("84") && cleanPhone.length > 9
+        ? "0" + cleanPhone.slice(2)
+        : cleanPhone.startsWith("0")
+          ? "+84" + cleanPhone.slice(1)
+          : cleanPhone;
+
+    const [found] = await db
+      .select()
+      .from(users)
+      .where(
+        or(
+          eq(users.phone, query),
+          eq(users.phone, cleanPhone),
+          eq(users.phone, altPhone),
+          eq(users.email, query.toLowerCase()),
+          eq(users.email, `${cleanPhone}@hmanagers.local`),
+        ),
+      )
+      .limit(1);
+    user = found;
+  }
 
   // Constant-time guard: always hash even if user not found to prevent timing attacks
   const hashToCompare = user?.passwordHash ?? "$2a$12$invalidhashtopreventtimingattack";
@@ -188,14 +220,12 @@ export async function login(input: LoginInput): Promise<{ user: UserPublic; toke
  * Rotate refresh token — revoke old one, issue new pair.
  */
 export async function refreshTokens_(rawRefreshToken: string): Promise<AuthTokens> {
-  let payload;
-  try {
-    payload = verifyRefreshToken(rawRefreshToken);
-  } catch {
+  const parsed = parseRefreshTokenCookie(rawRefreshToken);
+  if (!parsed) {
     throw new AppError("UNAUTHORIZED", "Invalid or expired refresh token.", []);
   }
 
-  const tokenHash = hashToken(rawRefreshToken);
+  const tokenHash = hashToken(parsed.rawSecret);
   const db = getDatabase();
   const now = new Date();
 
@@ -205,9 +235,8 @@ export async function refreshTokens_(rawRefreshToken: string): Promise<AuthToken
     .from(refreshTokens)
     .where(
       and(
-        eq(refreshTokens.id, payload.jti),
+        eq(refreshTokens.id, parsed.tokenId),
         eq(refreshTokens.tokenHash, tokenHash),
-        eq(refreshTokens.userId, payload.sub),
         isNull(refreshTokens.revokedAt),
         gt(refreshTokens.expiresAt, now),
       ),
@@ -222,18 +251,23 @@ export async function refreshTokens_(rawRefreshToken: string): Promise<AuthToken
   const [user] = await db
     .select({ id: users.id, role: users.role, status: users.status })
     .from(users)
-    .where(eq(users.id, payload.sub))
+    .where(eq(users.id, stored.userId))
     .limit(1);
 
   if (!user || user.status === "disabled") {
     throw new AppError("UNAUTHORIZED", "Account not found or disabled.", []);
   }
 
-  // Revoke old token
-  await db
+  // Revoke old token atomically so it cannot be rotated twice
+  const [revoked] = await db
     .update(refreshTokens)
     .set({ revokedAt: now })
-    .where(eq(refreshTokens.id, stored.id));
+    .where(and(eq(refreshTokens.id, stored.id), isNull(refreshTokens.revokedAt)))
+    .returning({ id: refreshTokens.id });
+
+  if (!revoked) {
+    throw new AppError("UNAUTHORIZED", "Refresh token has been revoked or expired.", []);
+  }
 
   // Issue new tokens
   return _issueTokens(user.id, user.role, stored.id);
@@ -243,15 +277,13 @@ export async function refreshTokens_(rawRefreshToken: string): Promise<AuthToken
  * Revoke a specific refresh token (logout).
  */
 export async function logout(rawRefreshToken: string): Promise<void> {
-  let payload;
-  try {
-    payload = verifyRefreshToken(rawRefreshToken);
-  } catch {
-    // Token already invalid — treat as success
+  const parsed = parseRefreshTokenCookie(rawRefreshToken);
+  if (!parsed) {
+    // Token already invalid — treat as success without querying DB
     return;
   }
 
-  const tokenHash = hashToken(rawRefreshToken);
+  const tokenHash = hashToken(parsed.rawSecret);
   const db = getDatabase();
 
   await db
@@ -259,7 +291,7 @@ export async function logout(rawRefreshToken: string): Promise<void> {
     .set({ revokedAt: new Date() })
     .where(
       and(
-        eq(refreshTokens.id, payload.jti),
+        eq(refreshTokens.id, parsed.tokenId),
         eq(refreshTokens.tokenHash, tokenHash),
         isNull(refreshTokens.revokedAt),
       ),
@@ -319,18 +351,27 @@ async function _issueTokens(
   if (!dbToken) throw new AppError("DATABASE_ERROR", "Failed to create refresh token.");
 
   const accessToken = signAccessToken({ sub: userId, role });
-  // The raw refresh token (rawRefresh UUID) is what the client stores.
-  // We only need signRefreshToken for the jti linkage via dbToken.id — stored hash is of rawRefresh.
+  // Client stores "${dbToken.id}.${rawRefresh}" while DB persists sha256(rawRefresh).
 
   return { accessToken, refreshToken: `${dbToken.id}.${rawRefresh}` };
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Parse composite refresh token string "tokenId.rawSecret"
- * and reconstruct the raw token string for verification.
+ * and validate UUID + non-empty secret before hitting PostgreSQL.
  */
 export function parseRefreshTokenCookie(value: string): { tokenId: string; rawSecret: string } | null {
+  if (!value) return null;
   const dotIdx = value.indexOf(".");
-  if (dotIdx < 0) return null;
-  return { tokenId: value.slice(0, dotIdx), rawSecret: value.slice(dotIdx + 1) };
+  if (dotIdx <= 0) return null;
+
+  const tokenId = value.slice(0, dotIdx);
+  const rawSecret = value.slice(dotIdx + 1);
+  if (!UUID_REGEX.test(tokenId) || !rawSecret) {
+    return null;
+  }
+
+  return { tokenId, rawSecret };
 }

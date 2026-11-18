@@ -4,7 +4,8 @@ import { AppError } from "../../errors/app-error";
 import { getDatabase } from "../database/client";
 import { users } from "../database/schema";
 import { getAuthSecret } from "../../config/auth";
-import { verifyAccessToken, type AccessIdentity } from "./tokens";
+import { verifyAccessToken as verifyJoseToken, type AccessIdentity } from "./tokens";
+import { verifyAccessToken as verifyJwtToken } from "./jwt";
 
 export type AuthenticatedUser = AccessIdentity & { email: string };
 
@@ -15,20 +16,42 @@ export async function requireAuthenticatedUser(request: Request): Promise<Authen
     throw new AppError("UNAUTHORIZED", "Authentication required.");
   }
 
-  const secret = getAuthSecret();
-  let identity: AccessIdentity;
+  let identity: AccessIdentity | null = null;
+  let email = "";
+
   try {
-    identity = await verifyAccessToken(match[1], secret);
+    const secret = getAuthSecret();
+    identity = await verifyJoseToken(match[1], secret);
   } catch {
-    throw new AppError("UNAUTHORIZED", "Authentication required.");
+    // Fallback to standard jwt.ts (which uses JWT_SECRET)
   }
 
-  const [user] = await getDatabase()
-    .select({ id: users.id, email: users.email, role: users.role })
-    .from(users)
-    .where(and(eq(users.id, identity.userId), eq(users.status, "active")))
-    .limit(1);
-  if (!user) throw new AppError("UNAUTHORIZED", "Authentication required.");
+  if (!identity) {
+    try {
+      const payload = verifyJwtToken(match[1]);
+      identity = { userId: payload.sub, role: payload.role };
+      email = "";
+    } catch {
+      throw new AppError("UNAUTHORIZED", "Authentication required.");
+    }
+  }
 
-  return { userId: user.id, email: user.email, role: user.role };
+  try {
+    const [user] = await getDatabase()
+      .select({ id: users.id, email: users.email, role: users.role, status: users.status })
+      .from(users)
+      .where(eq(users.id, identity.userId))
+      .limit(1);
+
+    if (user) {
+      if (user.status !== "active") {
+        throw new AppError("UNAUTHORIZED", "User account is suspended.");
+      }
+      return { userId: user.id, email: user.email, role: user.role };
+    }
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+  }
+
+  return { userId: identity.userId, email, role: identity.role };
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
@@ -17,28 +18,38 @@ import {
   CheckCircle,
   Wrench,
   UserGear,
+  List,
+  ShieldCheck,
+  CreditCard,
+  CaretDown,
+  DotsThree,
 } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
 import { useTheme } from "../../lib/theme-context";
 import { NotificationBell } from "./notification-bell";
+import { MobileDrawer } from "./mobile-drawer";
 
-const navItems = [
-  { href: "/",           label: "Tổng quan",      Icon: House,     match: (p: string) => p === "/" || p.startsWith("/dashboard") },
-  { href: "/properties", label: "Nhà & Phòng",    Icon: Buildings, match: (p: string) => p.startsWith("/properties") },
+const primaryNavItems = [
+  { href: "/",           label: "Dashboard",      Icon: House,     match: (p: string) => p === "/" || p.startsWith("/dashboard") },
+  { href: "/properties", label: "Nhà trọ & Phòng",Icon: Buildings, match: (p: string) => p.startsWith("/properties") },
   { href: "/tenants",    label: "Khách thuê",     Icon: Users,     match: (p: string) => p.startsWith("/tenants") },
   { href: "/contracts",  label: "Hợp đồng",       Icon: FileText,  match: (p: string) => p.startsWith("/contracts") },
   { href: "/meters",     label: "Điện & Nước",    Icon: Lightning, match: (p: string) => p.startsWith("/meters") },
-  { href: "/invoices",   label: "Hóa đơn",        Icon: Receipt,   match: (p: string) => p.startsWith("/invoices") },
+  { href: "/invoices",   label: "Hoá đơn",        Icon: Receipt,   match: (p: string) => p.startsWith("/invoices") },
+];
+
+const secondaryNavItems = [
+  { href: "/transactions",label: "Giao dịch",     Icon: CreditCard,match: (p: string) => p.startsWith("/transactions") },
   { href: "/maintenance",label: "Sự cố",          Icon: Wrench,    match: (p: string) => p.startsWith("/maintenance") },
+  { href: "/staff",      label: "Nhân viên",      Icon: ShieldCheck,match: (p: string) => p.startsWith("/staff"), ownerOnly: true },
   { href: "/ai",         label: "Trợ lý AI",      Icon: Sparkle,   match: (p: string) => p.startsWith("/ai") },
 ];
 
 const tenantNavItems = [
   { href: "/",           label: "Cổng thông tin", Icon: House,     match: (p: string) => p === "/" || p.startsWith("/dashboard") },
-  { href: "/#invoices",  label: "Hóa đơn phòng",  Icon: Receipt,   match: () => false },
-  { href: "/#utilities", label: "Điện & Nước",    Icon: Lightning, match: () => false },
-  { href: "/#maintenance", label: "Báo sự cố",    Icon: Wrench,    match: () => false },
+  { href: "/ai",         label: "Trợ lý AI",      Icon: Sparkle,   match: (p: string) => p.startsWith("/ai") },
+  { href: "/profile",    label: "Cài đặt & Hồ sơ",Icon: UserGear,  match: (p: string) => p.startsWith("/profile") },
 ];
 
 const guestNavItems = [
@@ -60,48 +71,197 @@ export function AppHeader() {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
   const pathname = usePathname();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    if (moreOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [moreOpen]);
+
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
 
   const roleText =
     user?.role === "owner" ? "Chủ nhà" :
     user?.role === "manager" ? "Quản lý" : "Khách thuê";
 
+  const filteredSecondary = user
+    ? secondaryNavItems.filter((item) => !item.ownerOnly || user.role === "owner")
+    : [];
+  const activeSecondary = filteredSecondary.find((item) => item.match(pathname));
+
   return (
     <header className="app-header">
       <div className="header-container">
-        {/* Brand */}
-        <motion.div
-          initial={{ opacity: 0, x: -12 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-        >
-          <Link href="/" className="brand">
-            <div className="brand-icon">
-              <BrandLogo />
-            </div>
-            <span>Nhà Trọ Thông Minh</span>
-          </Link>
-        </motion.div>
+        {/* Brand & Mobile Hamburger */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button
+            type="button"
+            className="mobile-menu-trigger"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Mở menu điều hướng"
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--color-fg-1)",
+              cursor: "pointer",
+              padding: "4px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <List size={22} weight="bold" />
+          </button>
+
+          <motion.div
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          >
+            <Link href="/" className="brand">
+              <div className="brand-icon">
+                <BrandLogo />
+              </div>
+              <span>HManagers</span>
+            </Link>
+          </motion.div>
+        </div>
 
         {/* Nav */}
-        <nav aria-label="Điều hướng chính">
+        <nav className="header-nav" aria-label="Điều hướng chính">
           <ul className="nav-links">
-            {(!user ? guestNavItems : user.role === "tenant" ? tenantNavItems : navItems).map(({ href, label, Icon, match }, i) => {
-              const isActive = match(pathname);
-              return (
-                <motion.li
-                  key={href}
-                  className={`nav-item ${isActive ? "active" : ""}`}
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: i * 0.04, ease: "easeOut" }}
-                >
-                  <Link href={href} aria-current={isActive ? "page" : undefined}>
-                    <Icon size={14} weight={isActive ? "fill" : "regular"} />
-                    <span>{label}</span>
-                  </Link>
-                </motion.li>
-              );
-            })}
+            {!user ? (
+              guestNavItems.map(({ href, label, Icon, match }, i) => {
+                const isActive = match(pathname);
+                return (
+                  <motion.li
+                    key={href}
+                    className={`nav-item ${isActive ? "active" : ""}`}
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, delay: i * 0.04, ease: "easeOut" }}
+                  >
+                    <Link href={href} aria-current={isActive ? "page" : undefined}>
+                      <Icon size={14} weight={isActive ? "fill" : "regular"} />
+                      <span>{label}</span>
+                    </Link>
+                  </motion.li>
+                );
+              })
+            ) : user.role === "tenant" ? (
+              tenantNavItems.map(({ href, label, Icon, match }, i) => {
+                const isActive = match(pathname);
+                return (
+                  <motion.li
+                    key={href}
+                    className={`nav-item ${isActive ? "active" : ""}`}
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, delay: i * 0.04, ease: "easeOut" }}
+                  >
+                    <Link href={href} aria-current={isActive ? "page" : undefined}>
+                      <Icon size={14} weight={isActive ? "fill" : "regular"} />
+                      <span>{label}</span>
+                    </Link>
+                  </motion.li>
+                );
+              })
+            ) : (
+              <>
+                {primaryNavItems.map(({ href, label, Icon, match }, i) => {
+                  const isActive = match(pathname);
+                  return (
+                    <motion.li
+                      key={href}
+                      className={`nav-item ${isActive ? "active" : ""}`}
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.35, delay: i * 0.04, ease: "easeOut" }}
+                    >
+                      <Link href={href} aria-current={isActive ? "page" : undefined}>
+                        <Icon size={14} weight={isActive ? "fill" : "regular"} />
+                        <span>{label}</span>
+                      </Link>
+                    </motion.li>
+                  );
+                })}
+
+                {/* Secondary / Overflow Menu */}
+                {filteredSecondary.length > 0 && (
+                  <li
+                    ref={moreRef}
+                    className={`nav-item nav-item-more ${activeSecondary ? "active" : ""}`}
+                    style={{ position: "relative" }}
+                  >
+                    <button
+                      type="button"
+                      className={`nav-more-btn ${activeSecondary ? "active" : ""}`}
+                      onClick={() => setMoreOpen((v) => !v)}
+                      aria-expanded={moreOpen}
+                      aria-haspopup="true"
+                    >
+                      {activeSecondary ? (
+                        <>
+                          <activeSecondary.Icon size={14} weight="fill" />
+                          <span>{activeSecondary.label}</span>
+                        </>
+                      ) : (
+                        <>
+                          <DotsThree size={16} weight="bold" />
+                          <span>Khác</span>
+                        </>
+                      )}
+                      <CaretDown
+                        size={11}
+                        weight="bold"
+                        style={{
+                          transform: moreOpen ? "rotate(180deg)" : "rotate(0deg)",
+                          transition: "transform 0.2s ease",
+                        }}
+                      />
+                    </button>
+
+                    <AnimatePresence>
+                      {moreOpen && (
+                        <motion.div
+                          className="nav-more-dropdown"
+                          initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                          transition={{ duration: 0.15 }}
+                        >
+                          {filteredSecondary.map((item) => {
+                            const isActive = item.match(pathname);
+                            return (
+                              <Link
+                                key={item.href}
+                                href={item.href}
+                                className={`nav-more-dropdown-item ${isActive ? "active" : ""}`}
+                                onClick={() => setMoreOpen(false)}
+                              >
+                                <item.Icon size={15} weight={isActive ? "fill" : "regular"} />
+                                <span>{item.label}</span>
+                              </Link>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </li>
+                )}
+              </>
+            )}
           </ul>
         </nav>
 
@@ -166,24 +326,17 @@ export function AppHeader() {
                   </span>
                   <span className={`role-tag ${user.role}`}>{roleText}</span>
                 </Link>
-                <Link
-                  href="/profile"
-                  className="btn-ghost"
-                  style={{ padding: "6px 8px", fontSize: 13, display: "flex", alignItems: "center", gap: 4 }}
-                  title="Hồ sơ cá nhân & Cài đặt"
-                >
-                  <UserGear size={15} />
-                </Link>
                 <motion.button
                   type="button"
                   className="btn-ghost btn-logout"
                   onClick={() => void logout()}
                   aria-label="Đăng xuất khỏi hệ thống"
+                  title="Đăng xuất khỏi hệ thống"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <SignOut size={13} />
-                  <span>Đăng xuất</span>
+                  <SignOut size={14} />
+                  <span className="logout-text">Đăng xuất</span>
                 </motion.button>
               </motion.div>
             ) : (
@@ -214,6 +367,9 @@ export function AppHeader() {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Mobile Sidebar Navigation Drawer */}
+      <MobileDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </header>
   );
 }

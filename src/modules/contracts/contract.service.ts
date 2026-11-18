@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { getDatabase } from "../../lib/database/client";
 import {
   contracts,
@@ -37,6 +37,13 @@ export type ContractRow = {
   status: ContractStatus;
   monthlyRentSnapshot: number;
   depositSnapshot: number;
+  paymentCycleMonths?: number;
+  handoverInventory?: string | null;
+  damageDeduction?: number | null;
+  utilityDeduction?: number | null;
+  depositRefundAmount?: number | null;
+  liquidationNotes?: string | null;
+  liquidatedAt?: Date | null;
   tenants: ContractTenantInfo[];
   landlordName?: string | null;
   landlordPhone?: string | null;
@@ -50,7 +57,15 @@ export type CreateContractInput = {
   endDate?: string | null;
   monthlyRentSnapshot: number;
   depositSnapshot: number;
+  paymentCycleMonths?: number;
+  handoverInventory?: string | null;
   tenantIds?: string[];
+};
+
+export type LiquidateContractInput = {
+  damageDeduction?: number;
+  utilityDeduction?: number;
+  liquidationNotes?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -74,11 +89,42 @@ const SELECT_COLUMNS = {
   status: contracts.status,
   monthlyRentSnapshot: contracts.monthlyRentSnapshot,
   depositSnapshot: contracts.depositSnapshot,
+  paymentCycleMonths: contracts.paymentCycleMonths,
+  handoverInventory: contracts.handoverInventory,
+  damageDeduction: contracts.damageDeduction,
+  utilityDeduction: contracts.utilityDeduction,
+  depositRefundAmount: contracts.depositRefundAmount,
+  liquidationNotes: contracts.liquidationNotes,
+  liquidatedAt: contracts.liquidatedAt,
   landlordName: users.fullName,
   landlordPhone: users.phone,
   createdAt: contracts.createdAt,
   updatedAt: contracts.updatedAt,
 } as const;
+
+type ContractDbRow = {
+  id: string;
+  roomId: string;
+  roomNumber: string;
+  propertyName: string;
+  propertyAddress: string | null;
+  startDate: string;
+  endDate: string | null;
+  status: ContractStatus;
+  monthlyRentSnapshot: number;
+  depositSnapshot: number;
+  paymentCycleMonths: number;
+  handoverInventory: string | null;
+  damageDeduction: number | null;
+  utilityDeduction: number | null;
+  depositRefundAmount: number | null;
+  liquidationNotes: string | null;
+  liquidatedAt: Date | null;
+  landlordName: string | null;
+  landlordPhone: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 // ---------------------------------------------------------------------------
 // Service
@@ -92,7 +138,7 @@ export async function listContracts(userId: string, role: string): Promise<Contr
   assertStaff(role);
   const db = getDatabase();
 
-  let contractRows: any[] = [];
+  let contractRows: ContractDbRow[] = [];
 
   if (role === "owner") {
     contractRows = await db
@@ -101,6 +147,7 @@ export async function listContracts(userId: string, role: string): Promise<Contr
       .innerJoin(rooms, eq(rooms.id, contracts.roomId))
       .innerJoin(properties, eq(properties.id, rooms.propertyId))
       .leftJoin(users, eq(users.id, properties.ownerId))
+      .where(eq(properties.ownerId, userId))
       .orderBy(desc(contracts.createdAt));
   } else {
     // manager: join through propertyMembers
@@ -112,7 +159,11 @@ export async function listContracts(userId: string, role: string): Promise<Contr
       .leftJoin(users, eq(users.id, properties.ownerId))
       .innerJoin(
         propertyMembers,
-        eq(propertyMembers.propertyId, properties.id),
+        and(
+          eq(propertyMembers.propertyId, properties.id),
+          eq(propertyMembers.userId, userId),
+          eq(propertyMembers.status, "active"),
+        ),
       )
       .orderBy(desc(contracts.createdAt));
   }
@@ -169,14 +220,36 @@ export async function getContract(
   assertStaff(role);
   const db = getDatabase();
 
-  const [row] = await db
-    .select(SELECT_COLUMNS)
-    .from(contracts)
-    .innerJoin(rooms, eq(rooms.id, contracts.roomId))
-    .innerJoin(properties, eq(properties.id, rooms.propertyId))
-    .leftJoin(users, eq(users.id, properties.ownerId))
-    .where(eq(contracts.id, contractId))
-    .limit(1);
+  let row: ContractDbRow | undefined;
+  if (role === "owner") {
+    const rows = await db
+      .select(SELECT_COLUMNS)
+      .from(contracts)
+      .innerJoin(rooms, eq(rooms.id, contracts.roomId))
+      .innerJoin(properties, eq(properties.id, rooms.propertyId))
+      .leftJoin(users, eq(users.id, properties.ownerId))
+      .where(and(eq(contracts.id, contractId), eq(properties.ownerId, userId)))
+      .limit(1);
+    row = rows[0];
+  } else {
+    const rows = await db
+      .select(SELECT_COLUMNS)
+      .from(contracts)
+      .innerJoin(rooms, eq(rooms.id, contracts.roomId))
+      .innerJoin(properties, eq(properties.id, rooms.propertyId))
+      .leftJoin(users, eq(users.id, properties.ownerId))
+      .innerJoin(
+        propertyMembers,
+        and(
+          eq(propertyMembers.propertyId, properties.id),
+          eq(propertyMembers.userId, userId),
+          eq(propertyMembers.status, "active"),
+        ),
+      )
+      .where(eq(contracts.id, contractId))
+      .limit(1);
+    row = rows[0];
+  }
 
   if (!row) throw new AppError("NOT_FOUND", "Không tìm thấy hợp đồng.", []);
 
@@ -241,6 +314,8 @@ export async function createContract(
       status: "draft",
       monthlyRentSnapshot: input.monthlyRentSnapshot,
       depositSnapshot: input.depositSnapshot,
+      paymentCycleMonths: input.paymentCycleMonths ?? 1,
+      handoverInventory: input.handoverInventory ?? null,
     })
     .returning({
       id: contracts.id,
@@ -250,6 +325,8 @@ export async function createContract(
       status: contracts.status,
       monthlyRentSnapshot: contracts.monthlyRentSnapshot,
       depositSnapshot: contracts.depositSnapshot,
+      paymentCycleMonths: contracts.paymentCycleMonths,
+      handoverInventory: contracts.handoverInventory,
       createdAt: contracts.createdAt,
       updatedAt: contracts.updatedAt,
     });
@@ -351,7 +428,10 @@ export async function removeTenantFromContract(
   await db
     .delete(contractTenants)
     .where(
-      inArray(contractTenants.contractId, [contractId]),
+      and(
+        eq(contractTenants.contractId, contractId),
+        eq(contractTenants.tenantId, tenantId),
+      ),
     );
 
   return getContract(userId, role, contractId);
@@ -413,6 +493,59 @@ export async function updateContractStatus(
     ...existing,
     ...row,
     status: row.status as ContractStatus,
+  };
+}
+
+/**
+ * Liquidate contract: assess damages, deduct final utilities, compute final deposit refund, and transition to 'ended'.
+ */
+export async function liquidateContract(
+  userId: string,
+  role: string,
+  contractId: string,
+  input: LiquidateContractInput,
+): Promise<ContractRow> {
+  assertStaff(role);
+
+  const existing = await getContract(userId, role, contractId);
+  const damage = Math.max(0, input.damageDeduction || 0);
+  const utility = Math.max(0, input.utilityDeduction || 0);
+  const refundAmount = Math.max(0, existing.depositSnapshot - damage - utility);
+
+  const db = getDatabase();
+  const [row] = await db
+    .update(contracts)
+    .set({
+      status: "ended",
+      damageDeduction: damage,
+      utilityDeduction: utility,
+      depositRefundAmount: refundAmount,
+      liquidationNotes: input.liquidationNotes?.trim() || null,
+      liquidatedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(contracts.id, contractId))
+    .returning({
+      id: contracts.id,
+      status: contracts.status,
+      damageDeduction: contracts.damageDeduction,
+      utilityDeduction: contracts.utilityDeduction,
+      depositRefundAmount: contracts.depositRefundAmount,
+      liquidationNotes: contracts.liquidationNotes,
+      liquidatedAt: contracts.liquidatedAt,
+      updatedAt: contracts.updatedAt,
+    });
+
+  if (!row) throw new AppError("NOT_FOUND", "Không tìm thấy hợp đồng.", []);
+
+  return {
+    ...existing,
+    status: "ended",
+    damageDeduction: damage,
+    utilityDeduction: utility,
+    depositRefundAmount: refundAmount,
+    liquidationNotes: input.liquidationNotes?.trim() || null,
+    liquidatedAt: row.liquidatedAt,
   };
 }
 

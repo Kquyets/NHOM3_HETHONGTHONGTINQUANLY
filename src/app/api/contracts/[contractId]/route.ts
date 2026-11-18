@@ -4,6 +4,7 @@ import {
   deleteContract,
   getContract,
   updateContractStatus,
+  liquidateContract,
   type ContractStatus,
 } from "../../../../modules/contracts/contract.service";
 import { errorResponse, successResponse } from "../../../../utils/api-response";
@@ -33,6 +34,15 @@ export async function PATCH(request: NextRequest, { params }: Params): Promise<R
       return errorResponse(
         Object.assign(new Error("Request body must be JSON."), { code: "VALIDATION_ERROR" }),
       );
+    }
+
+    if (body.action === "liquidate") {
+      const contract = await liquidateContract(ctx.userId, ctx.role, contractId, {
+        damageDeduction: Number(body.damageDeduction || 0),
+        utilityDeduction: Number(body.utilityDeduction || 0),
+        liquidationNotes: typeof body.liquidationNotes === "string" ? body.liquidationNotes : null,
+      });
+      return successResponse({ contract });
     }
 
     const { status } = body as Record<string, unknown>;

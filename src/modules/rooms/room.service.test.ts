@@ -116,6 +116,9 @@ describe("createRoom", () => {
       roomNumber: "101",
       monthlyRent: 2000000,
       areaM2: 20,
+      floor: 2,
+      maxOccupants: 3,
+      furnitureList: ["Điều hòa", "Nóng lạnh"],
     });
     expect(result.roomNumber).toBe("101");
   });
@@ -170,6 +173,16 @@ describe("deleteRoom", () => {
     mockDb.select.mockReturnValueOnce(chain([{ id: PROP_ID }]));
     mockDb.delete.mockReturnValueOnce({ where: vi.fn().mockResolvedValue({ rowCount: 1 }) });
     await expect(deleteRoom(OWNER.userId, OWNER.role, PROP_ID, ROOM_ID)).resolves.toBeUndefined();
+  });
+
+  it("soft-archives room if hard delete fails due to linked records", async () => {
+    mockDb.select.mockReturnValueOnce(chain([{ id: PROP_ID }]));
+    mockDb.delete.mockReturnValueOnce({
+      where: vi.fn().mockRejectedValue(new Error("foreign key constraint error")),
+    });
+    mockDb.update.mockReturnValueOnce(chain([]));
+    await expect(deleteRoom(OWNER.userId, OWNER.role, PROP_ID, ROOM_ID)).resolves.toBeUndefined();
+    expect(mockDb.update).toHaveBeenCalled();
   });
 
   it("throws FORBIDDEN for manager", async () => {

@@ -6,7 +6,6 @@ import {
   Sparkle,
   PaperPlaneRight,
   ArrowsCounterClockwise,
-  X,
   CaretDown,
   Robot,
   Copy,
@@ -155,11 +154,6 @@ export function AiFloatingChat() {
     }
   }, [isOpen, messages]);
 
-  // Only render for staff (owner or manager)
-  if (!user || (user.role !== "owner" && user.role !== "manager")) {
-    return null;
-  }
-
   const handleSend = async (messageText?: string) => {
     const textToSend = (messageText || inputMessage).trim();
     if (!textToSend || isLoading) return;
@@ -233,6 +227,11 @@ export function AiFloatingChat() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // Only render for staff (owner or manager)
+  if (!user || (user.role !== "owner" && user.role !== "manager")) {
+    return null;
+  }
+
   return (
     <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999 }}>
       {/* Floating Trigger Button */}
@@ -246,16 +245,16 @@ export function AiFloatingChat() {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 10,
-            padding: "12px 20px",
-            background: "linear-gradient(135deg, #D2C3F6 0%, #B296F8 100%)",
-            color: "#151026",
-            border: "1px solid rgba(255, 255, 255, 0.4)",
-            borderRadius: 50,
-            boxShadow: "0 10px 25px -5px rgba(210, 195, 246, 0.5), 0 0 20px rgba(210, 195, 246, 0.35)",
+            gap: 8,
+            padding: "8px 14px",
+            background: "var(--color-surface)",
+            color: "var(--color-fg)",
+            border: "1px solid var(--color-border)",
+            borderRadius: 24,
+            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.12)",
             cursor: "pointer",
-            fontWeight: 700,
-            fontSize: "0.95rem",
+            fontWeight: 600,
+            fontSize: "12.5px",
             backdropFilter: "blur(12px)",
             WebkitBackdropFilter: "blur(12px)",
           }}
@@ -266,28 +265,16 @@ export function AiFloatingChat() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              width: 28,
-              height: 28,
+              width: 22,
+              height: 22,
               borderRadius: "50%",
-              background: "rgba(21, 16, 38, 0.12)",
-              color: "#151026",
+              background: "var(--color-surface-2)",
+              color: "var(--color-primary)",
             }}
           >
-            <Sparkle size={18} weight="fill" />
+            <Sparkle size={14} weight="bold" />
           </div>
           <span>Trợ lý AI</span>
-          <span
-            style={{
-              padding: "2px 6px",
-              background: "rgba(255, 255, 255, 0.25)",
-              borderRadius: 10,
-              fontSize: "0.72rem",
-              fontWeight: 700,
-              letterSpacing: "0.5px",
-            }}
-          >
-            PRO
-          </span>
         </motion.button>
       )}
 

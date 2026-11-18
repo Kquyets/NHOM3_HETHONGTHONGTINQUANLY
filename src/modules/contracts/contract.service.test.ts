@@ -21,6 +21,13 @@ vi.mock("../../lib/database/schema", () => ({
     status: "status",
     monthlyRentSnapshot: "monthlyRentSnapshot",
     depositSnapshot: "depositSnapshot",
+    paymentCycleMonths: "paymentCycleMonths",
+    handoverInventory: "handoverInventory",
+    damageDeduction: "damageDeduction",
+    utilityDeduction: "utilityDeduction",
+    depositRefundAmount: "depositRefundAmount",
+    liquidationNotes: "liquidationNotes",
+    liquidatedAt: "liquidatedAt",
     createdAt: "createdAt",
     updatedAt: "updatedAt",
     $inferInsert: {},
@@ -61,6 +68,7 @@ import {
   getContract,
   createContract,
   updateContractStatus,
+  liquidateContract,
   deleteContract,
   addTenantToContract,
   removeTenantFromContract,
@@ -257,9 +265,42 @@ describe("addTenantToContract & removeTenantFromContract", () => {
 
   it("removes tenant from contract", async () => {
     mockDb.select.mockReturnValue(chain([mockContract]));
-    mockDb.delete.mockReturnValue({ where: vi.fn().mockResolvedValue({ rowCount: 1 }) });
+    const mockWhere = vi.fn().mockResolvedValue({ rowCount: 1 });
+    mockDb.delete.mockReturnValue({ where: mockWhere });
     const result = await removeTenantFromContract(OWNER.userId, OWNER.role, CONTRACT_ID, "t-1");
     expect(result.id).toBe(CONTRACT_ID);
+    expect(mockDb.delete).toHaveBeenCalled();
+    expect(mockWhere).toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// liquidateContract
+// ---------------------------------------------------------------------------
+describe("liquidateContract", () => {
+  it("liquidates contract with damage and utility deductions and calculates refund", async () => {
+    mockDb.select.mockReturnValue(chain([mockContract]));
+    mockDb.update.mockReturnValue(chain([{
+      ...mockContract,
+      status: "ended",
+      damageDeduction: 500000,
+      utilityDeduction: 300000,
+      depositRefundAmount: 5200000,
+      liquidationNotes: "Phòng sạch sẽ, hỏng 1 bóng đèn",
+      liquidatedAt: new Date(),
+    }]));
+
+    const result = await liquidateContract(OWNER.userId, OWNER.role, CONTRACT_ID, {
+      damageDeduction: 500000,
+      utilityDeduction: 300000,
+      liquidationNotes: "Phòng sạch sẽ, hỏng 1 bóng đèn",
+    });
+
+    expect(result.status).toBe("ended");
+    expect(result.damageDeduction).toBe(500000);
+    expect(result.utilityDeduction).toBe(300000);
+    expect(result.depositRefundAmount).toBe(5200000); // 6000000 - 500000 - 300000
+    expect(mockDb.update).toHaveBeenCalled();
   });
 });
 

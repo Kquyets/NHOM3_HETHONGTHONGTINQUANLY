@@ -65,6 +65,7 @@ import {
   listMeterReadings,
   getMeterReading,
   createMeterReading,
+  batchRecordMeterReadings,
   deleteMeterReading,
   listUtilityRates,
   createUtilityRate,
@@ -117,6 +118,12 @@ describe("listMeterReadings", () => {
   it("returns readings for manager", async () => {
     mockDb.select.mockReturnValueOnce(chain([mockReading]));
     const result = await listMeterReadings(MANAGER.userId, MANAGER.role);
+    expect(result).toHaveLength(1);
+  });
+
+  it("filters readings by propertyId", async () => {
+    mockDb.select.mockReturnValueOnce(chain([mockReading]));
+    const result = await listMeterReadings(OWNER.userId, OWNER.role, "prop-1");
     expect(result).toHaveLength(1);
   });
 
@@ -207,6 +214,50 @@ describe("createMeterReading", () => {
         unitPriceSnapshot: 3500,
       }),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// batchRecordMeterReadings
+// ---------------------------------------------------------------------------
+describe("batchRecordMeterReadings", () => {
+  it("records readings in batch successfully", async () => {
+    mockDb.select.mockReturnValueOnce(chain([mockRate])); // listUtilityRates
+    mockDb.insert.mockReturnValue(chain([mockReading]));
+
+    const result = await batchRecordMeterReadings(OWNER.userId, OWNER.role, {
+      propertyId: "prop-1",
+      billingPeriod: "2025-02-01",
+      items: [
+        {
+          roomId: "room-1",
+          utilityType: "electricity",
+          previousValue: 100,
+          currentValue: 150,
+        },
+      ],
+    });
+
+    expect(result.count).toBe(1);
+  });
+
+  it("skips records where currentValue < previousValue", async () => {
+    mockDb.select.mockReturnValueOnce(chain([mockRate]));
+
+    const result = await batchRecordMeterReadings(OWNER.userId, OWNER.role, {
+      propertyId: "prop-1",
+      billingPeriod: "2025-02-01",
+      items: [
+        {
+          roomId: "room-1",
+          utilityType: "electricity",
+          previousValue: 200,
+          currentValue: 150,
+        },
+      ],
+    });
+
+    expect(result.count).toBe(0);
   });
 });
 

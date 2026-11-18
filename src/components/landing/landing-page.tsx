@@ -11,10 +11,6 @@ import {
   Lightning,
   Users,
   Receipt,
-  ShieldCheck,
-  ChartLineUp,
-  Clock,
-  DeviceMobile,
   Check,
 } from "@phosphor-icons/react";
 
@@ -80,6 +76,25 @@ export function LandingPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.3 }}
         >
+          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+            <Link
+              href="/explore"
+              className="btn-secondary"
+              style={{
+                padding: "12px 24px",
+                fontSize: 15,
+                borderColor: "#f97316",
+                color: "#ea580c",
+                backgroundColor: "rgba(249, 115, 22, 0.08)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Buildings size={16} weight="bold" />
+              Sàn phòng trọ Hà Nội &amp; TP.HCM
+            </Link>
+          </motion.div>
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
             <Link
               href="/register"
@@ -562,7 +577,7 @@ export function LandingPage() {
           </div>
 
           <div style={{ fontSize: 12, color: "var(--color-fg-3)" }}>
-            &copy; {new Date().getFullYear()} Nhom 3. All rights reserved.
+            &copy; {new Date().getFullYear()} HManagers. All rights reserved.
           </div>
         </div>
       </footer>

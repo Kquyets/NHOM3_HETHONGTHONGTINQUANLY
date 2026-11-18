@@ -3,7 +3,9 @@ import { getAuthContext } from "../../../lib/auth/with-auth";
 import {
   createMeterReading,
   listMeterReadings,
+  batchRecordMeterReadings,
   type UtilityType,
+  type BatchReadingItem,
 } from "../../../modules/meters/meter.service";
 import { errorResponse, successResponse } from "../../../utils/api-response";
 
@@ -30,6 +32,28 @@ export async function POST(request: NextRequest): Promise<Response> {
       return errorResponse(
         Object.assign(new Error("Request body must be JSON."), { code: "VALIDATION_ERROR" }),
       );
+    }
+
+    // Support batch reading entry (e.g. from bulk property table)
+    if (Array.isArray((body as Record<string, unknown>).items)) {
+      const { propertyId, billingPeriod, items } = body as {
+        propertyId: string;
+        billingPeriod: string;
+        items: BatchReadingItem[];
+      };
+      if (!propertyId || !billingPeriod) {
+        return errorResponse(
+          Object.assign(new Error("propertyId and billingPeriod are required for batch recording."), {
+            code: "VALIDATION_ERROR",
+          }),
+        );
+      }
+      const result = await batchRecordMeterReadings(ctx.userId, ctx.role, {
+        propertyId,
+        billingPeriod,
+        items,
+      });
+      return successResponse(result, { status: 201 });
     }
 
     const {

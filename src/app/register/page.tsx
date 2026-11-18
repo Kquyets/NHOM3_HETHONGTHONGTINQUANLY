@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
@@ -13,13 +13,13 @@ import {
   UserCircle,
   ArrowRight,
   ShieldCheck,
-  Buildings,
   Check,
   Sun,
   Moon,
 } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
+import { formatAuthError, validateRegisterForm } from "../../lib/auth-form";
 import { useTheme } from "../../lib/theme-context";
 import { AuthShowcase } from "../../components/auth/auth-showcase";
 
@@ -35,9 +35,10 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [role, setRole] = useState<"owner" | "manager" | "tenant">("owner");
+  const [role, setRole] = useState<"owner" | "tenant">("owner");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const skipAutoRedirectRef = useRef(false);
 
   // Password strength
   const pwStrength =
@@ -57,7 +58,7 @@ export default function RegisterPage() {
   ][pwStrength];
 
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading && user && !skipAutoRedirectRef.current) {
       router.replace("/");
     }
   }, [isLoading, user, router]);
@@ -66,21 +67,31 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
 
-    if (password.length < 8) {
-      setError("Mật khẩu phải có ít nhất 8 ký tự.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp.");
+    const validation = validateRegisterForm({ email, password, confirmPassword });
+    if (!validation.ok) {
+      setError(validation.error);
       return;
     }
 
+    if (role === "tenant" && !phone.trim()) {
+      setError("Khách thuê vui lòng nhập Số điện thoại để hệ thống liên kết với phòng trọ.");
+      return;
+    }
+
+    skipAutoRedirectRef.current = true;
     setSubmitting(true);
     try {
-      await register(email, password, role, fullName.trim() || undefined, phone.trim() || undefined);
+      await register(
+        validation.email,
+        password,
+        role,
+        fullName.trim() || undefined,
+        phone.trim() || undefined,
+      );
     } catch (err) {
+      skipAutoRedirectRef.current = false;
       setError(
-        err instanceof Error ? err.message : "Đăng ký thất bại. Vui lòng thử lại.",
+        formatAuthError(err, "Đăng ký thất bại. Vui lòng thử lại."),
       );
     } finally {
       setSubmitting(false);
@@ -166,13 +177,19 @@ export default function RegisterPage() {
                   boxShadow: "0 4px 14px var(--color-primary-glow)",
                 }}
               >
-                <Buildings size={20} weight="fill" />
+                {role === "owner" ? (
+                  <House size={20} weight="fill" />
+                ) : (
+                  <UserCircle size={20} weight="fill" />
+                )}
               </div>
               <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 6 }}>
-                Tạo tài khoản quản lý
+                {role === "owner" ? "Đăng ký tài khoản Quản trị" : "Kích hoạt Cổng thông tin Cư dân"}
               </h1>
-              <p style={{ color: "var(--color-fg-2)", fontSize: 14 }}>
-                Bắt đầu số hóa dãy trọ của bạn hoàn toàn miễn phí.
+              <p style={{ color: "var(--color-fg-2)", fontSize: 14, lineHeight: 1.5 }}>
+                {role === "owner"
+                  ? "Bắt đầu số hóa và tối ưu 90% thời gian vận hành dãy trọ hoàn toàn miễn phí."
+                  : "Tra cứu hóa đơn, chỉ số điện nước, thanh toán VietQR và gửi phản ánh nhanh chóng."}
               </p>
             </div>
 
@@ -198,7 +215,7 @@ export default function RegisterPage() {
                 <label id="role-label" style={{ fontWeight: 600, marginBottom: 8, display: "block" }}>
                   Vai trò của bạn
                 </label>
-                <div className="role-selector" role="radiogroup" aria-labelledby="role-label" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+                <div className="role-selector" role="radiogroup" aria-labelledby="role-label">
                   <label className={`role-option ${role === "owner" ? "selected" : ""}`}>
                     <input
                       type="radio"
@@ -211,28 +228,10 @@ export default function RegisterPage() {
                       {role === "owner" && <Check size={11} weight="bold" />}
                     </div>
                     <div className="role-option-icon">
-                      <House size={20} weight={role === "owner" ? "fill" : "regular"} />
+                      <House size={22} weight={role === "owner" ? "fill" : "regular"} />
                     </div>
-                    <span className="role-option-title">Chủ nhà</span>
+                    <span className="role-option-title">Chủ nhà / BQL</span>
                     <span className="role-option-desc">Toàn quyền quản trị</span>
-                  </label>
-
-                  <label className={`role-option ${role === "manager" ? "selected" : ""}`}>
-                    <input
-                      type="radio"
-                      name="role"
-                      value="manager"
-                      checked={role === "manager"}
-                      onChange={() => setRole("manager")}
-                    />
-                    <div className="role-option-check">
-                      {role === "manager" && <Check size={11} weight="bold" />}
-                    </div>
-                    <div className="role-option-icon">
-                      <UserCircle size={20} weight={role === "manager" ? "fill" : "regular"} />
-                    </div>
-                    <span className="role-option-title">Quản lý</span>
-                    <span className="role-option-desc">Phòng &amp; Sự cố</span>
                   </label>
 
                   <label className={`role-option ${role === "tenant" ? "selected" : ""}`}>
@@ -247,9 +246,9 @@ export default function RegisterPage() {
                       {role === "tenant" && <Check size={11} weight="bold" />}
                     </div>
                     <div className="role-option-icon">
-                      <Buildings size={20} weight={role === "tenant" ? "fill" : "regular"} />
+                      <UserCircle size={22} weight={role === "tenant" ? "fill" : "regular"} />
                     </div>
-                    <span className="role-option-title">Khách thuê</span>
+                    <span className="role-option-title">Khách thuê phòng</span>
                     <span className="role-option-desc">Xem bill &amp; Báo sự cố</span>
                   </label>
                 </div>
@@ -258,7 +257,9 @@ export default function RegisterPage() {
               {/* Full Name & Phone */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label htmlFor="fullName">Họ và tên</label>
+                  <label htmlFor="fullName">
+                    {role === "owner" ? "Họ và tên chủ nhà" : "Họ và tên khách thuê"}
+                  </label>
                   <input
                     id="fullName"
                     type="text"
@@ -271,7 +272,9 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label htmlFor="phone">Số điện thoại</label>
+                  <label htmlFor="phone">
+                    {role === "owner" ? "Số điện thoại liên hệ" : "Số điện thoại nhận phòng *"}
+                  </label>
                   <input
                     id="phone"
                     type="tel"
@@ -280,18 +283,33 @@ export default function RegisterPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     autoComplete="tel"
+                    required={role === "tenant"}
                   />
                 </div>
               </div>
               {role === "tenant" && (
-                <p className="text-muted" style={{ fontSize: "11px", marginTop: -6, marginBottom: 14 }}>
-                  💡 Điền đúng Số điện thoại để hệ thống tự động liên kết với hợp đồng phòng trọ của bạn.
-                </p>
+                <div
+                  style={{
+                    background: "rgba(99, 102, 241, 0.08)",
+                    border: "1px dashed var(--color-primary)",
+                    borderRadius: "var(--radius-md)",
+                    padding: "9px 12px",
+                    fontSize: "12px",
+                    color: "var(--color-fg-2)",
+                    lineHeight: 1.5,
+                    marginTop: -4,
+                    marginBottom: 14,
+                  }}
+                >
+                  💡 <strong>Lưu ý quan trọng:</strong> Điền chính xác <strong>Số điện thoại</strong> bạn đã cung cấp cho Chủ trọ khi ký hợp đồng để hệ thống tự động kết nối với phòng và hóa đơn của bạn.
+                </div>
               )}
 
               {/* Email */}
               <div className="form-group">
-                <label htmlFor="email">Email đăng ký</label>
+                <label htmlFor="email">
+                  {role === "owner" ? "Email quản trị" : "Email đăng nhập"}
+                </label>
                 <div style={{ position: "relative" }}>
                   <span
                     style={{
@@ -311,7 +329,7 @@ export default function RegisterPage() {
                     type="email"
                     className="form-control"
                     style={{ paddingLeft: 38 }}
-                    placeholder="chu-nha@example.com"
+                    placeholder={role === "owner" ? "chu-nha@example.com" : "khach-thue@example.com"}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -478,11 +496,11 @@ export default function RegisterPage() {
                 {submitting ? (
                   <>
                     <span className="spinner" aria-hidden="true" />
-                    Đang tạo tài khoản...
+                    {role === "owner" ? "Đang tạo tài khoản quản trị..." : "Đang kích hoạt tài khoản cư dân..."}
                   </>
                 ) : (
                   <>
-                    Đăng ký tài khoản miễn phí
+                    {role === "owner" ? "Đăng ký tài khoản quản trị miễn phí" : "Kích hoạt Cổng thông tin Cư dân"}
                     <ArrowRight size={15} weight="bold" />
                   </>
                 )}
@@ -490,7 +508,7 @@ export default function RegisterPage() {
             </form>
 
             <div className="auth-footer" style={{ marginTop: 22 }}>
-              Đã có tài khoản quản lý?{" "}
+              {role === "owner" ? "Đã có tài khoản quản lý? " : "Đã có tài khoản cư dân? "}
               <Link href="/login" style={{ color: "var(--color-primary)", fontWeight: 700 }}>
                 Đăng nhập ngay
               </Link>

@@ -1,6 +1,6 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull, or } from "drizzle-orm";
 import { getDatabase } from "../../lib/database/client";
-import { tenants } from "../../lib/database/schema";
+import { contracts, contractTenants, properties, propertyMembers, rooms, tenants, users } from "../../lib/database/schema";
 import { AppError } from "../../errors/app-error";
 
 // ---------------------------------------------------------------------------
@@ -12,7 +12,14 @@ export type TenantRow = {
   userId: string | null;
   fullName: string;
   phone: string | null;
+  nationalId: string | null;
   birthDate: string | null;
+  hometown: string | null;
+  vehicleNumber: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  idCardFrontUrl: string | null;
+  idCardBackUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -22,12 +29,26 @@ export type CreateTenantInput = {
   phone?: string | null;
   birthDate?: string | null;
   userId?: string | null;
+  nationalId?: string | null;
+  hometown?: string | null;
+  vehicleNumber?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  idCardFrontUrl?: string | null;
+  idCardBackUrl?: string | null;
 };
 
 export type UpdateTenantInput = {
   fullName?: string;
   phone?: string | null;
   birthDate?: string | null;
+  nationalId?: string | null;
+  hometown?: string | null;
+  vehicleNumber?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  idCardFrontUrl?: string | null;
+  idCardBackUrl?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -45,7 +66,14 @@ const SELECT_COLUMNS = {
   userId: tenants.userId,
   fullName: tenants.fullName,
   phone: tenants.phone,
+  nationalId: tenants.nationalIdEncrypted,
   birthDate: tenants.birthDate,
+  hometown: tenants.hometown,
+  vehicleNumber: tenants.vehicleNumber,
+  emergencyContactName: tenants.emergencyContactName,
+  emergencyContactPhone: tenants.emergencyContactPhone,
+  idCardFrontUrl: tenants.idCardFrontUrl,
+  idCardBackUrl: tenants.idCardBackUrl,
   createdAt: tenants.createdAt,
   updatedAt: tenants.updatedAt,
 } as const;
@@ -60,9 +88,35 @@ const SELECT_COLUMNS = {
 export async function listTenants(userId: string, role: string): Promise<TenantRow[]> {
   assertStaff(role);
   const db = getDatabase();
+
+  if (role === "owner") {
+    return db
+      .selectDistinct(SELECT_COLUMNS)
+      .from(tenants)
+      .leftJoin(contractTenants, eq(contractTenants.tenantId, tenants.id))
+      .leftJoin(contracts, eq(contracts.id, contractTenants.contractId))
+      .leftJoin(rooms, eq(rooms.id, contracts.roomId))
+      .leftJoin(properties, eq(properties.id, rooms.propertyId))
+      .where(or(eq(properties.ownerId, userId), isNull(contractTenants.contractId)))
+      .orderBy(asc(tenants.fullName));
+  }
+
   return db
-    .select(SELECT_COLUMNS)
+    .selectDistinct(SELECT_COLUMNS)
     .from(tenants)
+    .leftJoin(contractTenants, eq(contractTenants.tenantId, tenants.id))
+    .leftJoin(contracts, eq(contracts.id, contractTenants.contractId))
+    .leftJoin(rooms, eq(rooms.id, contracts.roomId))
+    .leftJoin(properties, eq(properties.id, rooms.propertyId))
+    .leftJoin(
+      propertyMembers,
+      and(
+        eq(propertyMembers.propertyId, properties.id),
+        eq(propertyMembers.userId, userId),
+        eq(propertyMembers.status, "active"),
+      ),
+    )
+    .where(or(eq(propertyMembers.userId, userId), isNull(contractTenants.contractId)))
     .orderBy(asc(tenants.fullName));
 }
 
@@ -104,13 +158,34 @@ export async function createTenant(
   }
 
   const db = getDatabase();
+
+  let resolvedUserId = input.userId ?? null;
+  if (!resolvedUserId && input.phone) {
+    const rawPhone = input.phone.trim();
+    const [existingUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.phone, rawPhone))
+      .limit(1);
+    if (existingUser) {
+      resolvedUserId = existingUser.id;
+    }
+  }
+
   const [row] = await db
     .insert(tenants)
     .values({
       fullName,
       phone: input.phone?.trim() ?? null,
       birthDate: input.birthDate ?? null,
-      userId: input.userId ?? null,
+      userId: resolvedUserId,
+      nationalIdEncrypted: input.nationalId?.trim() ?? null,
+      hometown: input.hometown?.trim() ?? null,
+      vehicleNumber: input.vehicleNumber?.trim() ?? null,
+      emergencyContactName: input.emergencyContactName?.trim() ?? null,
+      emergencyContactPhone: input.emergencyContactPhone?.trim() ?? null,
+      idCardFrontUrl: input.idCardFrontUrl?.trim() ?? null,
+      idCardBackUrl: input.idCardBackUrl?.trim() ?? null,
       linkedUserRole: "tenant",
     })
     .returning(SELECT_COLUMNS);
@@ -153,6 +228,34 @@ export async function updateTenant(
 
   if (input.birthDate !== undefined) {
     updates.birthDate = input.birthDate;
+  }
+
+  if (input.hometown !== undefined) {
+    updates.hometown = input.hometown?.trim() ?? null;
+  }
+
+  if (input.vehicleNumber !== undefined) {
+    updates.vehicleNumber = input.vehicleNumber?.trim() ?? null;
+  }
+
+  if (input.emergencyContactName !== undefined) {
+    updates.emergencyContactName = input.emergencyContactName?.trim() ?? null;
+  }
+
+  if (input.emergencyContactPhone !== undefined) {
+    updates.emergencyContactPhone = input.emergencyContactPhone?.trim() ?? null;
+  }
+
+  if (input.idCardFrontUrl !== undefined) {
+    updates.idCardFrontUrl = input.idCardFrontUrl?.trim() ?? null;
+  }
+
+  if (input.idCardBackUrl !== undefined) {
+    updates.idCardBackUrl = input.idCardBackUrl?.trim() ?? null;
+  }
+
+  if (input.nationalId !== undefined) {
+    updates.nationalIdEncrypted = input.nationalId?.trim() ?? null;
   }
 
   const db = getDatabase();

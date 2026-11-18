@@ -98,6 +98,22 @@ function roomDto(room: typeof rooms.$inferSelect, occupied: boolean) {
     monthlyRent: room.monthlyRent,
     areaM2: room.areaM2 === null ? null : Number(room.areaM2),
     status: roomStatusForClient(room.status, occupied),
+    isPublicListed: room.isPublicListed ?? false,
+    listingTitle: room.listingTitle ?? null,
+    listingDescription: room.listingDescription ?? null,
+    city: room.city ?? null,
+    district: room.district ?? null,
+    ward: room.ward ?? null,
+    address: room.address ?? null,
+    floor: room.floor ?? null,
+    maxOccupants: room.maxOccupants ?? 2,
+    isArchived: room.isArchived ?? false,
+    furnitureList: room.furnitureList ?? [],
+    furnishing: room.furnishing ?? null,
+    amenities: room.amenities ?? [],
+    imageUrls: room.imageUrls ?? [],
+    contactPhone: room.contactPhone ?? null,
+    contactZalo: room.contactZalo ?? null,
   };
 }
 
@@ -116,6 +132,10 @@ export async function createRoom(user: AuthenticatedUser, propertyId: string, in
     roomNumber: input.roomNumber,
     monthlyRent: input.monthlyRent,
     areaM2: input.areaM2?.toString() ?? null,
+    floor: input.floor ?? null,
+    maxOccupants: input.maxOccupants ?? 2,
+    furnitureList: input.furnitureList ?? [],
+    imageUrls: input.imageUrls ?? [],
     status: input.status ?? "ready",
   }).returning();
   return roomDto(room, false);
@@ -150,6 +170,10 @@ export async function deleteRoom(user: AuthenticatedUser, roomId: string): Promi
   try {
     await getDatabase().delete(rooms).where(eq(rooms.id, roomId));
   } catch {
-    throw new AppError("CONFLICT", "Room has linked records and cannot be deleted.");
+    // Graceful soft-archive when room has historical contracts or invoices
+    await getDatabase()
+      .update(rooms)
+      .set({ isArchived: true, updatedAt: new Date() })
+      .where(eq(rooms.id, roomId));
   }
 }

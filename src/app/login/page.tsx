@@ -8,6 +8,7 @@ import {
   Eye,
   EyeSlash,
   EnvelopeSimple,
+  Phone,
   LockSimple,
   ArrowRight,
   House,
@@ -16,6 +17,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
+import { formatAuthError, validateLoginForm } from "../../lib/auth-form";
 import { useTheme } from "../../lib/theme-context";
 import { AuthShowcase } from "../../components/auth/auth-showcase";
 
@@ -30,9 +32,10 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
+  const skipAutoRedirectRef = useRef(false);
 
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading && user && !skipAutoRedirectRef.current) {
       router.replace("/");
     }
   }, [isLoading, user, router]);
@@ -44,12 +47,21 @@ export default function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const validation = validateLoginForm(email, password);
+    if (!validation.ok) {
+      setError(validation.error);
+      return;
+    }
+
+    skipAutoRedirectRef.current = true;
     setSubmitting(true);
     try {
-      await login(email, password);
+      await login(validation.email, validation.password);
     } catch (err) {
+      skipAutoRedirectRef.current = false;
       setError(
-        err instanceof Error ? err.message : "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.",
+        formatAuthError(err, "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin."),
       );
     } finally {
       setSubmitting(false);
@@ -145,7 +157,7 @@ export default function LoginPage() {
                 Đăng nhập hệ thống
               </h1>
               <p style={{ color: "var(--color-fg-2)", fontSize: 14 }}>
-                Chào mừng trở lại! Vui lòng nhập email và mật khẩu của bạn.
+                Chào mừng trở lại! Vui lòng nhập Số điện thoại hoặc Gmail và mật khẩu của bạn.
               </p>
             </div>
 
@@ -167,9 +179,9 @@ export default function LoginPage() {
 
             {/* Form */}
             <form onSubmit={handleSubmit} noValidate>
-              {/* Email */}
+              {/* Phone or Email */}
               <div className="form-group">
-                <label htmlFor="email">Địa chỉ Email</label>
+                <label htmlFor="email">Số điện thoại hoặc Gmail</label>
                 <div style={{ position: "relative" }}>
                   <span
                     style={{
@@ -182,19 +194,23 @@ export default function LoginPage() {
                       pointerEvents: "none",
                     }}
                   >
-                    <EnvelopeSimple size={17} />
+                    {/^[0-9+]/.test(email.trim()) ? (
+                      <Phone size={17} />
+                    ) : (
+                      <EnvelopeSimple size={17} />
+                    )}
                   </span>
                   <input
                     ref={emailRef}
                     id="email"
-                    type="email"
+                    type="text"
                     className="form-control"
                     style={{ paddingLeft: 38 }}
-                    placeholder="chu-nha@example.com"
+                    placeholder="0912 345 678 hoặc ten@gmail.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    autoComplete="email"
+                    autoComplete="username"
                   />
                 </div>
               </div>
@@ -271,7 +287,7 @@ export default function LoginPage() {
               </motion.button>
             </form>
 
-            <div className="auth-divider" style={{ margin: "24px 0 20px" }}>
+            <div className="auth-divider" style={{ display: "flex", alignItems: "center", textAlign: "center", justifyContent: "center", margin: "24px 0 20px" }}>
               <span>hoặc</span>
             </div>
 
