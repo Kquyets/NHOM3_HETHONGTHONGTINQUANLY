@@ -24,14 +24,20 @@ import {
   Bank,
   ArrowsClockwise,
   Plus,
+  FileText,
+  IdentificationCard,
+  PencilSimple,
+  Image as ImageIcon,
 } from "@phosphor-icons/react";
 
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import { buildVietQrUrl, getBankInfo } from "../../utils/vietqr";
 import { PrintableInvoiceModal } from "../invoices/printable-invoice-modal";
+import { PrintableContractModal } from "../contracts/printable-contract-modal";
 import type { InvoiceDetail, InvoiceStatus } from "../../modules/invoices/invoice.service";
-import type { TenantPortalData } from "../../modules/tenant-portal/tenant-portal.service";
+import type { TenantPortalData, TenantProfile } from "../../modules/tenant-portal/tenant-portal.service";
+import type { ContractRow } from "../../modules/contracts/contract.service";
 import type {
   MaintenanceCategory,
   MaintenancePriority,
@@ -45,19 +51,19 @@ const money = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 0,
 });
 
-const STATUS_CONFIG: Record<InvoiceStatus, { label: string; cls: string; Icon: React.ElementType }> = {
-  draft:          { label: "Nháp",              cls: "badge",              Icon: Clock },
-  issued:         { label: "Chờ thanh toán",    cls: "badge maintenance",  Icon: Clock },
-  partially_paid: { label: "Thanh toán 1 phần", cls: "badge maintenance",  Icon: CreditCard },
-  paid:           { label: "Đã thanh toán",     cls: "badge ready",        Icon: CheckCircle },
-  cancelled:      { label: "Đã hủy",            cls: "badge",              Icon: WarningCircle },
+const STATUS_CONFIG: Record<InvoiceStatus, { label: string; cls: string; Icon: typeof Clock }> = {
+  draft:          { label: "Bản nháp",      cls: "badge neutral",     Icon: Clock },
+  issued:         { label: "Chờ thanh toán",cls: "badge maintenance", Icon: WarningCircle },
+  partially_paid: { label: "Trả một phần",  cls: "badge maintenance", Icon: Clock },
+  paid:           { label: "Đã thanh toán", cls: "badge ready",       Icon: CheckCircle },
+  cancelled:      { label: "Đã hủy",        cls: "badge",             Icon: WarningCircle },
 };
 
-const MNT_STATUS_CONFIG: Record<MaintenanceStatus, { label: string; cls: string; Icon: React.ElementType }> = {
-  pending:     { label: "Chờ tiếp nhận", cls: "badge maintenance", Icon: Clock },
-  in_progress: { label: "Đang xử lý",    cls: "badge",             Icon: ArrowsClockwise },
-  resolved:    { label: "Đã xong",       cls: "badge ready",       Icon: CheckCircle },
-  cancelled:   { label: "Đã hủy",        cls: "badge",             Icon: WarningCircle },
+const MNT_STATUS_CONFIG: Record<MaintenanceStatus, { label: string; cls: string; Icon: typeof Clock }> = {
+  pending:     { label: "Đang chờ tiếp nhận", cls: "badge neutral",     Icon: Clock },
+  in_progress: { label: "Đang sửa chữa",     cls: "badge maintenance", Icon: Wrench },
+  resolved:    { label: "Đã hoàn thành",     cls: "badge ready",       Icon: CheckCircle },
+  cancelled:   { label: "Đã hủy",            cls: "badge",             Icon: WarningCircle },
 };
 
 export function TenantPortalView() {
@@ -65,6 +71,7 @@ export function TenantPortalView() {
   const [data, setData] = useState<TenantPortalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | undefined>(undefined);
 
   // Maintenance state
   const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRow[]>([]);
@@ -74,20 +81,52 @@ export function TenantPortalView() {
   const [mCategory, setMCategory] = useState<MaintenanceCategory>("plumbing");
   const [mPriority, setMPriority] = useState<MaintenancePriority>("medium");
   const [mDescription, setMDescription] = useState("");
+  const [mPhotoUrl, setMPhotoUrl] = useState("");
 
   // VietQR modal state
   const [qrInvoice, setQrInvoice] = useState<InvoiceDetail | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [notifyingPayment, setNotifyingPayment] = useState(false);
+  const [paymentSuccessToast, setPaymentSuccessToast] = useState<string | null>(null);
 
-  // Printable A4/PDF modal state
+  // Printable modals
   const [printInvoice, setPrintInvoice] = useState<InvoiceDetail | null>(null);
+  const [printContract, setPrintContract] = useState<ContractRow | null>(null);
 
-  const loadData = useCallback(async () => {
+  // Profile self-service modal state
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [submittingProfile, setSubmittingProfile] = useState(false);
+  const [pFullName, setPFullName] = useState("");
+  const [pPhone, setPPhone] = useState("");
+  const [pBirthDate, setPBirthDate] = useState("");
+  const [pCitizenId, setPCitizenId] = useState("");
+  const [pHometown, setPHometown] = useState("");
+  const [pVehicleNumber, setPVehicleNumber] = useState("");
+  const [pEmergencyName, setPEmergencyName] = useState("");
+  const [pEmergencyPhone, setPEmergencyPhone] = useState("");
+  const [pIdCardFrontUrl, setPIdCardFrontUrl] = useState("");
+  const [pIdCardBackUrl, setPIdCardBackUrl] = useState("");
+
+  const loadData = useCallback(async (roomId?: string) => {
     try {
       setLoading(true);
       setError(null);
-      const res = await apiClient<TenantPortalData>("/api/tenant-portal");
+      const url = roomId ? `/api/tenant-portal?roomId=${encodeURIComponent(roomId)}` : "/api/tenant-portal";
+      const res = await apiClient<TenantPortalData>(url);
       setData(res);
+
+      if (res.tenant) {
+        setPFullName(res.tenant.fullName || "");
+        setPPhone(res.tenant.phone || "");
+        setPBirthDate(res.tenant.birthDate || "");
+        setPCitizenId(res.tenant.citizenId || "");
+        setPHometown(res.tenant.hometown || "");
+        setPVehicleNumber(res.tenant.vehicleNumber || "");
+        setPEmergencyName(res.tenant.emergencyContactName || "");
+        setPEmergencyPhone(res.tenant.emergencyContactPhone || "");
+        setPIdCardFrontUrl(res.tenant.idCardFrontUrl || "");
+        setPIdCardBackUrl(res.tenant.idCardBackUrl || "");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không thể tải thông tin cổng khách thuê.");
     } finally {
@@ -106,22 +145,24 @@ export function TenantPortalView() {
 
   const handleCreateMaintenance = async (e: FormEvent) => {
     e.preventDefault();
-    if (!stay) return;
+    if (!data?.stay) return;
     try {
       setSubmittingMnt(true);
       await apiClient("/api/maintenance", {
         method: "POST",
         body: JSON.stringify({
-          roomId: stay.roomId,
+          roomId: data.stay.roomId,
           title: mTitle.trim(),
           category: mCategory,
           priority: mPriority,
           description: mDescription.trim(),
+          photoUrl: mPhotoUrl.trim() || undefined,
         }),
       });
       setShowMaintenanceModal(false);
       setMTitle("");
       setMDescription("");
+      setMPhotoUrl("");
       await loadMaintenance();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gửi yêu cầu sửa chữa thất bại.");
@@ -130,10 +171,56 @@ export function TenantPortalView() {
     }
   };
 
+  const handleSaveProfile = async (e: FormEvent) => {
+    e.preventDefault();
+    try {
+      setSubmittingProfile(true);
+      await apiClient<{ tenant: TenantProfile }>("/api/tenant-portal", {
+        method: "PUT",
+        body: JSON.stringify({
+          fullName: pFullName.trim(),
+          phone: pPhone.trim() || null,
+          birthDate: pBirthDate || null,
+          citizenId: pCitizenId.trim() || null,
+          hometown: pHometown.trim() || null,
+          vehicleNumber: pVehicleNumber.trim() || null,
+          emergencyContactName: pEmergencyName.trim() || null,
+          emergencyContactPhone: pEmergencyPhone.trim() || null,
+          idCardFrontUrl: pIdCardFrontUrl.trim() || null,
+          idCardBackUrl: pIdCardBackUrl.trim() || null,
+        }),
+      });
+      setShowProfileModal(false);
+      await loadData(selectedRoomId);
+      alert("Đã cập nhật thông tin cá nhân & hồ sơ tạm trú thành công!");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Cập nhật hồ sơ thất bại.");
+    } finally {
+      setSubmittingProfile(false);
+    }
+  };
+
+  const handleNotifyPayment = async (invoiceId: string) => {
+    try {
+      setNotifyingPayment(true);
+      const res = await apiClient<{ success: boolean; message: string }>("/api/tenant-portal", {
+        method: "POST",
+        body: JSON.stringify({ action: "notify-payment", invoiceId }),
+      });
+      setQrInvoice(null);
+      setPaymentSuccessToast(res.message);
+      setTimeout(() => setPaymentSuccessToast(null), 6000);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Không thể gửi thông báo chuyển khoản.");
+    } finally {
+      setNotifyingPayment(false);
+    }
+  };
+
   useEffect(() => {
-    void loadData();
+    void loadData(selectedRoomId);
     void loadMaintenance();
-  }, [loadData, loadMaintenance]);
+  }, [loadData, loadMaintenance, selectedRoomId]);
 
   const handleCopy = async (text: string, key: string) => {
     try {
@@ -171,14 +258,15 @@ export function TenantPortalView() {
     );
   }
 
-  const { tenant, stay, invoices, meters } = data || {
+  const { tenant, stay, stays, contract, invoices, meters } = data || {
     tenant: null,
     stay: null,
+    stays: [],
+    contract: null,
     invoices: [],
     meters: [],
   };
 
-  // Find urgent unpaid invoices
   const unpaidInvoices = invoices.filter(
     (inv) => inv.status === "issued" || inv.status === "partially_paid",
   );
@@ -186,6 +274,33 @@ export function TenantPortalView() {
 
   return (
     <main className="main-container">
+      {/* Toast Notification when payment notification sent */}
+      <AnimatePresence>
+        {paymentSuccessToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            style={{
+              padding: "12px 18px",
+              borderRadius: "10px",
+              backgroundColor: "rgba(16, 185, 129, 0.15)",
+              color: "#059669",
+              border: "1px solid rgba(16, 185, 129, 0.3)",
+              fontSize: "var(--text-sm)",
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: "var(--space-3)",
+            }}
+          >
+            <CheckCircle size={20} weight="fill" />
+            <span>{paymentSuccessToast}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Welcome Banner */}
       <motion.div
         className="card"
@@ -213,20 +328,65 @@ export function TenantPortalView() {
                 "Chào mừng bạn đến với hệ thống quản lý phòng trọ trực tuyến."
               )}
             </p>
+
+            {/* Multi-stay Selector if tenant rents more than 1 room */}
+            {stays && stays.length > 1 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--color-fg-3)", textTransform: "uppercase" }}>
+                  Phòng đang xem:
+                </span>
+                <select
+                  className="form-control"
+                  style={{ padding: "4px 8px", fontSize: "var(--text-xs)", height: "auto", fontWeight: 600, width: "auto" }}
+                  value={stay?.roomId || ""}
+                  onChange={(e) => {
+                    setSelectedRoomId(e.target.value);
+                  }}
+                >
+                  {stays.map((s) => (
+                    <option key={s.roomId} value={s.roomId}>
+                      🏠 {s.propertyName} - Phòng {s.roomNumber}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
-          {stay && (
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 5 }}
+              onClick={() => setShowProfileModal(true)}
+              title="Cập nhật CCCD, quê quán, biển số xe"
+            >
+              <PencilSimple size={14} /> Sửa hồ sơ tạm trú
+            </button>
+
+            {contract && (
               <button
                 type="button"
                 className="btn-secondary"
+                style={{ fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 5 }}
+                onClick={() => setPrintContract(contract)}
+                title="Xem & In Hợp đồng thuê chuẩn A4"
+              >
+                <FileText size={14} /> Xem &amp; In Hợp đồng
+              </button>
+            )}
+
+            {stay && (
+              <button
+                type="button"
+                className="btn-primary"
                 style={{ fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 5 }}
                 onClick={() => setShowMaintenanceModal(true)}
               >
                 <Wrench size={14} /> Báo sự cố
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </motion.div>
 
@@ -240,7 +400,7 @@ export function TenantPortalView() {
             Tài khoản chưa liên kết với phòng trọ
           </h2>
           <p className="text-muted" style={{ maxWidth: 460, margin: "0 auto var(--space-2)", fontSize: "var(--text-sm)", lineHeight: 1.6 }}>
-            Vui lòng cung cấp Số điện thoại (<strong>{user?.email || "của bạn"}</strong>) hoặc CCCD cho Chủ nhà / Quản lý để được thêm vào hợp đồng phòng trọ. Sau khi được thêm, bạn sẽ thấy thông tin phòng, chỉ số điện nước và hóa đơn hàng tháng tại đây.
+            Vui lòng cung cấp Số điện thoại (<strong>{tenant?.phone || user?.email || "của bạn"}</strong>) cho Chủ nhà / Quản lý để được thêm vào hợp đồng phòng trọ. Sau khi được thêm, bạn sẽ thấy thông tin phòng, chỉ số điện nước và hóa đơn hàng tháng tại đây.
           </p>
         </div>
       )}
@@ -307,16 +467,30 @@ export function TenantPortalView() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "var(--space-3)", marginBottom: "var(--space-3)" }}>
           {/* Room info card */}
           <div className="card">
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: "var(--radius-md)", background: "rgba(37,99,235,0.1)", color: "var(--color-primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Buildings size={20} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 36, height: 36, borderRadius: "var(--radius-md)", background: "rgba(37,99,235,0.1)", color: "var(--color-primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Buildings size={20} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: 0 }}>
+                    Thông tin phòng thuê
+                  </h2>
+                  <span className="badge ready" style={{ fontSize: "10px" }}>Hợp đồng hiệu lực</span>
+                </div>
               </div>
-              <div>
-                <h2 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: 0 }}>
-                  Thông tin phòng thuê
-                </h2>
-                <span className="badge ready" style={{ fontSize: "10px" }}>Hợp đồng hiệu lực</span>
-              </div>
+
+              {contract && (
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  style={{ padding: "4px 8px", fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}
+                  onClick={() => setPrintContract(contract)}
+                  title="Xem hợp đồng chi tiết"
+                >
+                  <FileText size={13} /> Hợp đồng
+                </button>
+              )}
             </div>
 
             <div style={{ display: "grid", gap: 8, fontSize: "var(--text-xs)" }}>
@@ -343,36 +517,55 @@ export function TenantPortalView() {
             </div>
           </div>
 
-          {/* Contract Period */}
+          {/* Profile & Temporary Residence Card */}
           <div className="card">
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: "var(--radius-md)", background: "rgba(16,185,129,0.1)", color: "var(--color-success)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <CalendarBlank size={20} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 36, height: 36, borderRadius: "var(--radius-md)", background: "rgba(16,185,129,0.1)", color: "var(--color-success)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <IdentificationCard size={20} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: 0 }}>
+                    Hồ sơ tạm trú &amp; Xe
+                  </h2>
+                  <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>Thông tin định danh</span>
+                </div>
               </div>
-              <div>
-                <h2 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: 0 }}>
-                  Thời hạn hợp đồng
-                </h2>
-                <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>Cam kết thuê</span>
-              </div>
+
+              <button
+                type="button"
+                className="btn-ghost"
+                style={{ padding: "4px 8px", fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}
+                onClick={() => setShowProfileModal(true)}
+              >
+                <PencilSimple size={13} /> Sửa
+              </button>
             </div>
 
             <div style={{ display: "grid", gap: 8, fontSize: "var(--text-xs)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                <span className="text-muted">Ngày bắt đầu:</span>
-                <strong>{stay.startDate}</strong>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                <span className="text-muted">Ngày kết thúc:</span>
-                <strong>{stay.endDate || "Dài hạn"}</strong>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                <span className="text-muted">Họ và tên người thuê:</span>
+                <span className="text-muted">Họ và tên:</span>
                 <strong>{tenant?.fullName}</strong>
               </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
+                <span className="text-muted">Số CCCD:</span>
+                <strong>{tenant?.citizenId || "Chưa cập nhật"}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
+                <span className="text-muted">Biển số xe gửi:</span>
+                <strong>{tenant?.vehicleNumber || "Chưa đăng ký"}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
+                <span className="text-muted">Quê quán:</span>
+                <span>{tenant?.hometown || "Chưa cập nhật"}</span>
+              </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span className="text-muted">Số điện thoại đăng ký:</span>
-                <strong>{tenant?.phone || "—"}</strong>
+                <span className="text-muted">LH khẩn cấp:</span>
+                <span>
+                  {tenant?.emergencyContactName
+                    ? `${tenant.emergencyContactName} (${tenant.emergencyContactPhone || ""})`
+                    : "Chưa cập nhật"}
+                </span>
               </div>
             </div>
           </div>
@@ -517,7 +710,7 @@ export function TenantPortalView() {
               <Lightning size={20} style={{ color: "#eab308" }} /> Lịch sử Chỉ số Điện &amp; Nước
             </h2>
             <p className="text-muted" style={{ margin: "2px 0 0", fontSize: "var(--text-xs)" }}>
-              Theo dõi số điện (kWh) và số nước (m³) theo từng kỳ chốt số của phòng.
+              Theo dõi số điện (kWh) và số nước (m³) theo từng kỳ chốt số kèm đơn giá và tiền ước tính.
             </p>
           </div>
         </div>
@@ -527,9 +720,11 @@ export function TenantPortalView() {
             <p className="text-muted" style={{ margin: 0 }}>Chưa có dữ liệu chốt số điện nước.</p>
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
             {meters.map((m) => {
               const isElectric = m.utilityType === "electricity";
+              const estimatedCost = m.consumption * (m.unitPriceSnapshot || 0);
+
               return (
                 <div key={m.id} className="card" style={{ padding: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -559,6 +754,12 @@ export function TenantPortalView() {
                         {m.consumption} {isElectric ? "kWh" : "m³"}
                       </div>
                     </div>
+                  </div>
+
+                  {/* Unit price and estimated cost calculation */}
+                  <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--color-fg-3)", borderTop: "1px dashed var(--color-border)", paddingTop: 6 }}>
+                    <span>Đơn giá: <strong>{money.format(m.unitPriceSnapshot)}/{isElectric ? "kWh" : "m³"}</strong></span>
+                    <span>Ước tính: <strong style={{ color: "var(--color-primary)" }}>{money.format(estimatedCost)}</strong></span>
                   </div>
                 </div>
               );
@@ -618,6 +819,16 @@ export function TenantPortalView() {
                     <p style={{ margin: "6px 0", fontSize: "var(--text-xs)", color: "var(--color-fg)", lineHeight: 1.5 }}>
                       {req.description}
                     </p>
+                  )}
+                  {req.photoUrl && (
+                    <div style={{ marginTop: 6, marginBottom: 6 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={req.photoUrl}
+                        alt="Ảnh sự cố"
+                        style={{ maxWidth: 160, maxHeight: 110, objectFit: "cover", borderRadius: 6, border: "1px solid var(--color-border)" }}
+                      />
+                    </div>
                   )}
                   {req.resolutionNotes && (
                     <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: 6, fontSize: "var(--text-xs)" }}>
@@ -807,14 +1018,197 @@ export function TenantPortalView() {
                       </div>
                     </div>
 
-                    <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                      <button type="button" className="btn-primary" onClick={() => setQrInvoice(null)}>
-                        Đã chuyển khoản xong
+                    <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        onClick={() => setQrInvoice(null)}
+                      >
+                        Đóng
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        disabled={notifyingPayment}
+                        onClick={() => void handleNotifyPayment(qrInvoice.id)}
+                      >
+                        {notifyingPayment ? "Đang gửi tín hiệu..." : "Báo cho chủ nhà: Tôi đã chuyển khoản xong"}
                       </button>
                     </div>
                   </div>
                 );
               })()}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: Edit Self Profile & Temporary Residence Data */}
+      <AnimatePresence>
+        {showProfileModal && (
+          <motion.div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.65)",
+              backdropFilter: "blur(6px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 110,
+              padding: 16,
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowProfileModal(false)}
+          >
+            <motion.div
+              className="card"
+              style={{ maxWidth: 520, width: "100%", maxHeight: "90vh", overflowY: "auto" }}
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+                <div>
+                  <h2 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                    <IdentificationCard size={20} color="var(--color-primary)" weight="fill" />
+                    Cập nhật Hồ sơ cá nhân &amp; Khai báo tạm trú
+                  </h2>
+                  <p className="text-muted" style={{ fontSize: "var(--text-xs)", margin: "4px 0 0" }}>
+                    Cung cấp số CCCD, quê quán và biển số xe để Ban quản lý làm thủ tục tạm trú CT01 và bãi gửi xe.
+                  </p>
+                </div>
+                <button type="button" className="btn-ghost" style={{ padding: 6 }} onClick={() => setShowProfileModal(false)}>
+                  <X size={14} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveProfile} style={{ display: "grid", gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div>
+                    <label className="field-label" htmlFor="pFullName">Họ và tên *</label>
+                    <input
+                      id="pFullName"
+                      type="text"
+                      required
+                      className="input-field"
+                      value={pFullName}
+                      onChange={(e) => setPFullName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="field-label" htmlFor="pPhone">Số điện thoại *</label>
+                    <input
+                      id="pPhone"
+                      type="tel"
+                      required
+                      className="input-field"
+                      value={pPhone}
+                      onChange={(e) => setPPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div>
+                    <label className="field-label" htmlFor="pCitizenId">Số CCCD / CMND *</label>
+                    <input
+                      id="pCitizenId"
+                      type="text"
+                      className="input-field"
+                      placeholder="VD: 001201012345"
+                      value={pCitizenId}
+                      onChange={(e) => setPCitizenId(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="field-label" htmlFor="pBirthDate">Ngày sinh</label>
+                    <input
+                      id="pBirthDate"
+                      type="date"
+                      className="input-field"
+                      value={pBirthDate}
+                      onChange={(e) => setPBirthDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div>
+                    <label className="field-label" htmlFor="pHometown">Quê quán (Tỉnh / Thành)</label>
+                    <input
+                      id="pHometown"
+                      type="text"
+                      className="input-field"
+                      placeholder="VD: Nam Định, Hà Tĩnh..."
+                      value={pHometown}
+                      onChange={(e) => setPHometown(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="field-label" htmlFor="pVehicleNumber">Biển số xe máy</label>
+                    <input
+                      id="pVehicleNumber"
+                      type="text"
+                      className="input-field"
+                      placeholder="VD: 29A-12345"
+                      value={pVehicleNumber}
+                      onChange={(e) => setPVehicleNumber(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ borderTop: "1px dashed var(--color-border)", paddingTop: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--color-fg-3)", textTransform: "uppercase", marginBottom: 8 }}>
+                    Người liên hệ khẩn cấp (Người thân)
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div>
+                      <label className="field-label" htmlFor="pEmergencyName">Tên người thân</label>
+                      <input
+                        id="pEmergencyName"
+                        type="text"
+                        className="input-field"
+                        placeholder="VD: Bố / Mẹ / Anh"
+                        value={pEmergencyName}
+                        onChange={(e) => setPEmergencyName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="field-label" htmlFor="pEmergencyPhone">SĐT người thân</label>
+                      <input
+                        id="pEmergencyPhone"
+                        type="tel"
+                        className="input-field"
+                        placeholder="VD: 0988776655"
+                        value={pEmergencyPhone}
+                        onChange={(e) => setPEmergencyPhone(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => setShowProfileModal(false)}
+                    disabled={submittingProfile}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={submittingProfile || !pFullName.trim()}
+                  >
+                    {submittingProfile ? "Đang lưu..." : "Lưu thông tin"}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </motion.div>
         )}
@@ -923,6 +1317,18 @@ export function TenantPortalView() {
                   />
                 </div>
 
+                <div>
+                  <label className="field-label" htmlFor="mPhotoUrl">Đường dẫn ảnh chụp sự cố (nếu có)</label>
+                  <input
+                    id="mPhotoUrl"
+                    type="url"
+                    className="input-field"
+                    placeholder="VD: https://... hoặc link ảnh chụp thực tế"
+                    value={mPhotoUrl}
+                    onChange={(e) => setMPhotoUrl(e.target.value)}
+                  />
+                </div>
+
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
                   <button type="button" className="btn-secondary" onClick={() => setShowMaintenanceModal(false)}>
                     Hủy bỏ
@@ -939,6 +1345,9 @@ export function TenantPortalView() {
 
       {/* Printable Invoice Modal */}
       <PrintableInvoiceModal invoice={printInvoice} onClose={() => setPrintInvoice(null)} />
+
+      {/* Printable Contract Modal */}
+      <PrintableContractModal contract={printContract} onClose={() => setPrintContract(null)} />
     </main>
   );
 }

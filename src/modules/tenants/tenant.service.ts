@@ -1,6 +1,6 @@
 import { and, asc, eq, isNull, or } from "drizzle-orm";
 import { getDatabase } from "../../lib/database/client";
-import { contracts, contractTenants, properties, propertyMembers, rooms, tenants } from "../../lib/database/schema";
+import { contracts, contractTenants, properties, propertyMembers, rooms, tenants, users } from "../../lib/database/schema";
 import { AppError } from "../../errors/app-error";
 
 // ---------------------------------------------------------------------------
@@ -154,13 +154,27 @@ export async function createTenant(
   }
 
   const db = getDatabase();
+
+  let resolvedUserId = input.userId ?? null;
+  if (!resolvedUserId && input.phone) {
+    const rawPhone = input.phone.trim();
+    const [existingUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.phone, rawPhone))
+      .limit(1);
+    if (existingUser) {
+      resolvedUserId = existingUser.id;
+    }
+  }
+
   const [row] = await db
     .insert(tenants)
     .values({
       fullName,
       phone: input.phone?.trim() ?? null,
       birthDate: input.birthDate ?? null,
-      userId: input.userId ?? null,
+      userId: resolvedUserId,
       hometown: input.hometown?.trim() ?? null,
       vehicleNumber: input.vehicleNumber?.trim() ?? null,
       emergencyContactName: input.emergencyContactName?.trim() ?? null,

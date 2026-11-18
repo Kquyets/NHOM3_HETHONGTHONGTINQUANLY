@@ -37,6 +37,7 @@ vi.mock("../../lib/database/schema", () => ({
   rooms: { id: "id", propertyId: "propertyId" },
   properties: { id: "id", ownerId: "ownerId" },
   propertyMembers: { propertyId: "propertyId", userId: "userId", status: "status" },
+  users: { id: "id", phone: "phone" },
 }));
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn().mockReturnValue({ type: "eq" }),
@@ -138,7 +139,8 @@ describe("getTenant", () => {
 // createTenant
 // ---------------------------------------------------------------------------
 describe("createTenant", () => {
-  it("creates tenant for owner", async () => {
+  it("creates tenant for owner and auto-resolves userId if phone matches", async () => {
+    mockDb.select.mockReturnValueOnce(chain([])); // check existing user by phone
     mockDb.insert.mockReturnValueOnce(chain([mockTenant]));
     const result = await createTenant(OWNER.userId, OWNER.role, {
       fullName: "Nguyễn Văn A",
