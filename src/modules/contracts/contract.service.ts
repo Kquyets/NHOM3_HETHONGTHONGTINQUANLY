@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { getDatabase } from "../../lib/database/client";
 import {
   contracts,
@@ -80,6 +80,23 @@ const SELECT_COLUMNS = {
   updatedAt: contracts.updatedAt,
 } as const;
 
+type ContractDbRow = {
+  id: string;
+  roomId: string;
+  roomNumber: string;
+  propertyName: string;
+  propertyAddress: string | null;
+  startDate: string;
+  endDate: string | null;
+  status: ContractStatus;
+  monthlyRentSnapshot: number;
+  depositSnapshot: number;
+  landlordName: string | null;
+  landlordPhone: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -92,7 +109,7 @@ export async function listContracts(userId: string, role: string): Promise<Contr
   assertStaff(role);
   const db = getDatabase();
 
-  let contractRows: any[] = [];
+  let contractRows: ContractDbRow[] = [];
 
   if (role === "owner") {
     contractRows = await db
@@ -351,7 +368,10 @@ export async function removeTenantFromContract(
   await db
     .delete(contractTenants)
     .where(
-      inArray(contractTenants.contractId, [contractId]),
+      and(
+        eq(contractTenants.contractId, contractId),
+        eq(contractTenants.tenantId, tenantId),
+      ),
     );
 
   return getContract(userId, role, contractId);

@@ -106,7 +106,6 @@ export default function InvoicesPage() {
 
   // Selected invoice for detail modal
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDetail | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
 
   // Create invoice state
   const [showCreate, setShowCreate] = useState(false);
@@ -167,13 +166,10 @@ export default function InvoicesPage() {
 
   const viewInvoiceDetail = async (invoiceId: string) => {
     try {
-      setLoadingDetail(true);
       const res = await apiClient<{ invoice: InvoiceDetail }>(`/api/invoices/${invoiceId}`);
       setSelectedInvoice(res.invoice);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không thể tải chi tiết hóa đơn.");
-    } finally {
-      setLoadingDetail(false);
     }
   };
 
@@ -870,6 +866,7 @@ export default function InvoicesPage() {
                         marginBottom: "var(--space-2)",
                         boxShadow: "0 4px 18px rgba(0,0,0,0.12)",
                       }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={qrUrl}
                           alt={`VietQR ${qrInvoice.propertyName} ${qrInvoice.roomNumber}`}

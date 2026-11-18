@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   X,
@@ -30,7 +30,7 @@ export function PropertyMembersModal({ property, onClose }: PropertyMembersModal
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const loadMembers = async () => {
+  const loadMembers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -43,11 +43,11 @@ export function PropertyMembersModal({ property, onClose }: PropertyMembersModal
     } finally {
       setLoading(false);
     }
-  };
+  }, [property.id]);
 
   useEffect(() => {
     void loadMembers();
-  }, [property.id]);
+  }, [loadMembers]);
 
   const handleAddMember = async (e: FormEvent) => {
     e.preventDefault();

@@ -24,14 +24,13 @@ import {
   DownloadSimple,
   WarningCircle,
   Phone,
-  IdentificationBadge,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
 import { PrintableContractModal } from "../../components/contracts/printable-contract-modal";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
-import type { ContractRow, ContractStatus, ContractTenantInfo } from "../../modules/contracts/contract.service";
+import type { ContractRow, ContractStatus } from "../../modules/contracts/contract.service";
 import type { PropertyRow } from "../../modules/properties/property.service";
 import type { RoomRow } from "../../modules/rooms/room.service";
 import type { TenantRow } from "../../modules/tenants/tenant.service";

@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
 import {
   Sparkle,
   PaperPlaneRight,
   ArrowsCounterClockwise,
-  Robot,
   Copy,
   Check,
   Buildings,
@@ -17,7 +15,6 @@ import {
   Users,
 } from "@phosphor-icons/react";
 import { AppHeader } from "../../components/layout/app-header";
-import { useAuth } from "../../lib/auth-context";
 import { apiClient } from "../../lib/api-client";
 
 type ChatItem = {
@@ -171,7 +168,6 @@ function renderMarkdown(content: string) {
 }
 
 export default function AiAssistantPage() {
-  const { user } = useAuth();
   const [messages, setMessages] = useState<ChatItem[]>([
     {
       id: "init",

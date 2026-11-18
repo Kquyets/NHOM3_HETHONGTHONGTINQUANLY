@@ -14,7 +14,6 @@ import {
   Drop,
   WifiHigh,
   Door,
-  Buildings,
   ArrowsClockwise,
   Check,
 } from "@phosphor-icons/react";

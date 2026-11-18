@@ -120,6 +120,12 @@ describe("listMeterReadings", () => {
     expect(result).toHaveLength(1);
   });
 
+  it("filters readings by propertyId", async () => {
+    mockDb.select.mockReturnValueOnce(chain([mockReading]));
+    const result = await listMeterReadings(OWNER.userId, OWNER.role, "prop-1");
+    expect(result).toHaveLength(1);
+  });
+
   it("throws FORBIDDEN for tenant role", async () => {
     await expect(listMeterReadings(TENANT_USER.userId, TENANT_USER.role)).rejects.toMatchObject({
       code: "FORBIDDEN",

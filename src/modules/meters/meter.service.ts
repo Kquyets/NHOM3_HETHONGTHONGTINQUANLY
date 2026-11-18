@@ -91,15 +91,21 @@ export async function listMeterReadings(
   };
 
   if (role === "owner") {
-    return db
+    const query = db
       .select(cols)
       .from(meterReadings)
       .innerJoin(rooms, eq(rooms.id, meterReadings.roomId))
-      .innerJoin(properties, eq(properties.id, meterReadings.propertyId))
-      .orderBy(desc(meterReadings.billingPeriod));
+      .innerJoin(properties, eq(properties.id, meterReadings.propertyId));
+
+    if (propertyId) {
+      return query
+        .where(eq(meterReadings.propertyId, propertyId))
+        .orderBy(desc(meterReadings.billingPeriod));
+    }
+    return query.orderBy(desc(meterReadings.billingPeriod));
   }
 
-  return db
+  const query = db
     .select(cols)
     .from(meterReadings)
     .innerJoin(rooms, eq(rooms.id, meterReadings.roomId))
@@ -111,8 +117,14 @@ export async function listMeterReadings(
         eq(propertyMembers.userId, userId),
         eq(propertyMembers.status, "active"),
       ),
-    )
-    .orderBy(desc(meterReadings.billingPeriod));
+    );
+
+  if (propertyId) {
+    return query
+      .where(eq(meterReadings.propertyId, propertyId))
+      .orderBy(desc(meterReadings.billingPeriod));
+  }
+  return query.orderBy(desc(meterReadings.billingPeriod));
 }
 
 export async function getMeterReading(
@@ -232,7 +244,7 @@ export async function listUtilityRates(
   assertStaff(role);
   const db = getDatabase();
 
-  return db
+  const query = db
     .select({
       id: utilityRates.id,
       propertyId: utilityRates.propertyId,
@@ -242,8 +254,15 @@ export async function listUtilityRates(
       effectiveTo: utilityRates.effectiveTo,
       createdAt: utilityRates.createdAt,
     })
-    .from(utilityRates)
-    .orderBy(desc(utilityRates.effectiveFrom));
+    .from(utilityRates);
+
+  if (propertyId) {
+    return query
+      .where(eq(utilityRates.propertyId, propertyId))
+      .orderBy(desc(utilityRates.effectiveFrom));
+  }
+
+  return query.orderBy(desc(utilityRates.effectiveFrom));
 }
 
 export async function createUtilityRate(

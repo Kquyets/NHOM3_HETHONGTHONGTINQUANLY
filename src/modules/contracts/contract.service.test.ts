@@ -257,9 +257,12 @@ describe("addTenantToContract & removeTenantFromContract", () => {
 
   it("removes tenant from contract", async () => {
     mockDb.select.mockReturnValue(chain([mockContract]));
-    mockDb.delete.mockReturnValue({ where: vi.fn().mockResolvedValue({ rowCount: 1 }) });
+    const mockWhere = vi.fn().mockResolvedValue({ rowCount: 1 });
+    mockDb.delete.mockReturnValue({ where: mockWhere });
     const result = await removeTenantFromContract(OWNER.userId, OWNER.role, CONTRACT_ID, "t-1");
     expect(result.id).toBe(CONTRACT_ID);
+    expect(mockDb.delete).toHaveBeenCalled();
+    expect(mockWhere).toHaveBeenCalled();
   });
 });
 

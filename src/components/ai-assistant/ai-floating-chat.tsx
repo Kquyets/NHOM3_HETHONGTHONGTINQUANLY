@@ -6,7 +6,6 @@ import {
   Sparkle,
   PaperPlaneRight,
   ArrowsCounterClockwise,
-  X,
   CaretDown,
   Robot,
   Copy,
@@ -155,11 +154,6 @@ export function AiFloatingChat() {
     }
   }, [isOpen, messages]);
 
-  // Only render for staff (owner or manager)
-  if (!user || (user.role !== "owner" && user.role !== "manager")) {
-    return null;
-  }
-
   const handleSend = async (messageText?: string) => {
     const textToSend = (messageText || inputMessage).trim();
     if (!textToSend || isLoading) return;
@@ -232,6 +226,11 @@ export function AiFloatingChat() {
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
+
+  // Only render for staff (owner or manager)
+  if (!user || (user.role !== "owner" && user.role !== "manager")) {
+    return null;
+  }
 
   return (
     <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999 }}>

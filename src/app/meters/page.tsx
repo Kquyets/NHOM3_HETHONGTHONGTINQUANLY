@@ -10,7 +10,6 @@ import {
   X,
   Trash,
   Door,
-  CalendarBlank,
   CurrencyDollar,
   Receipt,
   Buildings,

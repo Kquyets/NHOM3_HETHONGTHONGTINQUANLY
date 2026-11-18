@@ -11,10 +11,6 @@ import {
   Lightning,
   Users,
   Receipt,
-  ShieldCheck,
-  ChartLineUp,
-  Clock,
-  DeviceMobile,
   Check,
 } from "@phosphor-icons/react";
 

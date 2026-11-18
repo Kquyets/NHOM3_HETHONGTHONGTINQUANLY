@@ -26,8 +26,20 @@ vi.mock("drizzle-orm", () => ({
   or: vi.fn((...args) => ({ type: "or", args })),
 }));
 
-function chain(result: unknown[]) {
-  const obj: any = {
+type MockQueryBuilder = {
+  from: ReturnType<typeof vi.fn>;
+  where: ReturnType<typeof vi.fn>;
+  innerJoin: ReturnType<typeof vi.fn>;
+  orderBy: ReturnType<typeof vi.fn>;
+  limit: ReturnType<typeof vi.fn>;
+  values: ReturnType<typeof vi.fn>;
+  set: ReturnType<typeof vi.fn>;
+  returning: ReturnType<typeof vi.fn>;
+  then: (resolve: (val: unknown) => void, reject?: (err: unknown) => void) => Promise<unknown>;
+};
+
+function chain(result: unknown[]): MockQueryBuilder {
+  const obj: MockQueryBuilder = {
     from: vi.fn(),
     where: vi.fn(),
     innerJoin: vi.fn(),

@@ -71,19 +71,29 @@ vi.mock("drizzle-orm", () => ({
   asc: vi.fn((col) => ({ type: "asc", col })),
 }));
 
-function chain(result: unknown[]) {
+type MockQueryBuilder = {
+  from: ReturnType<typeof vi.fn>;
+  innerJoin: ReturnType<typeof vi.fn>;
+  leftJoin: ReturnType<typeof vi.fn>;
+  where: ReturnType<typeof vi.fn>;
+  orderBy: ReturnType<typeof vi.fn>;
+  limit: ReturnType<typeof vi.fn>;
+  then: (resolve?: (val: unknown[]) => unknown, reject?: (reason: unknown) => unknown) => Promise<unknown>;
+};
+
+function chain(result: unknown[]): MockQueryBuilder {
   const p = Promise.resolve(result);
-  const obj: any = {
+  const obj: MockQueryBuilder = {
     from: vi.fn().mockReturnThis(),
     innerJoin: vi.fn().mockReturnThis(),
     leftJoin: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
     orderBy: vi.fn().mockReturnValue({
       limit: vi.fn().mockResolvedValue(result),
-      then: (resolve: any, reject: any) => p.then(resolve, reject),
+      then: (resolve?: (val: unknown[]) => unknown, reject?: (reason: unknown) => unknown) => p.then(resolve, reject),
     }),
     limit: vi.fn().mockResolvedValue(result),
-    then: (resolve: any, reject: any) => p.then(resolve, reject),
+    then: (resolve, reject) => p.then(resolve, reject),
   };
   return obj;
 }

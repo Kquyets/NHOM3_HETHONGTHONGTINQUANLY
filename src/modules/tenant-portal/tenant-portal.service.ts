@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { getDatabase } from "../../lib/database/client";
 import {
   contracts,
@@ -12,7 +12,7 @@ import {
   tenants,
   users,
 } from "../../lib/database/schema";
-import type { InvoiceDetail, InvoiceItemRow, InvoiceRow, PaymentRow } from "../invoices/invoice.service";
+import type { InvoiceDetail } from "../invoices/invoice.service";
 
 export type TenantProfile = {
   id: string;

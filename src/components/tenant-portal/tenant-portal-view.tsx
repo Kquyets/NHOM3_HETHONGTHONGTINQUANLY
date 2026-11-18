@@ -16,8 +16,6 @@ import {
   CreditCard,
   WarningCircle,
   Wrench,
-  Phone,
-  MapPin,
   CalendarBlank,
   Copy,
   Check,
@@ -713,6 +711,7 @@ export function TenantPortalView() {
                       marginBottom: "var(--space-2)",
                       boxShadow: "0 4px 18px rgba(0,0,0,0.12)",
                     }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={qrUrl}
                         alt="VietQR thanh toán"
