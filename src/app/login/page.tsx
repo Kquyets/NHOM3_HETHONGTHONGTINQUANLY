@@ -282,7 +282,7 @@ export default function LoginPage() {
               </motion.button>
             </form>
 
-            <div className="auth-divider" style={{ margin: "24px 0 20px" }}>
+            <div className="auth-divider" style={{ display: "flex", alignItems: "center", textAlign: "center", justifyContent: "center", margin: "24px 0 20px" }}>
               <span>hoặc</span>
             </div>
 

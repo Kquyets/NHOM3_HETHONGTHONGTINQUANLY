@@ -2024,6 +2024,31 @@ table.data-table tbody tr:last-child td {
   transition: all 0.25s ease;
 }
 
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 24px 0 20px;
+  color: var(--color-fg-3);
+  font-size: 13px;
+  width: 100%;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.auth-divider span {
+  padding: 0 14px;
+  color: var(--color-fg-3);
+  font-size: 13px;
+  text-align: center;
+  white-space: nowrap;
+}
+
 /* Responsive adjustments for Landing & Auth */
 @media (max-width: 960px) {
   .auth-split-wrapper {
