@@ -1,4 +1,4 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { getDatabase } from "../../lib/database/client";
 import {
   contracts,
@@ -259,7 +259,14 @@ export async function getTenantPortalData(
     }
   }
 
-  // 4. Find invoices for tenant's contracts
+  // 4. Find invoices for tenant's contracts (filtered by activeStay if present to avoid cross-room confusion)
+  const invoiceWhereClause = activeStay
+    ? and(
+        eq(contractTenants.tenantId, tenantRow.id),
+        eq(contracts.id, activeStay.contractId),
+      )
+    : eq(contractTenants.tenantId, tenantRow.id);
+
   const invoiceRows = await db
     .select({
       id: invoices.id,
@@ -283,7 +290,7 @@ export async function getTenantPortalData(
     .innerJoin(contractTenants, eq(contractTenants.contractId, contracts.id))
     .innerJoin(rooms, eq(rooms.id, contracts.roomId))
     .innerJoin(properties, eq(properties.id, rooms.propertyId))
-    .where(eq(contractTenants.tenantId, tenantRow.id))
+    .where(invoiceWhereClause)
     .orderBy(desc(invoices.billingPeriodStart));
 
   // Enrich invoices with items and payments
@@ -453,6 +460,8 @@ export async function notifyLandlordPayment(
   const [inv] = await db
     .select({
       id: invoices.id,
+      contractId: invoices.contractId,
+      status: invoices.status,
       billingPeriodStart: invoices.billingPeriodStart,
       totalAmount: invoices.totalAmount,
       roomNumber: rooms.roomNumber,
@@ -470,13 +479,55 @@ export async function notifyLandlordPayment(
     throw new AppError("NOT_FOUND", "Hóa đơn không tồn tại.");
   }
 
+  if (inv.status === "paid") {
+    throw new AppError("BUSINESS_RULE_ERROR", "Hóa đơn này đã được thanh toán rồi.");
+  }
+
   const [sender] = await db
-    .select({ fullName: users.fullName, email: users.email })
+    .select({ id: users.id, fullName: users.fullName, email: users.email, phone: users.phone })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
 
-  const senderName = sender?.fullName || sender?.email || "Khách thuê";
+  if (!sender) {
+    throw new AppError("UNAUTHORIZED", "Người dùng không tồn tại.");
+  }
+
+  // IDOR & Authorization check: verify user is indeed a tenant on this invoice's contract
+  let [tenantRow] = await db
+    .select({ id: tenants.id })
+    .from(tenants)
+    .where(eq(tenants.userId, userId))
+    .limit(1);
+
+  if (!tenantRow && sender.phone) {
+    [tenantRow] = await db
+      .select({ id: tenants.id })
+      .from(tenants)
+      .where(eq(tenants.phone, sender.phone))
+      .limit(1);
+  }
+
+  if (!tenantRow) {
+    throw new AppError("FORBIDDEN", "Bạn không có quyền thông báo thanh toán cho hóa đơn này.");
+  }
+
+  const [isContractTenant] = await db
+    .select({ id: contractTenants.id })
+    .from(contractTenants)
+    .where(
+      and(
+        eq(contractTenants.contractId, inv.contractId),
+        eq(contractTenants.tenantId, tenantRow.id),
+      ),
+    )
+    .limit(1);
+
+  if (!isContractTenant) {
+    throw new AppError("FORBIDDEN", "Hóa đơn này không thuộc hợp đồng phòng thuê của bạn.");
+  }
+
+  const senderName = sender.fullName || sender.email || "Khách thuê";
 
   await createNotification({
     userId: inv.ownerId,

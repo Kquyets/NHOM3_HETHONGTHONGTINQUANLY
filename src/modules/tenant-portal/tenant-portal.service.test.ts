@@ -322,12 +322,14 @@ describe("tenant-portal.service", () => {
     expect(updated.hometown).toBe("Nam Định");
   });
 
-  it("sends payment notification to landlord", async () => {
+  it("sends payment notification to landlord when authorized", async () => {
     mockDb.select
       .mockReturnValueOnce(
         chain([
           {
             id: "inv-1",
+            contractId: "c-1",
+            status: "issued",
             billingPeriodStart: "2026-11-01",
             totalAmount: 3500000,
             roomNumber: "101",
@@ -339,13 +341,92 @@ describe("tenant-portal.service", () => {
       .mockReturnValueOnce(
         chain([
           {
+            id: "u-1",
             fullName: "Nguyễn Văn Thuê",
             email: "thue@test.com",
+            phone: "0912345678",
+          },
+        ]),
+      )
+      .mockReturnValueOnce(
+        chain([
+          {
+            id: "t-1",
+          },
+        ]),
+      )
+      .mockReturnValueOnce(
+        chain([
+          {
+            id: "ct-1",
           },
         ]),
       );
 
     const result = await notifyLandlordPayment("u-1", "inv-1", "Vừa CK qua Techcombank");
     expect(result.success).toBe(true);
+  });
+
+  it("rejects payment notification on already paid invoices", async () => {
+    mockDb.select.mockReturnValueOnce(
+      chain([
+        {
+          id: "inv-1",
+          contractId: "c-1",
+          status: "paid",
+          billingPeriodStart: "2026-11-01",
+          totalAmount: 3500000,
+          roomNumber: "101",
+          propertyName: "Nhà trọ A",
+          ownerId: "owner-1",
+        },
+      ]),
+    );
+
+    await expect(notifyLandlordPayment("u-1", "inv-1")).rejects.toThrow(
+      "Hóa đơn này đã được thanh toán rồi.",
+    );
+  });
+
+  it("prevents IDOR: rejects notification when tenant is not on the contract", async () => {
+    mockDb.select
+      .mockReturnValueOnce(
+        chain([
+          {
+            id: "inv-1",
+            contractId: "c-1",
+            status: "issued",
+            billingPeriodStart: "2026-11-01",
+            totalAmount: 3500000,
+            roomNumber: "101",
+            propertyName: "Nhà trọ A",
+            ownerId: "owner-1",
+          },
+        ]),
+      )
+      .mockReturnValueOnce(
+        chain([
+          {
+            id: "u-2",
+            fullName: "Người Lạ",
+            email: "la@test.com",
+            phone: "0999999999",
+          },
+        ]),
+      )
+      .mockReturnValueOnce(
+        chain([
+          {
+            id: "t-2",
+          },
+        ]),
+      )
+      .mockReturnValueOnce(
+        chain([]), // not in contractTenants
+      );
+
+    await expect(notifyLandlordPayment("u-2", "inv-1")).rejects.toThrow(
+      "Hóa đơn này không thuộc hợp đồng phòng thuê của bạn.",
+    );
   });
 });

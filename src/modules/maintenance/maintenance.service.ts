@@ -480,3 +480,51 @@ export async function updateMaintenanceStatus(
 
   return updated;
 }
+
+/**
+ * Tenant cancels their own pending maintenance request
+ */
+export async function cancelTenantMaintenanceRequest(
+  userId: string,
+  requestId: string,
+): Promise<{ success: boolean; message: string }> {
+  const db = getDatabase();
+
+  const [t] = await db
+    .select({ id: tenants.id })
+    .from(tenants)
+    .where(eq(tenants.userId, userId))
+    .limit(1);
+
+  if (!t) {
+    throw new AppError("FORBIDDEN", "Không tìm thấy hồ sơ khách thuê.", []);
+  }
+
+  const [req] = await db
+    .select({ id: maintenanceRequests.id, tenantId: maintenanceRequests.tenantId, status: maintenanceRequests.status })
+    .from(maintenanceRequests)
+    .where(eq(maintenanceRequests.id, requestId))
+    .limit(1);
+
+  if (!req) {
+    throw new AppError("NOT_FOUND", "Không tìm thấy yêu cầu sửa chữa.", []);
+  }
+
+  if (req.tenantId !== t.id) {
+    throw new AppError("FORBIDDEN", "Bạn không sở hữu yêu cầu sửa chữa này.", []);
+  }
+
+  if (req.status !== "pending") {
+    throw new AppError("BUSINESS_RULE_ERROR", "Chỉ có thể hủy yêu cầu đang ở trạng thái 'Chờ tiếp nhận'.", []);
+  }
+
+  await db
+    .update(maintenanceRequests)
+    .set({
+      status: "cancelled",
+      updatedAt: new Date(),
+    })
+    .where(eq(maintenanceRequests.id, requestId));
+
+  return { success: true, message: "Đã hủy yêu cầu sửa chữa thành công." };
+}

@@ -203,4 +203,40 @@ describe("maintenance.service", () => {
     expect(res.cost).toBe(250000);
     expect(res.contractorName).toBe("Thợ điện nước Hùng");
   });
+
+  it("allows tenant to cancel their pending maintenance request", async () => {
+    const { cancelTenantMaintenanceRequest } = await import("./maintenance.service");
+
+    mockDb.select
+      .mockReturnValueOnce(chain([{ id: "t-1" }])) // tenant check
+      .mockReturnValueOnce(chain([{ id: "req-1", tenantId: "t-1", status: "pending" }])); // request check
+    mockDb.update.mockReturnValueOnce(chain([]));
+
+    const res = await cancelTenantMaintenanceRequest("u-tenant", "req-1");
+    expect(res.success).toBe(true);
+  });
+
+  it("prevents tenant from cancelling someone else's maintenance request", async () => {
+    const { cancelTenantMaintenanceRequest } = await import("./maintenance.service");
+
+    mockDb.select
+      .mockReturnValueOnce(chain([{ id: "t-1" }]))
+      .mockReturnValueOnce(chain([{ id: "req-1", tenantId: "t-other", status: "pending" }]));
+
+    await expect(cancelTenantMaintenanceRequest("u-tenant", "req-1")).rejects.toThrow(
+      "Bạn không sở hữu yêu cầu sửa chữa này.",
+    );
+  });
+
+  it("prevents tenant from cancelling non-pending request", async () => {
+    const { cancelTenantMaintenanceRequest } = await import("./maintenance.service");
+
+    mockDb.select
+      .mockReturnValueOnce(chain([{ id: "t-1" }]))
+      .mockReturnValueOnce(chain([{ id: "req-1", tenantId: "t-1", status: "in_progress" }]));
+
+    await expect(cancelTenantMaintenanceRequest("u-tenant", "req-1")).rejects.toThrow(
+      "Chỉ có thể hủy yêu cầu đang ở trạng thái 'Chờ tiếp nhận'.",
+    );
+  });
 });

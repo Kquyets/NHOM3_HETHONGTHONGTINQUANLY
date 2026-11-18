@@ -46,6 +46,8 @@ const tenantNavItems = [
   { href: "/#invoices",  label: "Hóa đơn phòng",  Icon: Receipt,   match: () => false },
   { href: "/#utilities", label: "Điện & Nước",    Icon: Lightning, match: () => false },
   { href: "/#maintenance", label: "Báo sự cố",    Icon: Wrench,    match: () => false },
+  { href: "/ai",         label: "Trợ lý AI",      Icon: Sparkle,   match: (p: string) => p.startsWith("/ai") },
+  { href: "/profile",    label: "Cài đặt & Hồ sơ",Icon: UserGear,  match: (p: string) => p.startsWith("/profile") },
 ];
 
 const guestNavItems = [
