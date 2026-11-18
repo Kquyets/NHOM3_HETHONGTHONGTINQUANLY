@@ -959,6 +959,254 @@ table.data-table tbody tr:last-child td {
 }
 
 /* --------------------------------------------------------------------------
+   9c. Windows 11 Fluent Acrylic Date / Month Picker
+   -------------------------------------------------------------------------- */
+.fluent-picker-trigger {
+  height: 34px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-fg);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.fluent-picker-trigger:hover {
+  background: var(--color-surface-2);
+  border-color: var(--color-border-soft);
+}
+
+.fluent-picker-trigger:focus-visible {
+  outline: none;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.25);
+}
+
+.fluent-picker-icon {
+  color: var(--color-fg-3);
+}
+
+.fluent-picker-text {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.fluent-calendar-flyout {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 1050;
+  width: 292px;
+  background: rgba(28, 36, 52, 0.92);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  box-shadow: 0 24px 48px -8px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  padding: 14px 16px;
+  color: #ffffff;
+  user-select: none;
+}
+
+[data-theme="light"] .fluent-calendar-flyout {
+  background: rgba(246, 248, 252, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  color: #1a202c;
+}
+
+.fluent-calendar-top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 10px;
+}
+
+[data-theme="light"] .fluent-calendar-top-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.fluent-calendar-title-date {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+[data-theme="light"] .fluent-calendar-title-date {
+  color: #4a5568;
+}
+
+.fluent-calendar-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.fluent-calendar-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: inherit;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.fluent-calendar-view-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"] .fluent-calendar-view-toggle:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.fluent-btn-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: inherit;
+  opacity: 0.8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.fluent-btn-icon:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="light"] .fluent-btn-icon:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.fluent-weekdays-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 6px;
+}
+
+[data-theme="light"] .fluent-weekdays-row {
+  color: #718096;
+}
+
+.fluent-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 3px;
+  text-align: center;
+}
+
+.fluent-day-cell {
+  width: 34px;
+  height: 34px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.fluent-day-cell:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="light"] .fluent-day-cell:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.fluent-day-cell.outside {
+  opacity: 0.35;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .fluent-day-cell.outside {
+  color: #a0aec0;
+}
+
+.fluent-day-cell.today {
+  border: 1px solid #0078d4;
+  font-weight: 600;
+}
+
+.fluent-day-cell.selected {
+  background: #0078d4 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(0, 120, 212, 0.45);
+}
+
+.fluent-months-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.fluent-month-cell {
+  padding: 12px 6px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.12s ease;
+}
+
+.fluent-month-cell:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="light"] .fluent-month-cell:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.fluent-month-cell.today {
+  border: 1px solid #0078d4;
+}
+
+.fluent-month-cell.selected {
+  background: #0078d4 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(0, 120, 212, 0.45);
+}
+
+/* --------------------------------------------------------------------------
    10. Badges (Pastel Glass Pill Tags)
    -------------------------------------------------------------------------- */
 .badge {

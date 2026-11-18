@@ -18,6 +18,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
+import { FluentDatePicker } from "../../components/ui/fluent-date-picker";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import { exportTableToCsv } from "../../utils/export-csv";
@@ -609,16 +610,12 @@ export default function MetersPage() {
                   <label htmlFor="m-month" style={{ fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--color-fg-3)", margin: 0 }}>
                     Tháng:
                   </label>
-                  <div style={{ position: "relative" }}>
-                    <input
-                      id="m-month"
-                      type="month"
-                      className="form-control"
-                      style={{ height: 34, fontSize: "var(--text-xs)" }}
-                      value={billingMonth}
-                      onChange={(e) => setBillingMonth(e.target.value)}
-                    />
-                  </div>
+                  <FluentDatePicker
+                    id="m-month"
+                    mode="month"
+                    value={billingMonth}
+                    onChange={(val) => setBillingMonth(val)}
+                  />
                 </div>
               </div>
 
@@ -1043,7 +1040,13 @@ export default function MetersPage() {
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="r-period">Kỳ hóa đơn (Ngày 01 đầu tháng) *</label>
-                    <input id="r-period" type="date" className="form-control" value={rPeriod} onChange={(e) => setRPeriod(e.target.value)} required />
+                    <FluentDatePicker
+                      id="r-period"
+                      mode="date"
+                      value={rPeriod}
+                      onChange={(val) => setRPeriod(val)}
+                      placeholder="Chọn ngày lập kỳ"
+                    />
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="r-prev">Chỉ số cũ *</label>
@@ -1104,7 +1107,13 @@ export default function MetersPage() {
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="rate-from">Hiệu lực từ *</label>
-                    <input id="rate-from" type="date" className="form-control" value={rateFrom} onChange={(e) => setRateFrom(e.target.value)} required />
+                    <FluentDatePicker
+                      id="rate-from"
+                      mode="date"
+                      value={rateFrom}
+                      onChange={(val) => setRateFrom(val)}
+                      placeholder="Chọn ngày hiệu lực"
+                    />
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: "var(--space-2)" }}>
