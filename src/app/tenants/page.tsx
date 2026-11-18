@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -20,6 +20,7 @@ import {
   FirstAid,
   Buildings,
   Door,
+  WarningCircle,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
@@ -82,6 +83,7 @@ function SlidePanel({
 type TenantFormData = {
   fullName: string;
   phone: string;
+  nationalId: string;
   birthDate: string;
   hometown: string;
   vehicleNumber: string;
@@ -107,6 +109,7 @@ function TenantForm({
 }) {
   const [fullName, setFullName] = useState(initial?.fullName ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
+  const [nationalId, setNationalId] = useState(initial?.nationalId ?? "");
   const [birthDate, setBirthDate] = useState(initial?.birthDate ?? "");
   const [hometown, setHometown] = useState(initial?.hometown ?? "");
   const [vehicleNumber, setVehicleNumber] = useState(initial?.vehicleNumber ?? "");
@@ -129,6 +132,7 @@ function TenantForm({
     onSubmit({
       fullName,
       phone,
+      nationalId,
       birthDate,
       hometown,
       vehicleNumber,
@@ -145,7 +149,7 @@ function TenantForm({
       <h3 style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--color-primary)", marginBottom: "var(--space-2)" }}>
         1. Thông tin cá nhân cơ bản
       </h3>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr", gap: "var(--space-2)" }}>
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label htmlFor="tenant-name">Họ và tên *</label>
           <div style={{ position: "relative" }}>
@@ -190,6 +194,24 @@ function TenantForm({
               {phoneError}
             </div>
           )}
+        </div>
+
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label htmlFor="tenant-national-id">Số CCCD / CMND</label>
+          <div style={{ position: "relative" }}>
+            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-fg-3)", display: "flex", pointerEvents: "none" }}>
+              <IdentificationCard size={15} />
+            </span>
+            <input
+              id="tenant-national-id"
+              type="text"
+              className="form-control"
+              style={{ paddingLeft: 34 }}
+              placeholder="VD: 001201012345"
+              value={nationalId}
+              onChange={(e) => setNationalId(e.target.value)}
+            />
+          </div>
         </div>
 
         <div className="form-group" style={{ marginBottom: 0 }}>
@@ -372,6 +394,17 @@ export default function TenantsPage() {
   const [submittingEdit, setSubmittingEdit] = useState(false);
   const [viewingIdCardsTenant, setViewingIdCardsTenant] = useState<TenantRow | null>(null);
 
+  // Confirm delete modal state
+  const [deletingTenant, setDeletingTenant] = useState<TenantRow | null>(null);
+  const [submittingDelete, setSubmittingDelete] = useState(false);
+
+  // Toast notification state
+  const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const showToast = useCallback((type: "success" | "error", text: string) => {
+    setToast({ type, text });
+    setTimeout(() => setToast(null), 4000);
+  }, []);
+
   const loadTenants = useCallback(async () => {
     try {
       setLoading(true);
@@ -389,6 +422,53 @@ export default function TenantsPage() {
     }
   }, []);
 
+  const getTenantContract = useCallback(
+    (tenant: TenantRow) => {
+      return contracts.find(
+        (c) =>
+          c.status === "active" &&
+          c.tenants.some(
+            (t) =>
+              t.id === tenant.id ||
+              (Boolean(t.phone) && Boolean(tenant.phone) && t.phone === tenant.phone),
+          ),
+      );
+    },
+    [contracts],
+  );
+
+  const uniqueProperties = useMemo(
+    () => Array.from(new Set(contracts.filter((c) => Boolean(c.propertyName)).map((c) => c.propertyName))),
+    [contracts],
+  );
+
+  const activeTenantsCount = useMemo(
+    () => tenants.filter((t) => Boolean(getTenantContract(t))).length,
+    [tenants, getTenantContract],
+  );
+
+  const unassignedTenantsCount = tenants.length - activeTenantsCount;
+
+  const filtered = useMemo(() => {
+    return tenants.filter((t) => {
+      const matchesSearch =
+        t.fullName.toLowerCase().includes(search.toLowerCase()) ||
+        (t.phone ?? "").includes(search) ||
+        (t.nationalId ?? "").includes(search) ||
+        (t.hometown ?? "").toLowerCase().includes(search.toLowerCase()) ||
+        (t.vehicleNumber ?? "").toLowerCase().includes(search.toLowerCase());
+      if (!matchesSearch) return false;
+
+      const contract = getTenantContract(t);
+      if (propertyFilter !== "all" && contract?.propertyName !== propertyFilter) return false;
+
+      if (occupancyFilter === "active" && !contract) return false;
+      if (occupancyFilter === "unassigned" && contract) return false;
+
+      return true;
+    });
+  }, [tenants, search, propertyFilter, occupancyFilter, getTenantContract]);
+
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.replace("/login"); return; }
@@ -404,6 +484,7 @@ export default function TenantsPage() {
         body: JSON.stringify({
           fullName: data.fullName.trim(),
           phone: data.phone.trim() || null,
+          nationalId: data.nationalId.trim() || null,
           birthDate: data.birthDate || null,
           hometown: data.hometown.trim() || null,
           vehicleNumber: data.vehicleNumber.trim() || null,
@@ -415,8 +496,9 @@ export default function TenantsPage() {
       });
       setShowAdd(false);
       await loadTenants();
+      showToast("success", "Đã thêm khách thuê mới thành công!");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Tạo khách thuê thất bại.");
+      showToast("error", err instanceof Error ? err.message : "Tạo khách thuê thất bại.");
     } finally {
       setSubmittingAdd(false);
     }
@@ -431,6 +513,7 @@ export default function TenantsPage() {
         body: JSON.stringify({
           fullName: data.fullName.trim(),
           phone: data.phone.trim() || null,
+          nationalId: data.nationalId.trim() || null,
           birthDate: data.birthDate || null,
           hometown: data.hometown.trim() || null,
           vehicleNumber: data.vehicleNumber.trim() || null,
@@ -442,20 +525,26 @@ export default function TenantsPage() {
       });
       setEditingTenant(null);
       await loadTenants();
+      showToast("success", "Đã cập nhật thông tin khách thuê!");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Cập nhật khách thuê thất bại.");
+      showToast("error", err instanceof Error ? err.message : "Cập nhật khách thuê thất bại.");
     } finally {
       setSubmittingEdit(false);
     }
   };
 
-  const handleDelete = async (tenant: TenantRow) => {
-    if (!window.confirm(`Bạn có chắc muốn xóa khách thuê "${tenant.fullName}"?`)) return;
+  const handleConfirmDelete = async () => {
+    if (!deletingTenant) return;
     try {
-      await apiClient(`/api/tenants/${tenant.id}`, { method: "DELETE" });
+      setSubmittingDelete(true);
+      await apiClient(`/api/tenants/${deletingTenant.id}`, { method: "DELETE" });
+      setDeletingTenant(null);
       await loadTenants();
+      showToast("success", "Đã xóa khách thuê thành công!");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể xóa khách thuê.");
+      showToast("error", err instanceof Error ? err.message : "Không thể xóa khách thuê.");
+    } finally {
+      setSubmittingDelete(false);
     }
   };
 
@@ -472,46 +561,6 @@ export default function TenantsPage() {
       </div>
     );
   }
-
-  const getTenantContract = useCallback(
-    (tenant: TenantRow) => {
-      return contracts.find(
-        (c) =>
-          c.status === "active" &&
-          c.tenants.some(
-            (t) =>
-              t.id === tenant.id ||
-              (t.phone && tenant.phone && t.phone === tenant.phone) ||
-              t.fullName.toLowerCase() === tenant.fullName.toLowerCase(),
-          ),
-      );
-    },
-    [contracts],
-  );
-
-  const uniqueProperties = Array.from(
-    new Set(contracts.filter((c) => Boolean(c.propertyName)).map((c) => c.propertyName)),
-  );
-
-  const activeTenantsCount = tenants.filter((t) => Boolean(getTenantContract(t))).length;
-  const unassignedTenantsCount = tenants.length - activeTenantsCount;
-
-  const filtered = tenants.filter((t) => {
-    const matchesSearch =
-      t.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      (t.phone ?? "").includes(search) ||
-      (t.hometown ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (t.vehicleNumber ?? "").toLowerCase().includes(search.toLowerCase());
-    if (!matchesSearch) return false;
-
-    const contract = getTenantContract(t);
-    if (propertyFilter !== "all" && contract?.propertyName !== propertyFilter) return false;
-
-    if (occupancyFilter === "active" && !contract) return false;
-    if (occupancyFilter === "unassigned" && contract) return false;
-
-    return true;
-  });
 
   const formatDate = (d: string | null) => {
     if (!d) return "—";
@@ -807,9 +856,25 @@ export default function TenantsPage() {
               <div className="empty-icon">
                 <MagnifyingGlass size={24} />
               </div>
-              <p className="text-muted" style={{ margin: 0 }}>
-                Không tìm thấy khách thuê nào khớp với &ldquo;{search}&rdquo;.
+              <p className="text-muted" style={{ margin: "0 0 var(--space-2)" }}>
+                {search ? (
+                  <>Không tìm thấy khách thuê nào khớp với &ldquo;{search}&rdquo;.</>
+                ) : (
+                  <>Không tìm thấy khách thuê nào phù hợp với bộ lọc hiện tại.</>
+                )}
               </p>
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ fontSize: "var(--text-xs)" }}
+                onClick={() => {
+                  setSearch("");
+                  setPropertyFilter("all");
+                  setOccupancyFilter("all");
+                }}
+              >
+                Xóa tất cả bộ lọc
+              </button>
             </div>
           </motion.div>
         ) : (
@@ -855,12 +920,17 @@ export default function TenantsPage() {
                           </span>
                           <div>
                             <div style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>{tenant.fullName}</div>
-                            <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginTop: 2 }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginTop: 2 }}>
                               {tenant.phone ? (
                                 <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
                                   <Phone size={11} /> {tenant.phone}
                                 </span>
                               ) : null}
+                              {tenant.nationalId && (
+                                <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                                  • CCCD: {tenant.nationalId}
+                                </span>
+                              )}
                               {tenant.birthDate && <span>• NS: {formatDate(tenant.birthDate)}</span>}
                             </div>
                           </div>
@@ -891,11 +961,25 @@ export default function TenantsPage() {
                         })()}
                       </td>
 
-                      <td>
+                      <td style={{ maxWidth: 220 }}>
                         {tenant.hometown ? (
-                          <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "var(--text-xs)", color: "var(--color-fg-2)" }}>
+                          <span
+                            title={tenant.hometown}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                              fontSize: "var(--text-xs)",
+                              color: "var(--color-fg-2)",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
                             <MapPin size={13} style={{ color: "var(--color-primary)", flexShrink: 0 }} />
-                            <span>{tenant.hometown}</span>
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {tenant.hometown}
+                            </span>
                           </span>
                         ) : (
                           <span style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>Chưa khai báo</span>
@@ -961,7 +1045,13 @@ export default function TenantsPage() {
                             type="button"
                             className="btn-ghost"
                             style={{ padding: "4px 10px", fontSize: "var(--text-xs)" }}
-                            onClick={() => { setEditingTenant(tenant); setShowAdd(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                            onClick={() => {
+                              setEditingTenant(tenant);
+                              setShowAdd(false);
+                              requestAnimationFrame(() => {
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                              });
+                            }}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             title="Chỉnh sửa hồ sơ"
@@ -972,8 +1062,8 @@ export default function TenantsPage() {
                           <motion.button
                             type="button"
                             className="btn-ghost"
-                            style={{ padding: "4px 10px", fontSize: "var(--text-xs)" }}
-                            onClick={() => void handleDelete(tenant)}
+                            style={{ padding: "4px 10px", fontSize: "var(--text-xs)", color: "var(--color-danger, #ef4444)" }}
+                            onClick={() => setDeletingTenant(tenant)}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             title="Xóa khách thuê"
@@ -1106,6 +1196,183 @@ export default function TenantsPage() {
           </div>
         </div>
       )}
+
+      {/* Confirm Delete Tenant Modal */}
+      {deletingTenant && (
+        <div
+          className="modal-backdrop"
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.65)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: 16,
+          }}
+          onClick={() => !submittingDelete && setDeletingTenant(null)}
+        >
+          <motion.div
+            className="modal-card"
+            style={{
+              backgroundColor: "var(--color-bg)",
+              borderRadius: "var(--radius-lg)",
+              padding: "var(--space-3)",
+              maxWidth: 440,
+              width: "100%",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.3)",
+              border: "1px solid var(--color-border)",
+            }}
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  backgroundColor: "rgba(239, 68, 68, 0.15)",
+                  color: "#ef4444",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <WarningCircle size={22} weight="bold" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: 0 }}>
+                  Xác nhận xóa khách thuê?
+                </h3>
+                <p style={{ margin: "6px 0 0", fontSize: "var(--text-xs)", color: "var(--color-fg-2)", lineHeight: 1.5 }}>
+                  Bạn có chắc muốn xóa khách thuê <strong>{deletingTenant.fullName}</strong>
+                  {deletingTenant.phone ? ` (${deletingTenant.phone})` : ""}? Hồ sơ thông tin và ảnh CCCD sẽ bị gỡ khỏi hệ thống.
+                </p>
+                {(() => {
+                  const contract = getTenantContract(deletingTenant);
+                  if (contract) {
+                    return (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          padding: "8px 10px",
+                          borderRadius: "var(--radius-sm)",
+                          backgroundColor: "rgba(245, 158, 11, 0.12)",
+                          border: "1px solid rgba(245, 158, 11, 0.3)",
+                          color: "#d97706",
+                          fontSize: "11px",
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        ⚠️ Lưu ý: Khách này đang có hợp đồng hoạt động tại <strong>Phòng {contract.roomNumber} - {contract.propertyName}</strong>.
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={submittingDelete}
+                onClick={() => setDeletingTenant(null)}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                className="btn-danger"
+                style={{
+                  backgroundColor: "#ef4444",
+                  color: "#fff",
+                  border: "none",
+                  padding: "8px 16px",
+                  borderRadius: "var(--radius-md)",
+                  fontSize: "var(--text-xs)",
+                  fontWeight: 600,
+                  cursor: submittingDelete ? "not-allowed" : "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+                disabled={submittingDelete}
+                onClick={handleConfirmDelete}
+              >
+                {submittingDelete ? (
+                  <>
+                    <span className="spinner" aria-hidden="true" />
+                    Đang xóa...
+                  </>
+                ) : (
+                  <>
+                    <Trash size={13} weight="bold" />
+                    Xóa khách thuê
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Floating Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            style={{
+              position: "fixed",
+              bottom: 24,
+              right: 24,
+              zIndex: 99999,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "12px 18px",
+              borderRadius: "var(--radius-md)",
+              backgroundColor: toast.type === "success" ? "#059669" : "#dc2626",
+              color: "#ffffff",
+              boxShadow: "0 10px 25px rgba(0,0,0,0.25)",
+              fontSize: "var(--text-xs)",
+              fontWeight: 600,
+            }}
+          >
+            {toast.type === "success" ? (
+              <Check size={16} weight="bold" />
+            ) : (
+              <WarningCircle size={16} weight="bold" />
+            )}
+            <span>{toast.text}</span>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#ffffff",
+                cursor: "pointer",
+                padding: 2,
+                marginLeft: 4,
+                display: "flex",
+              }}
+              aria-label="Đóng thông báo"
+            >
+              <X size={13} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

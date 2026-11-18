@@ -37,6 +37,7 @@ export async function PATCH(request: NextRequest, { params }: Params): Promise<R
     const {
       fullName,
       phone,
+      nationalId,
       birthDate,
       hometown,
       vehicleNumber,
@@ -49,6 +50,7 @@ export async function PATCH(request: NextRequest, { params }: Params): Promise<R
     const tenant = await updateTenant(ctx.userId, ctx.role, tenantId, {
       fullName: typeof fullName === "string" ? fullName : undefined,
       phone: phone === null ? null : typeof phone === "string" ? phone : undefined,
+      nationalId: nationalId === null ? null : typeof nationalId === "string" ? nationalId : undefined,
       birthDate: birthDate === null ? null : typeof birthDate === "string" ? birthDate : undefined,
       hometown: hometown === null ? null : typeof hometown === "string" ? hometown : undefined,
       vehicleNumber: vehicleNumber === null ? null : typeof vehicleNumber === "string" ? vehicleNumber : undefined,

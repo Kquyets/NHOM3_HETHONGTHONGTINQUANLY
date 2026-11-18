@@ -12,6 +12,7 @@ export type TenantRow = {
   userId: string | null;
   fullName: string;
   phone: string | null;
+  nationalId: string | null;
   birthDate: string | null;
   hometown: string | null;
   vehicleNumber: string | null;
@@ -28,6 +29,7 @@ export type CreateTenantInput = {
   phone?: string | null;
   birthDate?: string | null;
   userId?: string | null;
+  nationalId?: string | null;
   hometown?: string | null;
   vehicleNumber?: string | null;
   emergencyContactName?: string | null;
@@ -40,6 +42,7 @@ export type UpdateTenantInput = {
   fullName?: string;
   phone?: string | null;
   birthDate?: string | null;
+  nationalId?: string | null;
   hometown?: string | null;
   vehicleNumber?: string | null;
   emergencyContactName?: string | null;
@@ -63,6 +66,7 @@ const SELECT_COLUMNS = {
   userId: tenants.userId,
   fullName: tenants.fullName,
   phone: tenants.phone,
+  nationalId: tenants.nationalIdEncrypted,
   birthDate: tenants.birthDate,
   hometown: tenants.hometown,
   vehicleNumber: tenants.vehicleNumber,
@@ -175,6 +179,7 @@ export async function createTenant(
       phone: input.phone?.trim() ?? null,
       birthDate: input.birthDate ?? null,
       userId: resolvedUserId,
+      nationalIdEncrypted: input.nationalId?.trim() ?? null,
       hometown: input.hometown?.trim() ?? null,
       vehicleNumber: input.vehicleNumber?.trim() ?? null,
       emergencyContactName: input.emergencyContactName?.trim() ?? null,
@@ -247,6 +252,10 @@ export async function updateTenant(
 
   if (input.idCardBackUrl !== undefined) {
     updates.idCardBackUrl = input.idCardBackUrl?.trim() ?? null;
+  }
+
+  if (input.nationalId !== undefined) {
+    updates.nationalIdEncrypted = input.nationalId?.trim() ?? null;
   }
 
   const db = getDatabase();

@@ -51,6 +51,19 @@ const money = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 0,
 });
 
+const formatBillingPeriod = (period: string) => {
+  const parts = period.split("-");
+  if (parts.length >= 2) return `Tháng ${parts[1]}/${parts[0]}`;
+  return period;
+};
+
+const formatDateVN = (d: string | null) => {
+  if (!d) return "—";
+  const parts = d.split("-");
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return d;
+};
+
 const STATUS_CONFIG: Record<InvoiceStatus, { label: string; cls: string; Icon: typeof Clock }> = {
   draft:          { label: "Bản nháp",      cls: "badge neutral",     Icon: Clock },
   issued:         { label: "Chờ thanh toán",cls: "badge maintenance", Icon: WarningCircle },
@@ -83,6 +96,10 @@ export function TenantPortalView() {
   const [mDescription, setMDescription] = useState("");
   const [mPhotoUrl, setMPhotoUrl] = useState("");
 
+  // Toast / error state
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [mntError, setMntError] = useState<string | null>(null);
+
   // VietQR modal state
   const [qrInvoice, setQrInvoice] = useState<InvoiceDetail | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -106,6 +123,14 @@ export function TenantPortalView() {
   const [pEmergencyPhone, setPEmergencyPhone] = useState("");
   const [pIdCardFrontUrl, setPIdCardFrontUrl] = useState("");
   const [pIdCardBackUrl, setPIdCardBackUrl] = useState("");
+
+  useEffect(() => {
+    if (showProfileModal) setProfileError(null);
+  }, [showProfileModal]);
+
+  useEffect(() => {
+    if (showMaintenanceModal) setMntError(null);
+  }, [showMaintenanceModal]);
 
   const loadData = useCallback(async (roomId?: string) => {
     try {
@@ -165,7 +190,7 @@ export function TenantPortalView() {
       setMPhotoUrl("");
       await loadMaintenance();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gửi yêu cầu sửa chữa thất bại.");
+      setMntError(err instanceof Error ? err.message : "Gửi yêu cầu sửa chữa thất bại.");
     } finally {
       setSubmittingMnt(false);
     }
@@ -192,9 +217,10 @@ export function TenantPortalView() {
       });
       setShowProfileModal(false);
       await loadData(selectedRoomId);
-      alert("Đã cập nhật thông tin cá nhân & hồ sơ tạm trú thành công!");
+      setPaymentSuccessToast("Cập nhật hồ sơ cá nhân & tạm trú thành công!");
+      setTimeout(() => setPaymentSuccessToast(null), 5000);
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Cập nhật hồ sơ thất bại.");
+      setProfileError(err instanceof Error ? err.message : "Cập nhật hồ sơ thất bại.");
     } finally {
       setSubmittingProfile(false);
     }
@@ -372,7 +398,7 @@ export function TenantPortalView() {
                 onClick={() => setPrintContract(contract)}
                 title="Xem & In Hợp đồng thuê chuẩn A4"
               >
-                <FileText size={14} /> Xem &amp; In Hợp đồng
+                <FileText size={14} /> Xem & In Hợp đồng
               </button>
             )}
 
@@ -402,6 +428,14 @@ export function TenantPortalView() {
           <p className="text-muted" style={{ maxWidth: 460, margin: "0 auto var(--space-2)", fontSize: "var(--text-sm)", lineHeight: 1.6 }}>
             Vui lòng cung cấp Số điện thoại (<strong>{tenant?.phone || user?.email || "của bạn"}</strong>) cho Chủ nhà / Quản lý để được thêm vào hợp đồng phòng trọ. Sau khi được thêm, bạn sẽ thấy thông tin phòng, chỉ số điện nước và hóa đơn hàng tháng tại đây.
           </p>
+          <button
+            type="button"
+            className="btn-primary"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+            onClick={() => setShowProfileModal(true)}
+          >
+            <PencilSimple size={14} /> Cập nhật số điện thoại & hồ sơ
+          </button>
         </div>
       )}
 
@@ -428,7 +462,7 @@ export function TenantPortalView() {
               <WarningCircle size={16} weight="bold" /> Hóa đơn cần thanh toán
             </div>
             <div style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: "4px 0" }}>
-              Kỳ thu {urgentInvoice.billingPeriodStart} • Phòng {urgentInvoice.roomNumber}
+              {formatBillingPeriod(urgentInvoice.billingPeriodStart)} • Phòng {urgentInvoice.roomNumber}
             </div>
             <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>
               Hạn nộp tiền: <strong>{urgentInvoice.dueDate || "Ngày 10 cùng tháng"}</strong>
@@ -526,7 +560,7 @@ export function TenantPortalView() {
                 </div>
                 <div>
                   <h2 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: 0 }}>
-                    Hồ sơ tạm trú &amp; Xe
+                    Hồ sơ tạm trú & Xe
                   </h2>
                   <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>Thông tin định danh</span>
                 </div>
@@ -588,7 +622,10 @@ export function TenantPortalView() {
               <div style={{ display: "grid", gap: 8, fontSize: "var(--text-xs)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
                   <span className="text-muted">Ngân hàng:</span>
-                  <strong>{stay.bankCode}</strong>
+                  <strong>{(() => {
+                    const info = getBankInfo(stay.bankCode!);
+                    return info ? `${info.shortName} (${info.code})` : stay.bankCode;
+                  })()}</strong>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
                   <span className="text-muted">Số tài khoản:</span>
@@ -624,7 +661,7 @@ export function TenantPortalView() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div>
             <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
-              <Receipt size={20} style={{ color: "var(--color-primary)" }} /> Lịch sử Hóa đơn tiền phòng &amp; Dịch vụ
+              <Receipt size={20} style={{ color: "var(--color-primary)" }} /> Lịch sử Hóa đơn tiền phòng & Dịch vụ
             </h2>
             <p className="text-muted" style={{ margin: "2px 0 0", fontSize: "var(--text-xs)" }}>
               Xem chi tiết các khoản thu, thanh toán qua mã VietQR và in phiếu thu A4.
@@ -655,9 +692,9 @@ export function TenantPortalView() {
                     const cfg = STATUS_CONFIG[inv.status];
                     return (
                       <tr key={inv.id}>
-                        <td style={{ fontWeight: 600 }}>{inv.billingPeriodStart}</td>
+                        <td style={{ fontWeight: 600 }}>{formatBillingPeriod(inv.billingPeriodStart)}</td>
                         <td>Phòng {inv.roomNumber}</td>
-                        <td className="text-muted">{inv.dueDate ?? "—"}</td>
+                        <td className="text-muted">{formatDateVN(inv.dueDate ?? null)}</td>
                         <td style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
                           {money.format(inv.totalAmount)}
                         </td>
@@ -707,7 +744,7 @@ export function TenantPortalView() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div>
             <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
-              <Lightning size={20} style={{ color: "#eab308" }} /> Lịch sử Chỉ số Điện &amp; Nước
+              <Lightning size={20} style={{ color: "#eab308" }} /> Lịch sử Chỉ số Điện & Nước
             </h2>
             <p className="text-muted" style={{ margin: "2px 0 0", fontSize: "var(--text-xs)" }}>
               Theo dõi số điện (kWh) và số nước (m³) theo từng kỳ chốt số kèm đơn giá và tiền ước tính.
@@ -758,8 +795,10 @@ export function TenantPortalView() {
 
                   {/* Unit price and estimated cost calculation */}
                   <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--color-fg-3)", borderTop: "1px dashed var(--color-border)", paddingTop: 6 }}>
-                    <span>Đơn giá: <strong>{money.format(m.unitPriceSnapshot)}/{isElectric ? "kWh" : "m³"}</strong></span>
-                    <span>Ước tính: <strong style={{ color: "var(--color-primary)" }}>{money.format(estimatedCost)}</strong></span>
+                    <span>Đơn giá: <strong>{m.unitPriceSnapshot ? `${money.format(m.unitPriceSnapshot)}/${isElectric ? "kWh" : "m³"}` : "Chưa cấu hình"}</strong></span>
+                    <span>Ước tính: <strong style={{ color: m.unitPriceSnapshot ? "var(--color-primary)" : "var(--color-fg-3)" }}>
+                      {m.unitPriceSnapshot ? money.format(estimatedCost) : "Chưa có đơn giá"}
+                    </strong></span>
                   </div>
                 </div>
               );
@@ -773,7 +812,7 @@ export function TenantPortalView() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div>
             <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
-              <Wrench size={20} style={{ color: "var(--color-primary)" }} /> Sự cố &amp; Yêu cầu sửa chữa
+              <Wrench size={20} style={{ color: "var(--color-primary)" }} /> Sự cố & Yêu cầu sửa chữa
             </h2>
             <p className="text-muted" style={{ margin: "2px 0 0", fontSize: "var(--text-xs)" }}>
               Gửi thông báo hỏng hóc thiết bị, sự cố điện nước phòng trọ đến Ban quản lý.
@@ -793,7 +832,7 @@ export function TenantPortalView() {
 
         {maintenanceRequests.length === 0 ? (
           <div className="card" style={{ padding: "var(--space-3)", textAlign: "center" }}>
-            <p className="text-muted" style={{ margin: 0 }}>Chưa có yêu cầu sửa chữa nào. Nhấn &quot;Tạo yêu cầu&quot; nếu phòng gặp sự cố.</p>
+            <p className="text-muted" style={{ margin: 0 }}>Chưa có yêu cầu sửa chữa nào. Nhấn "Tạo yêu cầu" nếu phòng gặp sự cố.</p>
           </div>
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
@@ -1075,7 +1114,7 @@ export function TenantPortalView() {
                 <div>
                   <h2 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
                     <IdentificationCard size={20} color="var(--color-primary)" weight="fill" />
-                    Cập nhật Hồ sơ cá nhân &amp; Khai báo tạm trú
+                    Cập nhật Hồ sơ cá nhân & Khai báo tạm trú
                   </h2>
                   <p className="text-muted" style={{ fontSize: "var(--text-xs)", margin: "4px 0 0" }}>
                     Cung cấp số CCCD, quê quán và biển số xe để Ban quản lý làm thủ tục tạm trú CT01 và bãi gửi xe.
@@ -1087,6 +1126,24 @@ export function TenantPortalView() {
               </div>
 
               <form onSubmit={handleSaveProfile} style={{ display: "grid", gap: 12 }}>
+                {profileError && (
+                  <div
+                    style={{
+                      background: "rgba(239, 68, 68, 0.1)",
+                      border: "1px solid #ef4444",
+                      color: "#dc2626",
+                      padding: "8px 12px",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "var(--text-xs)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <WarningCircle size={14} weight="bold" />
+                    <span>{profileError}</span>
+                  </div>
+                )}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>
                     <label className="field-label" htmlFor="pFullName">Họ và tên *</label>
@@ -1094,6 +1151,7 @@ export function TenantPortalView() {
                       id="pFullName"
                       type="text"
                       required
+                      disabled={submittingProfile}
                       className="input-field"
                       value={pFullName}
                       onChange={(e) => setPFullName(e.target.value)}
@@ -1105,6 +1163,7 @@ export function TenantPortalView() {
                       id="pPhone"
                       type="tel"
                       required
+                      disabled={submittingProfile}
                       className="input-field"
                       value={pPhone}
                       onChange={(e) => setPPhone(e.target.value)}
@@ -1118,6 +1177,7 @@ export function TenantPortalView() {
                     <input
                       id="pCitizenId"
                       type="text"
+                      disabled={submittingProfile}
                       className="input-field"
                       placeholder="VD: 001201012345"
                       value={pCitizenId}
@@ -1129,6 +1189,7 @@ export function TenantPortalView() {
                     <input
                       id="pBirthDate"
                       type="date"
+                      disabled={submittingProfile}
                       className="input-field"
                       value={pBirthDate}
                       onChange={(e) => setPBirthDate(e.target.value)}
@@ -1142,6 +1203,7 @@ export function TenantPortalView() {
                     <input
                       id="pHometown"
                       type="text"
+                      disabled={submittingProfile}
                       className="input-field"
                       placeholder="VD: Nam Định, Hà Tĩnh..."
                       value={pHometown}
@@ -1153,6 +1215,7 @@ export function TenantPortalView() {
                     <input
                       id="pVehicleNumber"
                       type="text"
+                      disabled={submittingProfile}
                       className="input-field"
                       placeholder="VD: 29A-12345"
                       value={pVehicleNumber}
@@ -1171,6 +1234,7 @@ export function TenantPortalView() {
                       <input
                         id="pEmergencyName"
                         type="text"
+                        disabled={submittingProfile}
                         className="input-field"
                         placeholder="VD: Bố / Mẹ / Anh"
                         value={pEmergencyName}
@@ -1182,6 +1246,7 @@ export function TenantPortalView() {
                       <input
                         id="pEmergencyPhone"
                         type="tel"
+                        disabled={submittingProfile}
                         className="input-field"
                         placeholder="VD: 0988776655"
                         value={pEmergencyPhone}
@@ -1258,12 +1323,31 @@ export function TenantPortalView() {
               </div>
 
               <form onSubmit={handleCreateMaintenance} style={{ display: "grid", gap: 12 }}>
+                {mntError && (
+                  <div
+                    style={{
+                      background: "rgba(239, 68, 68, 0.1)",
+                      border: "1px solid #ef4444",
+                      color: "#dc2626",
+                      padding: "8px 12px",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "var(--text-xs)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <WarningCircle size={14} weight="bold" />
+                    <span>{mntError}</span>
+                  </div>
+                )}
                 <div>
                   <label className="field-label" htmlFor="mTitle">Tiêu đề sự cố *</label>
                   <input
                     id="mTitle"
                     type="text"
                     required
+                    disabled={submittingMnt}
                     className="input-field"
                     placeholder="VD: Hỏng vòi sen, Nghẹt bồn rửa, Mất điện..."
                     value={mTitle}
@@ -1276,6 +1360,7 @@ export function TenantPortalView() {
                     <label className="field-label" htmlFor="mCategory">Danh mục</label>
                     <select
                       id="mCategory"
+                      disabled={submittingMnt}
                       className="input-field"
                       value={mCategory}
                       onChange={(e) => setMCategory(e.target.value as MaintenanceCategory)}
@@ -1293,6 +1378,7 @@ export function TenantPortalView() {
                     <label className="field-label" htmlFor="mPriority">Mức độ khẩn</label>
                     <select
                       id="mPriority"
+                      disabled={submittingMnt}
                       className="input-field"
                       value={mPriority}
                       onChange={(e) => setMPriority(e.target.value as MaintenancePriority)}
@@ -1310,6 +1396,7 @@ export function TenantPortalView() {
                   <textarea
                     id="mDescription"
                     rows={3}
+                    disabled={submittingMnt}
                     className="input-field"
                     placeholder="Mô tả cụ thể vị trí và tình trạng hỏng để thợ mang đúng đồ sửa..."
                     value={mDescription}
@@ -1322,6 +1409,7 @@ export function TenantPortalView() {
                   <input
                     id="mPhotoUrl"
                     type="url"
+                    disabled={submittingMnt}
                     className="input-field"
                     placeholder="VD: https://... hoặc link ảnh chụp thực tế"
                     value={mPhotoUrl}
@@ -1330,7 +1418,7 @@ export function TenantPortalView() {
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
-                  <button type="button" className="btn-secondary" onClick={() => setShowMaintenanceModal(false)}>
+                  <button type="button" className="btn-secondary" disabled={submittingMnt} onClick={() => setShowMaintenanceModal(false)}>
                     Hủy bỏ
                   </button>
                   <button type="submit" className="btn-primary" disabled={submittingMnt || !mTitle.trim()}>
