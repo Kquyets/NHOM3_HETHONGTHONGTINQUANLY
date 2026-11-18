@@ -73,6 +73,13 @@ export type PropertyOption = {
   name: string;
 };
 
+export type RevenueTrendItem = {
+  period: string;
+  label: string;
+  billed: number;
+  collected: number;
+};
+
 export type DashboardSummary = {
   filter: DashboardFilter;
   properties: PropertyOption[];
@@ -81,6 +88,7 @@ export type DashboardSummary = {
   utilities: UtilityStats;
   expiringContracts: ExpiringContractItem[];
   unpaidInvoices: UnpaidInvoiceItem[];
+  revenueTrend: RevenueTrendItem[];
 };
 
 export type GetDashboardParams = {
@@ -384,6 +392,33 @@ export async function getDashboardSummary({
     }
   }
 
+  // 11. Revenue Trend for past 6 months
+  const revenueTrend: RevenueTrendItem[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(targetYear, targetMonth - 1 - i, 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const pPrefix = `${y}-${m}`;
+    const pLabel = `T${d.getMonth() + 1}/${String(y).slice(2)}`;
+
+    let bAmount = 0;
+    let cAmount = 0;
+
+    for (const inv of allInvoices) {
+      if (inv.billingPeriodStart.startsWith(pPrefix) && inv.status !== "cancelled") {
+        bAmount += inv.totalAmount;
+        cAmount += Math.min(inv.totalAmount, paymentsMap.get(inv.id) ?? 0);
+      }
+    }
+
+    revenueTrend.push({
+      period: pPrefix,
+      label: pLabel,
+      billed: bAmount,
+      collected: cAmount,
+    });
+  }
+
   return {
     filter: {
       propertyId: propertyId ?? null,
@@ -411,5 +446,6 @@ export async function getDashboardSummary({
     },
     expiringContracts,
     unpaidInvoices: unpaidItems.slice(0, 10), // Top 10 urgent unpaid invoices
+    revenueTrend,
   };
 }

@@ -29,11 +29,17 @@ export const DEMO_SEED_DATA = {
       key: "an-binh",
       name: "Nhà trọ An Bình",
       address: "12 Nguyễn Văn Cừ, Quận 5",
+      bankCode: "MB",
+      bankAccount: "0388889999",
+      accountHolder: "NGUYEN VAN CHU NHA",
     },
     {
       key: "binh-minh",
       name: "Nhà trọ Bình Minh",
       address: "48 Lê Văn Sỹ, Quận 3",
+      bankCode: "VCB",
+      bankAccount: "1029384756",
+      accountHolder: "NGUYEN VAN CHU NHA",
     },
   ],
   rooms: [
@@ -128,12 +134,16 @@ export async function seedLocalDatabase(customUrl?: string): Promise<{
       );
       if (existing.rowCount && existing.rows.length > 0) {
         propertyIdMap.set(p.key, existing.rows[0].id);
+        await client.query(
+          `UPDATE properties SET bank_code = $1, bank_account = $2, account_holder = $3 WHERE id = $4`,
+          [p.bankCode, p.bankAccount, p.accountHolder, existing.rows[0].id],
+        );
       } else {
         const inserted = await client.query<{ id: string }>(
-          `INSERT INTO properties (owner_id, owner_role, name, address)
-           VALUES ($1, 'owner', $2, $3)
+          `INSERT INTO properties (owner_id, owner_role, name, address, bank_code, bank_account, account_holder)
+           VALUES ($1, 'owner', $2, $3, $4, $5, $6)
            RETURNING id`,
-          [ownerId, p.name, p.address],
+          [ownerId, p.name, p.address, p.bankCode, p.bankAccount, p.accountHolder],
         );
         propertyIdMap.set(p.key, inserted.rows[0].id);
       }

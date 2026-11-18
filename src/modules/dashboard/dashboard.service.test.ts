@@ -289,5 +289,13 @@ describe("Dashboard Service", () => {
     // 5. Utilities:
     expect(result.utilities.electricityKwh).toBe(150);
     expect(result.utilities.waterM3).toBe(12);
+
+    // 6. Revenue Trend:
+    expect(result.revenueTrend).toBeDefined();
+    expect(result.revenueTrend.length).toBe(6);
+    const octTrend = result.revenueTrend.find((t) => t.period === "2026-10");
+    expect(octTrend).toBeDefined();
+    expect(octTrend?.billed).toBe(6700000);
+    expect(octTrend?.collected).toBe(4700000);
   });
 });

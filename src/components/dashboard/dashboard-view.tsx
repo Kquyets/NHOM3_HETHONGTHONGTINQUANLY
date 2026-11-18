@@ -500,6 +500,88 @@ export function DashboardView() {
             </div>
           </section>
 
+          {/* ── 6-Month Revenue Trend Visualizer ──────────────────────── */}
+          {summary?.revenueTrend && summary.revenueTrend.length > 0 && (
+            <motion.section
+              className="card"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              style={{ padding: "18px 20px", marginBottom: "var(--space-3)" }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--color-fg)" }}>
+                    Xu hướng doanh thu &amp; thực thu 6 tháng gần nhất
+                  </div>
+                  <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginTop: 2 }}>
+                    So sánh giữa tổng tiền phải thu và tiền thực tế đã thu theo từng kỳ
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 14, fontSize: "var(--text-xs)" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 2, background: "var(--color-primary, #6366f1)" }} />
+                    Hóa đơn phát hành
+                  </span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 2, background: "var(--color-success, #10b981)" }} />
+                    Thực tế đã thu
+                  </span>
+                </div>
+              </div>
+
+              {/* Chart Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(${summary.revenueTrend.length}, 1fr)`, gap: 12, alignItems: "flex-end", minHeight: 140, paddingTop: 16 }}>
+                {(() => {
+                  const maxVal = Math.max(
+                    1,
+                    ...summary.revenueTrend.map((t) => Math.max(t.billed, t.collected))
+                  );
+                  return summary.revenueTrend.map((item, idx) => {
+                    const billedHeight = Math.max(6, Math.round((item.billed / maxVal) * 100));
+                    const collectedHeight = Math.max(6, Math.round((item.collected / maxVal) * 100));
+                    return (
+                      <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                        <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 100, width: "100%", justifyContent: "center" }}>
+                          {/* Billed bar */}
+                          <div
+                            style={{
+                              width: "35%",
+                              maxWidth: 22,
+                              height: `${billedHeight}%`,
+                              background: "var(--color-primary, #6366f1)",
+                              borderRadius: "3px 3px 0 0",
+                              transition: "height 0.4s ease",
+                            }}
+                            title={`Phát hành: ${money.format(item.billed)}`}
+                          />
+                          {/* Collected bar */}
+                          <div
+                            style={{
+                              width: "35%",
+                              maxWidth: 22,
+                              height: `${collectedHeight}%`,
+                              background: "var(--color-success, #10b981)",
+                              borderRadius: "3px 3px 0 0",
+                              transition: "height 0.4s ease",
+                            }}
+                            title={`Đã thu: ${money.format(item.collected)}`}
+                          />
+                        </div>
+                        <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--color-fg-2)" }}>
+                          {item.label}
+                        </span>
+                        <span style={{ fontSize: "10px", color: "var(--color-fg-3)" }}>
+                          {item.collected > 0 ? money.format(item.collected) : "0đ"}
+                        </span>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </motion.section>
+          )}
+
           {/* ── Actionable Alerts Grid (2 Columns) ──────────────────────── */}
           <div
             style={{
