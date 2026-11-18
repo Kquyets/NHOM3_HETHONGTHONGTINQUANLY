@@ -340,6 +340,41 @@ export function TenantPortalView() {
     }
   };
 
+  const { tenant, stay, stays, contract, invoices, meters } = data || {
+    tenant: null,
+    stay: null,
+    stays: [],
+    contract: null,
+    invoices: [],
+    meters: [],
+  };
+
+  const unpaidInvoices = invoices.filter(
+    (inv) => inv.status === "issued" || inv.status === "partially_paid",
+  );
+  const urgentInvoice = unpaidInvoices[0] ?? null;
+
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter((inv) => {
+      if (invStatusFilter !== "all" && inv.status !== invStatusFilter) return false;
+      if (invSearch.trim()) {
+        const q = invSearch.toLowerCase();
+        const period = formatBillingPeriod(inv.billingPeriodStart).toLowerCase();
+        const room = `phòng ${inv.roomNumber}`.toLowerCase();
+        if (!period.includes(q) && !room.includes(q) && !inv.roomNumber.toLowerCase().includes(q)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [invoices, invSearch, invStatusFilter]);
+
+  const totalInvPages = Math.max(1, Math.ceil(filteredInvoices.length / INV_PAGE_SIZE));
+  const paginatedInvoices = useMemo(() => {
+    const start = (invPage - 1) * INV_PAGE_SIZE;
+    return filteredInvoices.slice(start, start + INV_PAGE_SIZE);
+  }, [filteredInvoices, invPage]);
+
   if (loading) {
     return (
       <main className="main-container">
@@ -381,41 +416,6 @@ export function TenantPortalView() {
       </main>
     );
   }
-
-  const { tenant, stay, stays, contract, invoices, meters } = data || {
-    tenant: null,
-    stay: null,
-    stays: [],
-    contract: null,
-    invoices: [],
-    meters: [],
-  };
-
-  const unpaidInvoices = invoices.filter(
-    (inv) => inv.status === "issued" || inv.status === "partially_paid",
-  );
-  const urgentInvoice = unpaidInvoices[0] ?? null;
-
-  const filteredInvoices = useMemo(() => {
-    return invoices.filter((inv) => {
-      if (invStatusFilter !== "all" && inv.status !== invStatusFilter) return false;
-      if (invSearch.trim()) {
-        const q = invSearch.toLowerCase();
-        const period = formatBillingPeriod(inv.billingPeriodStart).toLowerCase();
-        const room = `phòng ${inv.roomNumber}`.toLowerCase();
-        if (!period.includes(q) && !room.includes(q) && !inv.roomNumber.toLowerCase().includes(q)) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [invoices, invSearch, invStatusFilter]);
-
-  const totalInvPages = Math.max(1, Math.ceil(filteredInvoices.length / INV_PAGE_SIZE));
-  const paginatedInvoices = useMemo(() => {
-    const start = (invPage - 1) * INV_PAGE_SIZE;
-    return filteredInvoices.slice(start, start + INV_PAGE_SIZE);
-  }, [filteredInvoices, invPage]);
 
   return (
     <main className="main-container">
