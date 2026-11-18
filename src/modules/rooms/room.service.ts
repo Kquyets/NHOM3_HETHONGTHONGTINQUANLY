@@ -22,6 +22,9 @@ export type RoomRow = {
   ward?: string | null;
   address?: string | null;
   floor?: number | null;
+  maxOccupants?: number | null;
+  isArchived?: boolean;
+  furnitureList?: string[] | null;
   furnishing?: string | null;
   amenities?: string[] | null;
   imageUrls?: string[] | null;
@@ -35,6 +38,9 @@ export type CreateRoomInput = {
   roomNumber: string;
   monthlyRent: number;
   areaM2?: number | null;
+  floor?: number | null;
+  maxOccupants?: number | null;
+  furnitureList?: string[] | null;
   isPublicListed?: boolean;
   listingTitle?: string | null;
   listingDescription?: string | null;
@@ -42,7 +48,6 @@ export type CreateRoomInput = {
   district?: string | null;
   ward?: string | null;
   address?: string | null;
-  floor?: number | null;
   furnishing?: string | null;
   amenities?: string[] | null;
   imageUrls?: string[] | null;
@@ -55,6 +60,10 @@ export type UpdateRoomInput = {
   monthlyRent?: number;
   areaM2?: number | null;
   status?: "ready" | "maintenance";
+  floor?: number | null;
+  maxOccupants?: number | null;
+  isArchived?: boolean;
+  furnitureList?: string[] | null;
   isPublicListed?: boolean;
   listingTitle?: string | null;
   listingDescription?: string | null;
@@ -62,7 +71,6 @@ export type UpdateRoomInput = {
   district?: string | null;
   ward?: string | null;
   address?: string | null;
-  floor?: number | null;
   furnishing?: string | null;
   amenities?: string[] | null;
   imageUrls?: string[] | null;
@@ -225,6 +233,21 @@ export async function createRoom(
       roomNumber,
       monthlyRent: input.monthlyRent,
       areaM2: input.areaM2 != null ? String(input.areaM2) : null,
+      floor: input.floor ?? null,
+      maxOccupants: input.maxOccupants ?? 2,
+      furnitureList: input.furnitureList ?? [],
+      isPublicListed: input.isPublicListed ?? false,
+      listingTitle: input.listingTitle ?? null,
+      listingDescription: input.listingDescription ?? null,
+      city: input.city ?? null,
+      district: input.district ?? null,
+      ward: input.ward ?? null,
+      address: input.address ?? null,
+      furnishing: input.furnishing ?? null,
+      amenities: input.amenities ?? [],
+      imageUrls: input.imageUrls ?? [],
+      contactPhone: input.contactPhone ?? null,
+      contactZalo: input.contactZalo ?? null,
     })
     .returning({
       id: rooms.id,
@@ -233,6 +256,22 @@ export async function createRoom(
       areaM2: rooms.areaM2,
       monthlyRent: rooms.monthlyRent,
       status: rooms.status,
+      floor: rooms.floor,
+      maxOccupants: rooms.maxOccupants,
+      isArchived: rooms.isArchived,
+      furnitureList: rooms.furnitureList,
+      isPublicListed: rooms.isPublicListed,
+      listingTitle: rooms.listingTitle,
+      listingDescription: rooms.listingDescription,
+      city: rooms.city,
+      district: rooms.district,
+      ward: rooms.ward,
+      address: rooms.address,
+      furnishing: rooms.furnishing,
+      amenities: rooms.amenities,
+      imageUrls: rooms.imageUrls,
+      contactPhone: rooms.contactPhone,
+      contactZalo: rooms.contactZalo,
       createdAt: rooms.createdAt,
       updatedAt: rooms.updatedAt,
     });
@@ -311,6 +350,9 @@ export async function updateRoom(
   if (input.ward !== undefined) updates.ward = input.ward;
   if (input.address !== undefined) updates.address = input.address;
   if (input.floor !== undefined) updates.floor = input.floor;
+  if (input.maxOccupants !== undefined) updates.maxOccupants = input.maxOccupants;
+  if (input.isArchived !== undefined) updates.isArchived = input.isArchived;
+  if (input.furnitureList !== undefined) updates.furnitureList = input.furnitureList;
   if (input.furnishing !== undefined) updates.furnishing = input.furnishing;
   if (input.amenities !== undefined) updates.amenities = input.amenities;
   if (input.imageUrls !== undefined) updates.imageUrls = input.imageUrls;
@@ -329,6 +371,22 @@ export async function updateRoom(
       areaM2: rooms.areaM2,
       monthlyRent: rooms.monthlyRent,
       status: rooms.status,
+      floor: rooms.floor,
+      maxOccupants: rooms.maxOccupants,
+      isArchived: rooms.isArchived,
+      furnitureList: rooms.furnitureList,
+      isPublicListed: rooms.isPublicListed,
+      listingTitle: rooms.listingTitle,
+      listingDescription: rooms.listingDescription,
+      city: rooms.city,
+      district: rooms.district,
+      ward: rooms.ward,
+      address: rooms.address,
+      furnishing: rooms.furnishing,
+      amenities: rooms.amenities,
+      imageUrls: rooms.imageUrls,
+      contactPhone: rooms.contactPhone,
+      contactZalo: rooms.contactZalo,
       createdAt: rooms.createdAt,
       updatedAt: rooms.updatedAt,
     });
@@ -352,7 +410,14 @@ export async function deleteRoom(
   await assertPropertyAccess(userId, role, propertyId);
 
   const db = getDatabase();
-  await db
-    .delete(rooms)
-    .where(and(eq(rooms.id, roomId), eq(rooms.propertyId, propertyId)));
+  try {
+    await db
+      .delete(rooms)
+      .where(and(eq(rooms.id, roomId), eq(rooms.propertyId, propertyId)));
+  } catch {
+    await db
+      .update(rooms)
+      .set({ isArchived: true, updatedAt: new Date() })
+      .where(and(eq(rooms.id, roomId), eq(rooms.propertyId, propertyId)));
+  }
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
@@ -17,29 +18,27 @@ import {
   CheckCircle,
   Wrench,
   UserGear,
-  Plus,
-  Compass,
+  List,
 } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
 import { useTheme } from "../../lib/theme-context";
 import { NotificationBell } from "./notification-bell";
+import { MobileDrawer } from "./mobile-drawer";
 
 const navItems = [
-  { href: "/",           label: "Tổng quan",      Icon: House,     match: (p: string) => p === "/" || p.startsWith("/dashboard") },
-  { href: "/explore",    label: "Sàn phòng trọ",  Icon: Compass,   match: (p: string) => p.startsWith("/explore") },
-  { href: "/properties", label: "Nhà & Phòng",    Icon: Buildings, match: (p: string) => p.startsWith("/properties") },
+  { href: "/",           label: "Dashboard",      Icon: House,     match: (p: string) => p === "/" || p.startsWith("/dashboard") },
+  { href: "/properties", label: "Nhà trọ & Phòng",Icon: Buildings, match: (p: string) => p.startsWith("/properties") },
   { href: "/tenants",    label: "Khách thuê",     Icon: Users,     match: (p: string) => p.startsWith("/tenants") },
   { href: "/contracts",  label: "Hợp đồng",       Icon: FileText,  match: (p: string) => p.startsWith("/contracts") },
   { href: "/meters",     label: "Điện & Nước",    Icon: Lightning, match: (p: string) => p.startsWith("/meters") },
-  { href: "/invoices",   label: "Hóa đơn",        Icon: Receipt,   match: (p: string) => p.startsWith("/invoices") },
+  { href: "/invoices",   label: "Hoá đơn",        Icon: Receipt,   match: (p: string) => p.startsWith("/invoices") },
   { href: "/maintenance",label: "Sự cố",          Icon: Wrench,    match: (p: string) => p.startsWith("/maintenance") },
   { href: "/ai",         label: "Trợ lý AI",      Icon: Sparkle,   match: (p: string) => p.startsWith("/ai") },
 ];
 
 const tenantNavItems = [
   { href: "/",           label: "Cổng thông tin", Icon: House,     match: (p: string) => p === "/" || p.startsWith("/dashboard") },
-  { href: "/explore",    label: "Tìm phòng mới",  Icon: Compass,   match: (p: string) => p.startsWith("/explore") },
   { href: "/#invoices",  label: "Hóa đơn phòng",  Icon: Receipt,   match: () => false },
   { href: "/#utilities", label: "Điện & Nước",    Icon: Lightning, match: () => false },
   { href: "/#maintenance", label: "Báo sự cố",    Icon: Wrench,    match: () => false },
@@ -47,7 +46,6 @@ const tenantNavItems = [
 
 const guestNavItems = [
   { href: "/",           label: "Trang chủ",      Icon: House,       match: (p: string) => p === "/" },
-  { href: "/explore",    label: "Sàn phòng trọ",  Icon: Compass,     match: (p: string) => p.startsWith("/explore") },
   { href: "/#features",  label: "Tính năng",      Icon: Sparkle,     match: () => false },
   { href: "/#comparison",label: "So sánh giải pháp",Icon: CheckCircle,match: () => false },
   { href: "/#benefits",  label: "3 Bước bắt đầu", Icon: FileText,    match: () => false },
@@ -65,6 +63,7 @@ export function AppHeader() {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
   const pathname = usePathname();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const roleText =
     user?.role === "owner" ? "Chủ nhà" :
@@ -73,19 +72,40 @@ export function AppHeader() {
   return (
     <header className="app-header">
       <div className="header-container">
-        {/* Brand */}
-        <motion.div
-          initial={{ opacity: 0, x: -12 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-        >
-          <Link href="/" className="brand">
-            <div className="brand-icon">
-              <BrandLogo />
-            </div>
-            <span>Nhà Trọ Thông Minh</span>
-          </Link>
-        </motion.div>
+        {/* Brand & Mobile Hamburger */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button
+            type="button"
+            className="mobile-menu-trigger"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Mở menu điều hướng"
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--color-fg-1)",
+              cursor: "pointer",
+              padding: "4px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <List size={22} weight="bold" />
+          </button>
+
+          <motion.div
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          >
+            <Link href="/" className="brand">
+              <div className="brand-icon">
+                <BrandLogo />
+              </div>
+              <span>Rental SaaS</span>
+            </Link>
+          </motion.div>
+        </div>
 
         {/* Nav */}
         <nav aria-label="Điều hướng chính">
@@ -112,29 +132,6 @@ export function AppHeader() {
 
         {/* User controls */}
         <div className="user-controls">
-          {/* Post Listing CTA Button */}
-          <Link
-            href={user ? "/properties" : "/login?redirect=/properties"}
-            style={{
-              padding: "5px 13px",
-              fontSize: 12,
-              fontWeight: 700,
-              background: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: 20,
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              boxShadow: "0 2px 8px rgba(234, 88, 12, 0.3)",
-              textDecoration: "none",
-            }}
-            title="Đăng tin cho thuê phòng trọ"
-          >
-            <Plus size={13} weight="bold" />
-            <span>Đăng tin</span>
-          </Link>
-
           {/* Theme Toggle */}
           <motion.button
             type="button"
@@ -242,6 +239,9 @@ export function AppHeader() {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Mobile Sidebar Navigation Drawer */}
+      <MobileDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </header>
   );
 }
