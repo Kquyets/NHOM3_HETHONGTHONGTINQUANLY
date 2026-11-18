@@ -43,11 +43,47 @@ export const DEMO_SEED_DATA = {
     },
   ],
   rooms: [
-    { propertyKey: "an-binh", roomNumber: "A01", monthlyRent: 3_000_000, areaM2: "25.00", status: "ready" as const },
-    { propertyKey: "an-binh", roomNumber: "A02", monthlyRent: 3_200_000, areaM2: "28.00", status: "ready" as const },
-    { propertyKey: "an-binh", roomNumber: "A03", monthlyRent: 3_500_000, areaM2: "30.00", status: "ready" as const },
-    { propertyKey: "binh-minh", roomNumber: "B01", monthlyRent: 4_000_000, areaM2: "35.00", status: "maintenance" as const },
-    { propertyKey: "binh-minh", roomNumber: "B02", monthlyRent: 4_000_000, areaM2: "35.00", status: "ready" as const },
+    { propertyKey: "an-binh", roomNumber: "A01", monthlyRent: 3_000_000, areaM2: "25.00", status: "ready" as const, isPublicListed: false },
+    {
+      propertyKey: "an-binh",
+      roomNumber: "A02",
+      monthlyRent: 3_200_000,
+      areaM2: "28.00",
+      status: "ready" as const,
+      isPublicListed: true,
+      listingTitle: "Phòng trọ ban công khép kín sạch đẹp Nguyễn Văn Cừ Quận 5",
+      listingDescription: "Phòng thoáng mát có ban công, vệ sinh khép kín, đầy đủ điều hòa, nóng lạnh, giờ tự do.",
+      city: "TP. Hồ Chí Minh",
+      district: "Quận 5",
+      address: "12 Nguyễn Văn Cừ, Quận 5",
+      floor: 2,
+      furnishing: "full",
+      amenities: ["ve_sinh_khep_kin", "khong_chung_chu", "dieu_hoa", "nong_lanh", "gio_tu_do"],
+      imageUrls: ["https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80"],
+      contactPhone: "0901234567",
+      contactZalo: "0901234567",
+    },
+    { propertyKey: "an-binh", roomNumber: "A03", monthlyRent: 3_500_000, areaM2: "30.00", status: "ready" as const, isPublicListed: false },
+    { propertyKey: "binh-minh", roomNumber: "B01", monthlyRent: 4_000_000, areaM2: "35.00", status: "maintenance" as const, isPublicListed: false },
+    {
+      propertyKey: "binh-minh",
+      roomNumber: "B02",
+      monthlyRent: 4_000_000,
+      areaM2: "35.00",
+      status: "ready" as const,
+      isPublicListed: true,
+      listingTitle: "Căn hộ mini duplex gác lửng Lê Văn Sỹ Quận 3, giờ tự do",
+      listingDescription: "Căn hộ mini mới tinh, có gác lửng cao ráo, full nội thất cao cấp, máy giặt riêng.",
+      city: "TP. Hồ Chí Minh",
+      district: "Quận 3",
+      address: "48 Lê Văn Sỹ, Quận 3",
+      floor: 3,
+      furnishing: "full",
+      amenities: ["ve_sinh_khep_kin", "khong_chung_chu", "gac_lung", "dieu_hoa", "nong_lanh", "may_giat", "gio_tu_do"],
+      imageUrls: ["https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80"],
+      contactPhone: "0901234567",
+      contactZalo: "0901234567",
+    },
   ],
   tenant: {
     fullName: "Nguyễn Văn An",
@@ -167,12 +203,40 @@ export async function seedLocalDatabase(customUrl?: string): Promise<{
       if (!propId) continue;
 
       const roomRes = await client.query<{ id: string }>(
-        `INSERT INTO rooms (property_id, room_number, monthly_rent, area_m2, status)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO rooms (
+           property_id, room_number, monthly_rent, area_m2, status,
+           is_public_listed, listing_title, listing_description, city, district,
+           address, floor, furnishing, amenities, image_urls, contact_phone, contact_zalo
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
          ON CONFLICT (property_id, room_number) DO UPDATE
-         SET monthly_rent = EXCLUDED.monthly_rent, area_m2 = EXCLUDED.area_m2, status = EXCLUDED.status
+         SET monthly_rent = EXCLUDED.monthly_rent, area_m2 = EXCLUDED.area_m2, status = EXCLUDED.status,
+             is_public_listed = EXCLUDED.is_public_listed, listing_title = EXCLUDED.listing_title,
+             listing_description = EXCLUDED.listing_description, city = EXCLUDED.city,
+             district = EXCLUDED.district, address = EXCLUDED.address, floor = EXCLUDED.floor,
+             furnishing = EXCLUDED.furnishing, amenities = EXCLUDED.amenities,
+             image_urls = EXCLUDED.image_urls, contact_phone = EXCLUDED.contact_phone,
+             contact_zalo = EXCLUDED.contact_zalo
          RETURNING id`,
-        [propId, r.roomNumber, r.monthlyRent, r.areaM2, r.status],
+        [
+          propId,
+          r.roomNumber,
+          r.monthlyRent,
+          r.areaM2,
+          r.status,
+          r.isPublicListed ?? false,
+          r.listingTitle ?? null,
+          r.listingDescription ?? null,
+          r.city ?? null,
+          r.district ?? null,
+          r.address ?? null,
+          r.floor ?? null,
+          r.furnishing ?? null,
+          r.amenities ?? null,
+          r.imageUrls ?? null,
+          r.contactPhone ?? null,
+          r.contactZalo ?? null,
+        ],
       );
       roomIdMap.set(r.roomNumber, roomRes.rows[0].id);
     }

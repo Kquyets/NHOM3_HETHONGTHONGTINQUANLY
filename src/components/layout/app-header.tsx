@@ -17,6 +17,8 @@ import {
   CheckCircle,
   Wrench,
   UserGear,
+  Plus,
+  Compass,
 } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
@@ -25,6 +27,7 @@ import { NotificationBell } from "./notification-bell";
 
 const navItems = [
   { href: "/",           label: "Tổng quan",      Icon: House,     match: (p: string) => p === "/" || p.startsWith("/dashboard") },
+  { href: "/explore",    label: "Sàn phòng trọ",  Icon: Compass,   match: (p: string) => p.startsWith("/explore") },
   { href: "/properties", label: "Nhà & Phòng",    Icon: Buildings, match: (p: string) => p.startsWith("/properties") },
   { href: "/tenants",    label: "Khách thuê",     Icon: Users,     match: (p: string) => p.startsWith("/tenants") },
   { href: "/contracts",  label: "Hợp đồng",       Icon: FileText,  match: (p: string) => p.startsWith("/contracts") },
@@ -36,6 +39,7 @@ const navItems = [
 
 const tenantNavItems = [
   { href: "/",           label: "Cổng thông tin", Icon: House,     match: (p: string) => p === "/" || p.startsWith("/dashboard") },
+  { href: "/explore",    label: "Tìm phòng mới",  Icon: Compass,   match: (p: string) => p.startsWith("/explore") },
   { href: "/#invoices",  label: "Hóa đơn phòng",  Icon: Receipt,   match: () => false },
   { href: "/#utilities", label: "Điện & Nước",    Icon: Lightning, match: () => false },
   { href: "/#maintenance", label: "Báo sự cố",    Icon: Wrench,    match: () => false },
@@ -43,6 +47,7 @@ const tenantNavItems = [
 
 const guestNavItems = [
   { href: "/",           label: "Trang chủ",      Icon: House,       match: (p: string) => p === "/" },
+  { href: "/explore",    label: "Sàn phòng trọ",  Icon: Compass,     match: (p: string) => p.startsWith("/explore") },
   { href: "/#features",  label: "Tính năng",      Icon: Sparkle,     match: () => false },
   { href: "/#comparison",label: "So sánh giải pháp",Icon: CheckCircle,match: () => false },
   { href: "/#benefits",  label: "3 Bước bắt đầu", Icon: FileText,    match: () => false },
@@ -107,6 +112,29 @@ export function AppHeader() {
 
         {/* User controls */}
         <div className="user-controls">
+          {/* Post Listing CTA Button */}
+          <Link
+            href={user ? "/properties" : "/login?redirect=/properties"}
+            style={{
+              padding: "5px 13px",
+              fontSize: 12,
+              fontWeight: 700,
+              background: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: 20,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              boxShadow: "0 2px 8px rgba(234, 88, 12, 0.3)",
+              textDecoration: "none",
+            }}
+            title="Đăng tin cho thuê phòng trọ"
+          >
+            <Plus size={13} weight="bold" />
+            <span>Đăng tin</span>
+          </Link>
+
           {/* Theme Toggle */}
           <motion.button
             type="button"

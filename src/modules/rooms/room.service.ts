@@ -14,6 +14,19 @@ export type RoomRow = {
   areaM2: string | null;
   monthlyRent: number;
   status: "ready" | "maintenance";
+  isPublicListed?: boolean;
+  listingTitle?: string | null;
+  listingDescription?: string | null;
+  city?: string | null;
+  district?: string | null;
+  ward?: string | null;
+  address?: string | null;
+  floor?: number | null;
+  furnishing?: string | null;
+  amenities?: string[] | null;
+  imageUrls?: string[] | null;
+  contactPhone?: string | null;
+  contactZalo?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -22,6 +35,19 @@ export type CreateRoomInput = {
   roomNumber: string;
   monthlyRent: number;
   areaM2?: number | null;
+  isPublicListed?: boolean;
+  listingTitle?: string | null;
+  listingDescription?: string | null;
+  city?: string | null;
+  district?: string | null;
+  ward?: string | null;
+  address?: string | null;
+  floor?: number | null;
+  furnishing?: string | null;
+  amenities?: string[] | null;
+  imageUrls?: string[] | null;
+  contactPhone?: string | null;
+  contactZalo?: string | null;
 };
 
 export type UpdateRoomInput = {
@@ -29,6 +55,19 @@ export type UpdateRoomInput = {
   monthlyRent?: number;
   areaM2?: number | null;
   status?: "ready" | "maintenance";
+  isPublicListed?: boolean;
+  listingTitle?: string | null;
+  listingDescription?: string | null;
+  city?: string | null;
+  district?: string | null;
+  ward?: string | null;
+  address?: string | null;
+  floor?: number | null;
+  furnishing?: string | null;
+  amenities?: string[] | null;
+  imageUrls?: string[] | null;
+  contactPhone?: string | null;
+  contactZalo?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -263,6 +302,20 @@ export async function updateRoom(
   if (input.status !== undefined) {
     updates.status = input.status;
   }
+
+  if (input.isPublicListed !== undefined) updates.isPublicListed = input.isPublicListed;
+  if (input.listingTitle !== undefined) updates.listingTitle = input.listingTitle;
+  if (input.listingDescription !== undefined) updates.listingDescription = input.listingDescription;
+  if (input.city !== undefined) updates.city = input.city;
+  if (input.district !== undefined) updates.district = input.district;
+  if (input.ward !== undefined) updates.ward = input.ward;
+  if (input.address !== undefined) updates.address = input.address;
+  if (input.floor !== undefined) updates.floor = input.floor;
+  if (input.furnishing !== undefined) updates.furnishing = input.furnishing;
+  if (input.amenities !== undefined) updates.amenities = input.amenities;
+  if (input.imageUrls !== undefined) updates.imageUrls = input.imageUrls;
+  if (input.contactPhone !== undefined) updates.contactPhone = input.contactPhone;
+  if (input.contactZalo !== undefined) updates.contactZalo = input.contactZalo;
 
   const db = getDatabase();
   const [row] = await db

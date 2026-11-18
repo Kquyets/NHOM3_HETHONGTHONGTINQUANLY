@@ -15,10 +15,12 @@ import {
   PencilSimple,
   CreditCard,
   ShieldCheck,
+  Megaphone,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
 import { PropertyMembersModal } from "../../components/properties/property-members-modal";
+import { RoomListingModal } from "../../components/properties/room-listing-modal";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import { validatePositiveNumber } from "../../utils/form-validation";
@@ -109,6 +111,7 @@ export default function PropertiesPage() {
   const [submittingBank, setSubmittingBank] = useState(false);
 
   const [managingMembersProp, setManagingMembersProp] = useState<PropertyRow | null>(null);
+  const [editingListingRoom, setEditingListingRoom] = useState<{ room: RoomRow; property: PropertyWithRooms } | null>(null);
 
   const [selectedPropId, setSelectedPropId] = useState<string | null>(null);
   const [roomNumber, setRoomNumber] = useState("");
@@ -777,6 +780,7 @@ export default function PropertiesPage() {
                           <th>Diện tích</th>
                           <th>Giá thuê</th>
                           <th>Trạng thái</th>
+                          <th>Sàn Nhà Tốt</th>
                           <th style={{ textAlign: "right" }}>Thao tác</th>
                         </tr>
                       </thead>
@@ -810,6 +814,33 @@ export default function PropertiesPage() {
                                 ) : (
                                   <><Wrench size={10} weight="fill" /> Bảo trì</>
                                 )}
+                              </motion.button>
+                            </td>
+                            <td>
+                              <motion.button
+                                type="button"
+                                className={`badge ${room.isPublicListed ? "ready" : "neutral"}`}
+                                style={{
+                                  border: "none",
+                                  cursor: "pointer",
+                                  fontFamily: "var(--font-body)",
+                                  backgroundColor: room.isPublicListed ? "#fff7ed" : "var(--color-bg-subtle)",
+                                  color: room.isPublicListed ? "#ea580c" : "var(--color-fg-3)",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  padding: "4px 8px",
+                                  borderRadius: 6,
+                                  fontSize: "var(--text-xs)",
+                                  fontWeight: 600,
+                                }}
+                                onClick={() => setEditingListingRoom({ room, property: prop })}
+                                title="Cài đặt đăng tin lên Sàn Nhà Tốt"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                              >
+                                <Megaphone size={12} weight={room.isPublicListed ? "fill" : "regular"} />
+                                <span>{room.isPublicListed ? "Đang đăng" : "Đăng tin"}</span>
                               </motion.button>
                             </td>
                             <td style={{ textAlign: "right" }}>
@@ -867,6 +898,25 @@ export default function PropertiesPage() {
         <PropertyMembersModal
           property={managingMembersProp}
           onClose={() => setManagingMembersProp(null)}
+        />
+      )}
+
+      {/* Room Public Listing Modal (Sàn Nhà Tốt) */}
+      {editingListingRoom && (
+        <RoomListingModal
+          room={editingListingRoom.room}
+          propertyName={editingListingRoom.property.name}
+          defaultAddress={editingListingRoom.property.address}
+          onClose={() => setEditingListingRoom(null)}
+          onUpdated={(updated) => {
+            setProperties((prev) =>
+              prev.map((p) =>
+                p.id === editingListingRoom.property.id
+                  ? { ...p, rooms: p.rooms.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)) }
+                  : p,
+              ),
+            );
+          }}
         />
       )}
     </div>

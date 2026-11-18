@@ -13,6 +13,19 @@ export const roomInputSchema = z.strictObject({
   monthlyRent: z.number().int().min(0).max(2_000_000_000),
   areaM2: z.number().positive().max(100_000).optional(),
   status: z.enum(["ready", "maintenance"]).optional(),
+  isPublicListed: z.boolean().optional(),
+  listingTitle: z.string().trim().max(200).optional().nullable(),
+  listingDescription: z.string().trim().max(4000).optional().nullable(),
+  city: z.string().trim().max(100).optional().nullable(),
+  district: z.string().trim().max(100).optional().nullable(),
+  ward: z.string().trim().max(100).optional().nullable(),
+  address: z.string().trim().max(300).optional().nullable(),
+  floor: z.number().int().min(0).max(200).optional().nullable(),
+  furnishing: z.enum(["full", "basic", "empty"]).optional().nullable(),
+  amenities: z.array(z.string()).optional().nullable(),
+  imageUrls: z.array(z.string()).optional().nullable(),
+  contactPhone: z.string().trim().max(30).optional().nullable(),
+  contactZalo: z.string().trim().max(30).optional().nullable(),
 });
 
 export const roomPatchSchema = roomInputSchema.partial()

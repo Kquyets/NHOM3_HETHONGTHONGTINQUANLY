@@ -98,6 +98,19 @@ function roomDto(room: typeof rooms.$inferSelect, occupied: boolean) {
     monthlyRent: room.monthlyRent,
     areaM2: room.areaM2 === null ? null : Number(room.areaM2),
     status: roomStatusForClient(room.status, occupied),
+    isPublicListed: room.isPublicListed ?? false,
+    listingTitle: room.listingTitle ?? null,
+    listingDescription: room.listingDescription ?? null,
+    city: room.city ?? null,
+    district: room.district ?? null,
+    ward: room.ward ?? null,
+    address: room.address ?? null,
+    floor: room.floor ?? null,
+    furnishing: room.furnishing ?? null,
+    amenities: room.amenities ?? [],
+    imageUrls: room.imageUrls ?? [],
+    contactPhone: room.contactPhone ?? null,
+    contactZalo: room.contactZalo ?? null,
   };
 }
 

@@ -78,6 +78,25 @@ export function LandingPage() {
         >
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
             <Link
+              href="/explore"
+              className="btn-secondary"
+              style={{
+                padding: "12px 24px",
+                fontSize: 15,
+                borderColor: "#f97316",
+                color: "#ea580c",
+                backgroundColor: "rgba(249, 115, 22, 0.08)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Buildings size={16} weight="bold" />
+              Sàn phòng trọ Hà Nội &amp; TP.HCM
+            </Link>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+            <Link
               href="/register"
               className="btn-primary"
               style={{ padding: "12px 28px", fontSize: 15 }}
