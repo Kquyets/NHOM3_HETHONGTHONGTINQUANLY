@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Printer, X, FileText, Buildings } from "@phosphor-icons/react";
 import type { ContractRow } from "../../modules/contracts/contract.service";
@@ -31,6 +31,16 @@ export function PrintableContractModal({
     contract ? initialTemplate : "service",
   );
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   const handlePrint = () => {
     window.print();
   };
@@ -46,7 +56,13 @@ export function PrintableContractModal({
 
   return (
     <AnimatePresence>
-      <div className="printable-modal-overlay">
+      <div
+        className="printable-modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Xem hợp đồng in ấn"
+        onClick={onClose}
+      >
         <style dangerouslySetInnerHTML={{ __html: `
           .printable-modal-overlay {
             position: fixed;
@@ -164,6 +180,7 @@ export function PrintableContractModal({
         {/* Modal Controls Bar */}
         <div
           className="contract-modal-actions"
+          onClick={(e) => e.stopPropagation()}
           style={{
             display: "flex",
             alignItems: "center",
@@ -244,6 +261,7 @@ export function PrintableContractModal({
             <button
               type="button"
               onClick={onClose}
+              aria-label="Đóng"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -266,6 +284,7 @@ export function PrintableContractModal({
         {/* Printable Contract Sheet */}
         <motion.div
           className="printable-contract-sheet"
+          onClick={(e) => e.stopPropagation()}
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.96 }}

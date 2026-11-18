@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   House,
@@ -28,6 +28,9 @@ import {
   IdentificationCard,
   PencilSimple,
   Image as ImageIcon,
+  MagnifyingGlass,
+  Trash,
+  UploadSimple,
 } from "@phosphor-icons/react";
 
 import { apiClient } from "../../lib/api-client";
@@ -79,6 +82,22 @@ const MNT_STATUS_CONFIG: Record<MaintenanceStatus, { label: string; cls: string;
   cancelled:   { label: "Đã hủy",            cls: "badge",             Icon: WarningCircle },
 };
 
+const CATEGORY_LABELS: Record<MaintenanceCategory, string> = {
+  plumbing: "Cấp thoát nước",
+  electrical: "Điện sinh hoạt",
+  appliance: "Thiết bị / Đồ dùng",
+  internet: "Mạng / Internet",
+  structural: "Cơ sở vật chất",
+  other: "Khác",
+};
+
+const PRIORITY_LABELS: Record<MaintenancePriority, { label: string; color: string; bg: string }> = {
+  low: { label: "Thấp", color: "#64748b", bg: "rgba(100,116,139,0.12)" },
+  medium: { label: "Bình thường", color: "#2563eb", bg: "rgba(37,99,235,0.12)" },
+  high: { label: "Cao", color: "#d97706", bg: "rgba(217,119,6,0.12)" },
+  urgent: { label: "Khẩn cấp", color: "#dc2626", bg: "rgba(220,38,38,0.12)" },
+};
+
 export function TenantPortalView() {
   const { user } = useAuth();
   const [data, setData] = useState<TenantPortalData | null>(null);
@@ -90,15 +109,23 @@ export function TenantPortalView() {
   const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRow[]>([]);
   const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
   const [submittingMnt, setSubmittingMnt] = useState(false);
+  const [cancellingMntId, setCancellingMntId] = useState<string | null>(null);
   const [mTitle, setMTitle] = useState("");
   const [mCategory, setMCategory] = useState<MaintenanceCategory>("plumbing");
   const [mPriority, setMPriority] = useState<MaintenancePriority>("medium");
   const [mDescription, setMDescription] = useState("");
   const [mPhotoUrl, setMPhotoUrl] = useState("");
 
+  // Invoices search, filter & pagination state
+  const [invSearch, setInvSearch] = useState("");
+  const [invStatusFilter, setInvStatusFilter] = useState<string>("all");
+  const [invPage, setInvPage] = useState(1);
+  const INV_PAGE_SIZE = 5;
+
   // Toast / error state
   const [profileError, setProfileError] = useState<string | null>(null);
   const [mntError, setMntError] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   // VietQR modal state
   const [qrInvoice, setQrInvoice] = useState<InvoiceDetail | null>(null);
@@ -124,6 +151,21 @@ export function TenantPortalView() {
   const [pIdCardFrontUrl, setPIdCardFrontUrl] = useState("");
   const [pIdCardBackUrl, setPIdCardBackUrl] = useState("");
 
+  // Accessibility: Close modals on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowProfileModal(false);
+        setShowMaintenanceModal(false);
+        setQrInvoice(null);
+        setPrintInvoice(null);
+        setPrintContract(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   useEffect(() => {
     if (showProfileModal) setProfileError(null);
   }, [showProfileModal]);
@@ -131,6 +173,27 @@ export function TenantPortalView() {
   useEffect(() => {
     if (showMaintenanceModal) setMntError(null);
   }, [showMaintenanceModal]);
+
+  const handleImageFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: (url: string) => void,
+    errorSetter?: (err: string | null) => void,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      if (errorSetter) errorSetter("Kích thước ảnh tối đa là 5MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setter(reader.result);
+        if (errorSetter) errorSetter(null);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const loadData = useCallback(async (roomId?: string) => {
     try {
@@ -229,6 +292,7 @@ export function TenantPortalView() {
   const handleNotifyPayment = async (invoiceId: string) => {
     try {
       setNotifyingPayment(true);
+      setPaymentError(null);
       const res = await apiClient<{ success: boolean; message: string }>("/api/tenant-portal", {
         method: "POST",
         body: JSON.stringify({ action: "notify-payment", invoiceId }),
@@ -237,9 +301,27 @@ export function TenantPortalView() {
       setPaymentSuccessToast(res.message);
       setTimeout(() => setPaymentSuccessToast(null), 6000);
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Không thể gửi thông báo chuyển khoản.");
+      setPaymentError(err instanceof Error ? err.message : "Không thể gửi thông báo chuyển khoản.");
     } finally {
       setNotifyingPayment(false);
+    }
+  };
+
+  const handleCancelMaintenance = async (requestId: string) => {
+    if (!window.confirm("Bạn có chắc muốn hủy yêu cầu sửa chữa này không?")) return;
+    try {
+      setCancellingMntId(requestId);
+      await apiClient(`/api/maintenance/${requestId}`, {
+        method: "DELETE",
+      });
+      await loadMaintenance();
+      setPaymentSuccessToast("Đã hủy yêu cầu sửa chữa thành công.");
+      setTimeout(() => setPaymentSuccessToast(null), 4000);
+    } catch (err) {
+      setPaymentSuccessToast(err instanceof Error ? err.message : "Không thể hủy yêu cầu.");
+      setTimeout(() => setPaymentSuccessToast(null), 4000);
+    } finally {
+      setCancellingMntId(null);
     }
   };
 
@@ -277,8 +359,24 @@ export function TenantPortalView() {
   if (error) {
     return (
       <main className="main-container">
-        <div className="alert-error" role="alert">
-          {error}
+        <div className="card" style={{ padding: "var(--space-4)", textAlign: "center", maxWidth: 460, margin: "40px auto" }}>
+          <div style={{ color: "#ef4444", marginBottom: 12, display: "flex", justifyContent: "center" }}>
+            <WarningCircle size={44} weight="fill" />
+          </div>
+          <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: "0 0 8px" }}>
+            Không thể tải dữ liệu cổng khách thuê
+          </h2>
+          <p className="text-muted" style={{ margin: "0 0 16px", fontSize: "var(--text-sm)", lineHeight: 1.5 }}>
+            {error}
+          </p>
+          <button
+            type="button"
+            className="btn-primary"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, margin: "0 auto" }}
+            onClick={() => void loadData(selectedRoomId)}
+          >
+            <ArrowsClockwise size={16} /> Thử lại
+          </button>
         </div>
       </main>
     );
@@ -297,6 +395,27 @@ export function TenantPortalView() {
     (inv) => inv.status === "issued" || inv.status === "partially_paid",
   );
   const urgentInvoice = unpaidInvoices[0] ?? null;
+
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter((inv) => {
+      if (invStatusFilter !== "all" && inv.status !== invStatusFilter) return false;
+      if (invSearch.trim()) {
+        const q = invSearch.toLowerCase();
+        const period = formatBillingPeriod(inv.billingPeriodStart).toLowerCase();
+        const room = `phòng ${inv.roomNumber}`.toLowerCase();
+        if (!period.includes(q) && !room.includes(q) && !inv.roomNumber.toLowerCase().includes(q)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [invoices, invSearch, invStatusFilter]);
+
+  const totalInvPages = Math.max(1, Math.ceil(filteredInvoices.length / INV_PAGE_SIZE));
+  const paginatedInvoices = useMemo(() => {
+    const start = (invPage - 1) * INV_PAGE_SIZE;
+    return filteredInvoices.slice(start, start + INV_PAGE_SIZE);
+  }, [filteredInvoices, invPage]);
 
   return (
     <main className="main-container">
@@ -371,7 +490,7 @@ export function TenantPortalView() {
                 >
                   {stays.map((s) => (
                     <option key={s.roomId} value={s.roomId}>
-                      🏠 {s.propertyName} - Phòng {s.roomNumber}
+                      🏠 {s.propertyName} - Phòng {s.roomNumber} {s.contractStatus === "active" ? "(Đang hiệu lực)" : "(Đã kết thúc)"}
                     </option>
                   ))}
                 </select>
@@ -440,7 +559,7 @@ export function TenantPortalView() {
       )}
 
       {/* Urgent Payment Callout */}
-      {urgentInvoice && (
+      {urgentInvoice && urgentInvoice.status !== "paid" && urgentInvoice.status !== "cancelled" && (
         <motion.div
           className="card"
           initial={{ opacity: 0, scale: 0.98 }}
@@ -510,7 +629,15 @@ export function TenantPortalView() {
                   <h2 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: 0 }}>
                     Thông tin phòng thuê
                   </h2>
-                  <span className="badge ready" style={{ fontSize: "10px" }}>Hợp đồng hiệu lực</span>
+                  {stay.contractStatus === "active" ? (
+                    <span className="badge ready" style={{ fontSize: "10px" }}>Hợp đồng hiệu lực</span>
+                  ) : stay.contractStatus === "terminated" ? (
+                    <span className="badge" style={{ fontSize: "10px" }}>Đã thanh lý</span>
+                  ) : stay.contractStatus === "expired" ? (
+                    <span className="badge maintenance" style={{ fontSize: "10px" }}>Đã hết hạn</span>
+                  ) : (
+                    <span className="badge" style={{ fontSize: "10px" }}>{stay.contractStatus}</span>
+                  )}
                 </div>
               </div>
 
@@ -580,6 +707,14 @@ export function TenantPortalView() {
               <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
                 <span className="text-muted">Họ và tên:</span>
                 <strong>{tenant?.fullName}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
+                <span className="text-muted">Số điện thoại:</span>
+                <strong>{tenant?.phone || "Chưa cập nhật"}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
+                <span className="text-muted">Ngày sinh:</span>
+                <span>{tenant?.birthDate ? formatDateVN(tenant.birthDate) : "Chưa cập nhật"}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
                 <span className="text-muted">Số CCCD:</span>
@@ -658,7 +793,7 @@ export function TenantPortalView() {
 
       {/* Invoices List Section */}
       <div id="invoices" style={{ marginBottom: "var(--space-3)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
           <div>
             <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
               <Receipt size={20} style={{ color: "var(--color-primary)" }} /> Lịch sử Hóa đơn tiền phòng & Dịch vụ
@@ -667,11 +802,52 @@ export function TenantPortalView() {
               Xem chi tiết các khoản thu, thanh toán qua mã VietQR và in phiếu thu A4.
             </p>
           </div>
+
+          {/* Search & Filter */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ position: "relative", minWidth: 180 }}>
+              <input
+                type="text"
+                className="input-field"
+                style={{ paddingLeft: 28, height: 32, fontSize: "var(--text-xs)" }}
+                placeholder="Tìm kỳ, số phòng..."
+                value={invSearch}
+                onChange={(e) => {
+                  setInvSearch(e.target.value);
+                  setInvPage(1);
+                }}
+              />
+              <MagnifyingGlass
+                size={14}
+                style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: "var(--color-fg-3)" }}
+              />
+            </div>
+
+            <select
+              className="input-field"
+              style={{ height: 32, fontSize: "var(--text-xs)", width: "auto" }}
+              value={invStatusFilter}
+              onChange={(e) => {
+                setInvStatusFilter(e.target.value);
+                setInvPage(1);
+              }}
+            >
+              <option value="all">Tất cả trạng thái</option>
+              <option value="issued">Chờ thanh toán</option>
+              <option value="partially_paid">Thanh toán một phần</option>
+              <option value="paid">Đã thanh toán</option>
+              <option value="cancelled">Đã hủy</option>
+            </select>
+          </div>
         </div>
 
         {invoices.length === 0 ? (
           <div className="card" style={{ padding: "var(--space-3)", textAlign: "center" }}>
             <p className="text-muted" style={{ margin: 0 }}>Chưa có hóa đơn nào được phát hành.</p>
+          </div>
+        ) : filteredInvoices.length === 0 ? (
+          <div className="card" style={{ padding: "var(--space-3)", textAlign: "center" }}>
+            <p className="text-muted" style={{ margin: 0 }}>Không tìm thấy hóa đơn nào phù hợp với bộ lọc.</p>
           </div>
         ) : (
           <div className="card" style={{ padding: 0 }}>
@@ -688,7 +864,7 @@ export function TenantPortalView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {invoices.map((inv) => {
+                  {paginatedInvoices.map((inv) => {
                     const cfg = STATUS_CONFIG[inv.status];
                     return (
                       <tr key={inv.id}>
@@ -706,7 +882,7 @@ export function TenantPortalView() {
                         </td>
                         <td style={{ textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            {inv.status !== "cancelled" && (
+                            {inv.status !== "paid" && inv.status !== "cancelled" && (
                               <button
                                 type="button"
                                 className="btn-secondary"
@@ -735,6 +911,47 @@ export function TenantPortalView() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalInvPages > 1 && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "10px 16px",
+                  borderTop: "1px solid var(--color-border)",
+                  fontSize: "var(--text-xs)",
+                }}
+              >
+                <span className="text-muted">
+                  Hiển thị {(invPage - 1) * INV_PAGE_SIZE + 1} - {Math.min(invPage * INV_PAGE_SIZE, filteredInvoices.length)} trong số {filteredInvoices.length} hóa đơn
+                </span>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    style={{ padding: "4px 10px", fontSize: "var(--text-xs)" }}
+                    disabled={invPage <= 1}
+                    onClick={() => setInvPage((p) => Math.max(1, p - 1))}
+                  >
+                    Trước
+                  </button>
+                  <span style={{ fontWeight: 600 }}>
+                    Trang {invPage} / {totalInvPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    style={{ padding: "4px 10px", fontSize: "var(--text-xs)" }}
+                    disabled={invPage >= totalInvPages}
+                    onClick={() => setInvPage((p) => Math.min(totalInvPages, p + 1))}
+                  >
+                    Sau
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -773,7 +990,12 @@ export function TenantPortalView() {
                       )}
                       <span>{isElectric ? "Điện sinh hoạt" : "Nước sinh hoạt"}</span>
                     </div>
-                    <span className="badge" style={{ fontSize: "10px" }}>Kỳ {m.billingPeriod}</span>
+                    <div style={{ textAlign: "right" }}>
+                      <span className="badge" style={{ fontSize: "10px" }}>Kỳ {m.billingPeriod}</span>
+                      <div style={{ fontSize: "10px", color: "var(--color-fg-3)", marginTop: 2 }}>
+                        Ngày chốt: {new Date(m.createdAt).toLocaleDateString("vi-VN")}
+                      </div>
+                    </div>
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, textAlign: "center", background: "var(--color-surface)", padding: 8, borderRadius: 6, border: "1px solid var(--color-border)" }}>
@@ -842,17 +1064,49 @@ export function TenantPortalView() {
                 <div key={req.id} className="card" style={{ padding: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
                     <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <span style={{ fontWeight: 700, fontSize: "var(--text-sm)" }}>{req.title}</span>
                         <span className={cfg.cls} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "11px" }}>
                           <cfg.Icon size={12} weight="fill" />
                           {cfg.label}
                         </span>
+                        {CATEGORY_LABELS[req.category] && (
+                          <span className="badge" style={{ fontSize: "10px", background: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
+                            {CATEGORY_LABELS[req.category]}
+                          </span>
+                        )}
+                        {PRIORITY_LABELS[req.priority] && (
+                          <span
+                            className="badge"
+                            style={{
+                              fontSize: "10px",
+                              color: PRIORITY_LABELS[req.priority].color,
+                              backgroundColor: PRIORITY_LABELS[req.priority].bg,
+                              border: "none",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {PRIORITY_LABELS[req.priority].label}
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginTop: 2 }}>
                         Phòng {req.roomNumber} • Tạo lúc {new Date(req.createdAt).toLocaleDateString("vi-VN")}
                       </div>
                     </div>
+
+                    {req.status === "pending" && (
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        style={{ padding: "3px 8px", fontSize: "11px", color: "var(--color-danger, #ef4444)" }}
+                        disabled={cancellingMntId === req.id}
+                        onClick={() => void handleCancelMaintenance(req.id)}
+                        title="Hủy yêu cầu sửa chữa này"
+                      >
+                        {cancellingMntId === req.id ? "Đang hủy..." : "Hủy yêu cầu"}
+                      </button>
+                    )}
                   </div>
                   {req.description && (
                     <p style={{ margin: "6px 0", fontSize: "var(--text-xs)", color: "var(--color-fg)", lineHeight: 1.5 }}>
@@ -901,6 +1155,9 @@ export function TenantPortalView() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setQrInvoice(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="qr-modal-title"
           >
             <motion.div
               className="card"
@@ -912,7 +1169,7 @@ export function TenantPortalView() {
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "var(--space-2)" }}>
                 <div>
-                  <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                  <h2 id="qr-modal-title" style={{ fontSize: "var(--text-lg)", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
                     <QrCode size={22} style={{ color: "var(--color-primary)" }} />
                     Quét mã VietQR thanh toán
                   </h2>
@@ -927,13 +1184,37 @@ export function TenantPortalView() {
 
               {(() => {
                 const remaining = Math.max(0, qrInvoice.totalAmount - (qrInvoice.paidAmount || 0));
+
+                if (remaining <= 0 || qrInvoice.status === "paid") {
+                  return (
+                    <div>
+                      <div style={{ textAlign: "center", padding: "24px 16px", background: "rgba(16, 185, 129, 0.08)", borderRadius: 12, border: "1px solid rgba(16, 185, 129, 0.25)", margin: "16px 0" }}>
+                        <div style={{ color: "#16a34a", marginBottom: 8, display: "flex", justifyContent: "center" }}>
+                          <CheckCircle size={48} weight="fill" />
+                        </div>
+                        <h3 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: "0 0 6px", color: "#16a34a" }}>
+                          Hóa đơn đã được thanh toán đủ
+                        </h3>
+                        <p className="text-muted" style={{ fontSize: "var(--text-xs)", margin: 0 }}>
+                          Không còn số dư cần thanh toán cho kỳ này ({money.format(qrInvoice.totalAmount)}).
+                        </p>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+                        <button type="button" className="btn-secondary" onClick={() => setQrInvoice(null)}>
+                          Đóng
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
                 const transferDesc = `TT P${qrInvoice.roomNumber.replace(/\s+/g, "")} ${qrInvoice.billingPeriodStart.replace(/-/g, "").slice(0, 6)}`;
                 const qrUrl = qrInvoice.bankCode && qrInvoice.bankAccount
                   ? buildVietQrUrl({
                       bankCode: qrInvoice.bankCode,
                       bankAccount: qrInvoice.bankAccount,
                       accountHolder: qrInvoice.accountHolder,
-                      amount: remaining > 0 ? remaining : qrInvoice.totalAmount,
+                      amount: remaining,
                       description: transferDesc,
                       template: "compact2",
                     })
@@ -1057,6 +1338,26 @@ export function TenantPortalView() {
                       </div>
                     </div>
 
+                    {paymentError && (
+                      <div
+                        style={{
+                          marginBottom: 12,
+                          padding: "8px 12px",
+                          background: "rgba(239, 68, 68, 0.1)",
+                          border: "1px solid #ef4444",
+                          borderRadius: 8,
+                          color: "#dc2626",
+                          fontSize: "var(--text-xs)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <WarningCircle size={14} weight="bold" />
+                        <span>{paymentError}</span>
+                      </div>
+                    )}
+
                     <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                       <button
                         type="button"
@@ -1101,10 +1402,13 @@ export function TenantPortalView() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setShowProfileModal(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-modal-title"
           >
             <motion.div
               className="card"
-              style={{ maxWidth: 520, width: "100%", maxHeight: "90vh", overflowY: "auto" }}
+              style={{ maxWidth: 540, width: "100%", maxHeight: "90vh", overflowY: "auto" }}
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
@@ -1112,15 +1416,15 @@ export function TenantPortalView() {
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
                 <div>
-                  <h2 style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                  <h2 id="profile-modal-title" style={{ fontSize: "var(--text-base)", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
                     <IdentificationCard size={20} color="var(--color-primary)" weight="fill" />
                     Cập nhật Hồ sơ cá nhân & Khai báo tạm trú
                   </h2>
                   <p className="text-muted" style={{ fontSize: "var(--text-xs)", margin: "4px 0 0" }}>
-                    Cung cấp số CCCD, quê quán và biển số xe để Ban quản lý làm thủ tục tạm trú CT01 và bãi gửi xe.
+                    Cung cấp số CCCD, ảnh chụp 2 mặt, quê quán và biển số xe để Ban quản lý làm thủ tục tạm trú CT01 và bãi gửi xe.
                   </p>
                 </div>
-                <button type="button" className="btn-ghost" style={{ padding: 6 }} onClick={() => setShowProfileModal(false)}>
+                <button type="button" className="btn-ghost" style={{ padding: 6 }} onClick={() => setShowProfileModal(false)} aria-label="Đóng">
                   <X size={14} />
                 </button>
               </div>
@@ -1144,7 +1448,7 @@ export function TenantPortalView() {
                     <span>{profileError}</span>
                   </div>
                 )}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
                   <div>
                     <label className="field-label" htmlFor="pFullName">Họ và tên *</label>
                     <input
@@ -1171,7 +1475,7 @@ export function TenantPortalView() {
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
                   <div>
                     <label className="field-label" htmlFor="pCitizenId">Số CCCD / CMND *</label>
                     <input
@@ -1197,7 +1501,115 @@ export function TenantPortalView() {
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                {/* CCCD Front & Back Photo Upload */}
+                <div style={{ borderTop: "1px dashed var(--color-border)", paddingTop: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--color-fg-3)", textTransform: "uppercase", marginBottom: 8 }}>
+                    Ảnh chụp CCCD (Mặt trước & Mặt sau)
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
+                    {/* Front */}
+                    <div>
+                      <span className="field-label" style={{ display: "block", marginBottom: 4 }}>
+                        Mặt trước CCCD
+                      </span>
+                      {pIdCardFrontUrl ? (
+                        <div style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid var(--color-border)", height: 110 }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={pIdCardFrontUrl}
+                            alt="Mặt trước CCCD"
+                            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                          />
+                          <button
+                            type="button"
+                            className="btn-ghost"
+                            onClick={() => setPIdCardFrontUrl("")}
+                            style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.65)", color: "#fff", padding: "3px 8px", borderRadius: 4, fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}
+                          >
+                            <Trash size={12} /> Xóa
+                          </button>
+                        </div>
+                      ) : (
+                        <label
+                          style={{
+                            border: "1px dashed var(--color-border)",
+                            borderRadius: 8,
+                            padding: "16px 10px",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 4,
+                            cursor: "pointer",
+                            background: "var(--color-surface)",
+                          }}
+                        >
+                          <UploadSimple size={20} color="var(--color-primary)" />
+                          <span style={{ fontSize: 11, color: "var(--color-fg-2)" }}>Tải ảnh mặt trước</span>
+                          <span style={{ fontSize: 10, color: "var(--color-fg-3)" }}>PNG, JPG tối đa 5MB</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: "none" }}
+                            disabled={submittingProfile}
+                            onChange={(e) => handleImageFileChange(e, setPIdCardFrontUrl, setProfileError)}
+                          />
+                        </label>
+                      )}
+                    </div>
+
+                    {/* Back */}
+                    <div>
+                      <span className="field-label" style={{ display: "block", marginBottom: 4 }}>
+                        Mặt sau CCCD
+                      </span>
+                      {pIdCardBackUrl ? (
+                        <div style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid var(--color-border)", height: 110 }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={pIdCardBackUrl}
+                            alt="Mặt sau CCCD"
+                            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                          />
+                          <button
+                            type="button"
+                            className="btn-ghost"
+                            onClick={() => setPIdCardBackUrl("")}
+                            style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.65)", color: "#fff", padding: "3px 8px", borderRadius: 4, fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}
+                          >
+                            <Trash size={12} /> Xóa
+                          </button>
+                        </div>
+                      ) : (
+                        <label
+                          style={{
+                            border: "1px dashed var(--color-border)",
+                            borderRadius: 8,
+                            padding: "16px 10px",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 4,
+                            cursor: "pointer",
+                            background: "var(--color-surface)",
+                          }}
+                        >
+                          <UploadSimple size={20} color="var(--color-primary)" />
+                          <span style={{ fontSize: 11, color: "var(--color-fg-2)" }}>Tải ảnh mặt sau</span>
+                          <span style={{ fontSize: 10, color: "var(--color-fg-3)" }}>PNG, JPG tối đa 5MB</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: "none" }}
+                            disabled={submittingProfile}
+                            onChange={(e) => handleImageFileChange(e, setPIdCardBackUrl, setProfileError)}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
                   <div>
                     <label className="field-label" htmlFor="pHometown">Quê quán (Tỉnh / Thành)</label>
                     <input
@@ -1228,7 +1640,7 @@ export function TenantPortalView() {
                   <div style={{ fontSize: 11, fontWeight: 700, color: "var(--color-fg-3)", textTransform: "uppercase", marginBottom: 8 }}>
                     Người liên hệ khẩn cấp (Người thân)
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
                     <div>
                       <label className="field-label" htmlFor="pEmergencyName">Tên người thân</label>
                       <input
@@ -1298,6 +1710,9 @@ export function TenantPortalView() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setShowMaintenanceModal(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="maintenance-modal-title"
           >
             <motion.div
               className="card"
@@ -1309,7 +1724,7 @@ export function TenantPortalView() {
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "var(--space-2)" }}>
                 <div>
-                  <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                  <h2 id="maintenance-modal-title" style={{ fontSize: "var(--text-lg)", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
                     <Wrench size={22} style={{ color: "var(--color-primary)" }} />
                     Báo sự cố phòng {stay?.roomNumber}
                   </h2>
@@ -1355,7 +1770,7 @@ export function TenantPortalView() {
                   />
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
                   <div>
                     <label className="field-label" htmlFor="mCategory">Danh mục</label>
                     <select
@@ -1368,8 +1783,8 @@ export function TenantPortalView() {
                       <option value="plumbing">Cấp thoát nước</option>
                       <option value="electrical">Điện sinh hoạt</option>
                       <option value="appliance">Thiết bị / Đồ dùng</option>
+                      <option value="internet">Mạng / Internet</option>
                       <option value="structural">Cơ sở vật chất</option>
-                      <option value="pest_control">Côn trùng / Vệ sinh</option>
                       <option value="other">Khác</option>
                     </select>
                   </div>
@@ -1405,13 +1820,56 @@ export function TenantPortalView() {
                 </div>
 
                 <div>
-                  <label className="field-label" htmlFor="mPhotoUrl">Đường dẫn ảnh chụp sự cố (nếu có)</label>
+                  <label className="field-label" style={{ display: "block", marginBottom: 4 }}>
+                    Ảnh chụp sự cố hỏng hóc (nếu có)
+                  </label>
+                  {mPhotoUrl ? (
+                    <div style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid var(--color-border)", maxWidth: 220, marginBottom: 8 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={mPhotoUrl}
+                        alt="Ảnh chụp sự cố"
+                        style={{ width: "100%", height: 130, objectFit: "cover", display: "block" }}
+                      />
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        onClick={() => setMPhotoUrl("")}
+                        style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.65)", color: "#fff", padding: "3px 8px", borderRadius: 4, fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}
+                      >
+                        <Trash size={12} /> Xóa ảnh
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
+                      <label
+                        className="btn-secondary"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          fontSize: "var(--text-xs)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <UploadSimple size={14} /> Tải ảnh từ thiết bị
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: "none" }}
+                          disabled={submittingMnt}
+                          onChange={(e) => handleImageFileChange(e, setMPhotoUrl, setMntError)}
+                        />
+                      </label>
+                      <span className="text-muted" style={{ fontSize: "11px" }}>hoặc nhập URL bên dưới</span>
+                    </div>
+                  )}
                   <input
                     id="mPhotoUrl"
                     type="url"
                     disabled={submittingMnt}
                     className="input-field"
-                    placeholder="VD: https://... hoặc link ảnh chụp thực tế"
+                    placeholder="VD: https://... hoặc liên kết ảnh trực tiếp"
                     value={mPhotoUrl}
                     onChange={(e) => setMPhotoUrl(e.target.value)}
                   />
