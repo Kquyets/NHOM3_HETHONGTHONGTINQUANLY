@@ -670,6 +670,7 @@ export default function ContractsPage() {
 
   // Printable contract modal state
   const [printContract, setPrintContract] = useState<ContractRow | null>(null);
+  const [showServiceContractModal, setShowServiceContractModal] = useState(false);
 
   // Manage occupants modal state
   const [managingOccupantsContract, setManagingOccupantsContract] = useState<ContractRow | null>(null);
@@ -835,7 +836,16 @@ export default function ContractsPage() {
               Quản lý hợp đồng thuê, bàn giao phòng và liên kết khách cư dân vào hệ thống.
             </p>
           </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setShowServiceContractModal(true)}
+              title="Xem & in Mẫu hợp đồng cung cấp dịch vụ phần mềm HManagers (tham khảo quanlytro.me)"
+            >
+              <Buildings size={15} />
+              <span>Mẫu HĐ dịch vụ HManagers</span>
+            </button>
             {contracts.length > 0 && (
               <button
                 type="button"
@@ -1149,7 +1159,17 @@ export default function ContractsPage() {
       {printContract && (
         <PrintableContractModal
           contract={printContract}
+          initialTemplate="rental"
           onClose={() => setPrintContract(null)}
+        />
+      )}
+
+      {/* Service Contract Template Modal (quanlytro.me) */}
+      {showServiceContractModal && (
+        <PrintableContractModal
+          contract={contracts[0] || null}
+          initialTemplate="service"
+          onClose={() => setShowServiceContractModal(false)}
         />
       )}
 
