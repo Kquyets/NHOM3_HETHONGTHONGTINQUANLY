@@ -35,6 +35,20 @@ export type CreateMeterReadingInput = {
   unitPriceSnapshot: number;
 };
 
+export type BatchReadingItem = {
+  roomId: string;
+  utilityType: UtilityType;
+  previousValue: number;
+  currentValue: number;
+  unitPriceSnapshot?: number;
+};
+
+export type BatchRecordInput = {
+  propertyId: string;
+  billingPeriod: string;
+  items: BatchReadingItem[];
+};
+
 export type UtilityRateRow = {
   id: string;
   propertyId: string;
@@ -215,6 +229,45 @@ export async function createMeterReading(
 
   if (!row) throw new AppError("DATABASE_ERROR", "Không thể lưu chỉ số điện nước.");
   return { ...row, roomNumber: "", propertyName: "" } as MeterReadingRow;
+}
+
+export async function batchRecordMeterReadings(
+  userId: string,
+  role: string,
+  input: BatchRecordInput,
+): Promise<{ count: number }> {
+  assertStaff(role);
+  if (!input.items || input.items.length === 0) return { count: 0 };
+
+  const db = getDatabase();
+
+  const rates = await listUtilityRates(userId, role, input.propertyId);
+  const elecRate = rates.find((r) => r.utilityType === "electricity");
+  const waterRate = rates.find((r) => r.utilityType === "water");
+
+  let recordedCount = 0;
+  for (const item of input.items) {
+    if (item.currentValue < item.previousValue) continue;
+    const rate = item.utilityType === "electricity" ? elecRate : waterRate;
+    const rateId = rate?.id || "default";
+    const price = item.unitPriceSnapshot || rate?.unitPrice || (item.utilityType === "electricity" ? 3800 : 25000);
+
+    await db
+      .insert(meterReadings)
+      .values({
+        roomId: item.roomId,
+        propertyId: input.propertyId,
+        utilityType: item.utilityType,
+        billingPeriod: input.billingPeriod,
+        previousValue: String(item.previousValue),
+        currentValue: String(item.currentValue),
+        utilityRateId: rateId,
+        unitPriceSnapshot: price,
+      });
+    recordedCount++;
+  }
+
+  return { count: recordedCount };
 }
 
 export async function deleteMeterReading(
