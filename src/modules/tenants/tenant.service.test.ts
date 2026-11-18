@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockDb = {
   select: vi.fn(),
+  selectDistinct: vi.fn(),
   insert: vi.fn(),
   update: vi.fn(),
   delete: vi.fn(),
@@ -31,12 +32,18 @@ vi.mock("../../lib/database/schema", () => ({
     updatedAt: "updatedAt",
     $inferInsert: {},
   },
+  contracts: { id: "id", roomId: "roomId" },
+  contractTenants: { contractId: "contractId", tenantId: "tenantId" },
+  rooms: { id: "id", propertyId: "propertyId" },
+  properties: { id: "id", ownerId: "ownerId" },
+  propertyMembers: { propertyId: "propertyId", userId: "userId", status: "status" },
 }));
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn().mockReturnValue({ type: "eq" }),
   and: vi.fn((...args) => ({ type: "and", args })),
   ilike: vi.fn().mockReturnValue({ type: "ilike" }),
   or: vi.fn((...args) => ({ type: "or", args })),
+  isNull: vi.fn().mockReturnValue({ type: "isNull" }),
   asc: vi.fn((col) => ({ type: "asc", col })),
 }));
 
@@ -44,6 +51,8 @@ function chain(result: unknown[]) {
   return {
     from: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
+    innerJoin: vi.fn().mockReturnThis(),
+    leftJoin: vi.fn().mockReturnThis(),
     orderBy: vi.fn().mockResolvedValue(result),
     limit: vi.fn().mockResolvedValue(result),
     values: vi.fn().mockReturnThis(),
@@ -82,14 +91,14 @@ beforeEach(() => vi.clearAllMocks());
 // ---------------------------------------------------------------------------
 describe("listTenants", () => {
   it("returns tenants for owner", async () => {
-    mockDb.select.mockReturnValueOnce(chain([mockTenant]));
+    mockDb.selectDistinct.mockReturnValueOnce(chain([mockTenant]));
     const result = await listTenants(OWNER.userId, OWNER.role);
     expect(result).toHaveLength(1);
     expect(result[0].fullName).toBe("Nguyễn Văn A");
   });
 
   it("returns tenants for manager", async () => {
-    mockDb.select.mockReturnValueOnce(chain([mockTenant]));
+    mockDb.selectDistinct.mockReturnValueOnce(chain([mockTenant]));
     const result = await listTenants(MANAGER.userId, MANAGER.role);
     expect(result).toHaveLength(1);
   });

@@ -158,6 +158,7 @@ export async function listInvoices(userId: string, role: string): Promise<Invoic
       .innerJoin(properties, eq(properties.id, rooms.propertyId))
       .leftJoin(contractTenants, eq(contractTenants.contractId, contracts.id))
       .leftJoin(tenants, eq(tenants.id, contractTenants.tenantId))
+      .where(eq(properties.ownerId, userId))
       .orderBy(desc(invoices.billingPeriodStart));
   }
 
@@ -188,34 +189,76 @@ export async function getInvoice(
   assertStaff(role);
   const db = getDatabase();
 
-  const [row] = await db
-    .select({
-      id: invoices.id,
-      contractId: invoices.contractId,
-      roomNumber: rooms.roomNumber,
-      propertyName: properties.name,
-      propertyAddress: properties.address,
-      tenantName: tenants.fullName,
-      tenantPhone: tenants.phone,
-      bankCode: properties.bankCode,
-      bankAccount: properties.bankAccount,
-      accountHolder: properties.accountHolder,
-      billingPeriodStart: invoices.billingPeriodStart,
-      issueDate: invoices.issueDate,
-      dueDate: invoices.dueDate,
-      status: invoices.status,
-      totalAmount: invoices.totalAmount,
-      createdAt: invoices.createdAt,
-      updatedAt: invoices.updatedAt,
-    })
-    .from(invoices)
-    .innerJoin(contracts, eq(contracts.id, invoices.contractId))
-    .innerJoin(rooms, eq(rooms.id, contracts.roomId))
-    .innerJoin(properties, eq(properties.id, rooms.propertyId))
-    .leftJoin(contractTenants, eq(contractTenants.contractId, contracts.id))
-    .leftJoin(tenants, eq(tenants.id, contractTenants.tenantId))
-    .where(eq(invoices.id, invoiceId))
-    .limit(1);
+  let row: any;
+  if (role === "owner") {
+    const rows = await db
+      .select({
+        id: invoices.id,
+        contractId: invoices.contractId,
+        roomNumber: rooms.roomNumber,
+        propertyName: properties.name,
+        propertyAddress: properties.address,
+        tenantName: tenants.fullName,
+        tenantPhone: tenants.phone,
+        bankCode: properties.bankCode,
+        bankAccount: properties.bankAccount,
+        accountHolder: properties.accountHolder,
+        billingPeriodStart: invoices.billingPeriodStart,
+        issueDate: invoices.issueDate,
+        dueDate: invoices.dueDate,
+        status: invoices.status,
+        totalAmount: invoices.totalAmount,
+        createdAt: invoices.createdAt,
+        updatedAt: invoices.updatedAt,
+      })
+      .from(invoices)
+      .innerJoin(contracts, eq(contracts.id, invoices.contractId))
+      .innerJoin(rooms, eq(rooms.id, contracts.roomId))
+      .innerJoin(properties, eq(properties.id, rooms.propertyId))
+      .leftJoin(contractTenants, eq(contractTenants.contractId, contracts.id))
+      .leftJoin(tenants, eq(tenants.id, contractTenants.tenantId))
+      .where(and(eq(invoices.id, invoiceId), eq(properties.ownerId, userId)))
+      .limit(1);
+    row = rows[0];
+  } else {
+    const rows = await db
+      .select({
+        id: invoices.id,
+        contractId: invoices.contractId,
+        roomNumber: rooms.roomNumber,
+        propertyName: properties.name,
+        propertyAddress: properties.address,
+        tenantName: tenants.fullName,
+        tenantPhone: tenants.phone,
+        bankCode: properties.bankCode,
+        bankAccount: properties.bankAccount,
+        accountHolder: properties.accountHolder,
+        billingPeriodStart: invoices.billingPeriodStart,
+        issueDate: invoices.issueDate,
+        dueDate: invoices.dueDate,
+        status: invoices.status,
+        totalAmount: invoices.totalAmount,
+        createdAt: invoices.createdAt,
+        updatedAt: invoices.updatedAt,
+      })
+      .from(invoices)
+      .innerJoin(contracts, eq(contracts.id, invoices.contractId))
+      .innerJoin(rooms, eq(rooms.id, contracts.roomId))
+      .innerJoin(properties, eq(properties.id, rooms.propertyId))
+      .leftJoin(contractTenants, eq(contractTenants.contractId, contracts.id))
+      .leftJoin(tenants, eq(tenants.id, contractTenants.tenantId))
+      .innerJoin(
+        propertyMembers,
+        and(
+          eq(propertyMembers.propertyId, properties.id),
+          eq(propertyMembers.userId, userId),
+          eq(propertyMembers.status, "active"),
+        ),
+      )
+      .where(eq(invoices.id, invoiceId))
+      .limit(1);
+    row = rows[0];
+  }
 
   if (!row) throw new AppError("NOT_FOUND", "Không tìm thấy hóa đơn.", []);
 

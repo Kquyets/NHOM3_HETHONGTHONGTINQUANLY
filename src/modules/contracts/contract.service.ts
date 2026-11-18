@@ -147,6 +147,7 @@ export async function listContracts(userId: string, role: string): Promise<Contr
       .innerJoin(rooms, eq(rooms.id, contracts.roomId))
       .innerJoin(properties, eq(properties.id, rooms.propertyId))
       .leftJoin(users, eq(users.id, properties.ownerId))
+      .where(eq(properties.ownerId, userId))
       .orderBy(desc(contracts.createdAt));
   } else {
     // manager: join through propertyMembers
@@ -158,7 +159,11 @@ export async function listContracts(userId: string, role: string): Promise<Contr
       .leftJoin(users, eq(users.id, properties.ownerId))
       .innerJoin(
         propertyMembers,
-        eq(propertyMembers.propertyId, properties.id),
+        and(
+          eq(propertyMembers.propertyId, properties.id),
+          eq(propertyMembers.userId, userId),
+          eq(propertyMembers.status, "active"),
+        ),
       )
       .orderBy(desc(contracts.createdAt));
   }
@@ -215,14 +220,36 @@ export async function getContract(
   assertStaff(role);
   const db = getDatabase();
 
-  const [row] = await db
-    .select(SELECT_COLUMNS)
-    .from(contracts)
-    .innerJoin(rooms, eq(rooms.id, contracts.roomId))
-    .innerJoin(properties, eq(properties.id, rooms.propertyId))
-    .leftJoin(users, eq(users.id, properties.ownerId))
-    .where(eq(contracts.id, contractId))
-    .limit(1);
+  let row: ContractDbRow | undefined;
+  if (role === "owner") {
+    const rows = await db
+      .select(SELECT_COLUMNS)
+      .from(contracts)
+      .innerJoin(rooms, eq(rooms.id, contracts.roomId))
+      .innerJoin(properties, eq(properties.id, rooms.propertyId))
+      .leftJoin(users, eq(users.id, properties.ownerId))
+      .where(and(eq(contracts.id, contractId), eq(properties.ownerId, userId)))
+      .limit(1);
+    row = rows[0];
+  } else {
+    const rows = await db
+      .select(SELECT_COLUMNS)
+      .from(contracts)
+      .innerJoin(rooms, eq(rooms.id, contracts.roomId))
+      .innerJoin(properties, eq(properties.id, rooms.propertyId))
+      .leftJoin(users, eq(users.id, properties.ownerId))
+      .innerJoin(
+        propertyMembers,
+        and(
+          eq(propertyMembers.propertyId, properties.id),
+          eq(propertyMembers.userId, userId),
+          eq(propertyMembers.status, "active"),
+        ),
+      )
+      .where(eq(contracts.id, contractId))
+      .limit(1);
+    row = rows[0];
+  }
 
   if (!row) throw new AppError("NOT_FOUND", "Không tìm thấy hợp đồng.", []);
 

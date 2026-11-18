@@ -1,6 +1,6 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull, or } from "drizzle-orm";
 import { getDatabase } from "../../lib/database/client";
-import { tenants } from "../../lib/database/schema";
+import { contracts, contractTenants, properties, propertyMembers, rooms, tenants } from "../../lib/database/schema";
 import { AppError } from "../../errors/app-error";
 
 // ---------------------------------------------------------------------------
@@ -84,9 +84,35 @@ const SELECT_COLUMNS = {
 export async function listTenants(userId: string, role: string): Promise<TenantRow[]> {
   assertStaff(role);
   const db = getDatabase();
+
+  if (role === "owner") {
+    return db
+      .selectDistinct(SELECT_COLUMNS)
+      .from(tenants)
+      .leftJoin(contractTenants, eq(contractTenants.tenantId, tenants.id))
+      .leftJoin(contracts, eq(contracts.id, contractTenants.contractId))
+      .leftJoin(rooms, eq(rooms.id, contracts.roomId))
+      .leftJoin(properties, eq(properties.id, rooms.propertyId))
+      .where(or(eq(properties.ownerId, userId), isNull(contractTenants.contractId)))
+      .orderBy(asc(tenants.fullName));
+  }
+
   return db
-    .select(SELECT_COLUMNS)
+    .selectDistinct(SELECT_COLUMNS)
     .from(tenants)
+    .leftJoin(contractTenants, eq(contractTenants.tenantId, tenants.id))
+    .leftJoin(contracts, eq(contracts.id, contractTenants.contractId))
+    .leftJoin(rooms, eq(rooms.id, contracts.roomId))
+    .leftJoin(properties, eq(properties.id, rooms.propertyId))
+    .leftJoin(
+      propertyMembers,
+      and(
+        eq(propertyMembers.propertyId, properties.id),
+        eq(propertyMembers.userId, userId),
+        eq(propertyMembers.status, "active"),
+      ),
+    )
+    .where(or(eq(propertyMembers.userId, userId), isNull(contractTenants.contractId)))
     .orderBy(asc(tenants.fullName));
 }
 
