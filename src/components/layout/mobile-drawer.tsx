@@ -11,6 +11,8 @@ import {
   Users,
   FileText,
   Receipt,
+  Lightning,
+  Wrench,
   CreditCard,
   Sparkle,
   Gear,
@@ -30,15 +32,14 @@ export type MobileDrawerProps = {
 
 export const DRAWER_MENU_ITEMS = [
   { href: "/", label: "Dashboard", Icon: House, match: (p: string) => p === "/" || p.startsWith("/dashboard") },
-  { href: "/properties", label: "Nhà trọ", Icon: Buildings, match: (p: string) => p === "/properties" },
-  { href: "/properties#rooms", label: "Phòng", Icon: Door, match: (p: string) => p.startsWith("/properties") && p.includes("room") },
+  { href: "/properties", label: "Nhà trọ & Phòng", Icon: Buildings, match: (p: string) => p.startsWith("/properties") },
   { href: "/tenants", label: "Khách thuê", Icon: Users, match: (p: string) => p.startsWith("/tenants") },
   { href: "/contracts", label: "Hợp đồng", Icon: FileText, match: (p: string) => p.startsWith("/contracts") },
+  { href: "/meters", label: "Điện & Nước", Icon: Lightning, match: (p: string) => p.startsWith("/meters") },
   { href: "/invoices", label: "Hoá đơn", Icon: Receipt, match: (p: string) => p.startsWith("/invoices") },
-  { href: "/invoices#payments", label: "Giao dịch", Icon: CreditCard, match: (p: string) => p.startsWith("/payments") || p.includes("payment") },
+  { href: "/maintenance", label: "Sự cố & Sửa chữa", Icon: Wrench, match: (p: string) => p.startsWith("/maintenance") },
   { href: "/ai", label: "Trợ lý AI", Icon: Sparkle, match: (p: string) => p.startsWith("/ai"), isAi: true },
-  { href: "/profile", label: "Cài đặt TT", Icon: Gear, match: (p: string) => p.startsWith("/profile") },
-  { href: "/properties", label: "Nhân viên", Icon: ShieldCheck, match: () => false },
+  { href: "/profile", label: "Cài đặt & Hồ sơ", Icon: Gear, match: (p: string) => p.startsWith("/profile") },
 ];
 
 export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
@@ -114,7 +115,7 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
                 </div>
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   <span style={{ fontWeight: 700, fontSize: 16, color: "var(--color-fg-1)", lineHeight: 1.2 }}>
-                    Rental SaaS
+                    HManagers
                   </span>
                   <span style={{ fontSize: 11, color: "var(--color-fg-3)" }}>
                     Hệ thống Quản lý Nhà trọ

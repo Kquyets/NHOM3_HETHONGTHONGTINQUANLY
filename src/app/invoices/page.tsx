@@ -40,6 +40,7 @@ import type {
   InvoiceStatus,
   PaymentMethod,
 } from "../../modules/invoices/invoice.service";
+import type { ContractRow } from "../../modules/contracts/contract.service";
 
 const money = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -118,6 +119,9 @@ export default function InvoicesPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
 
+  // Available contracts for easy dropdown selection
+  const [availableContracts, setAvailableContracts] = useState<ContractRow[]>([]);
+
   // Batch generate invoices state
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [batchPropertyId, setBatchPropertyId] = useState("");
@@ -191,18 +195,24 @@ export default function InvoicesPage() {
     if (user.role === "tenant") { router.replace("/"); return; }
     void loadInvoices();
 
-    async function loadProperties() {
+    async function loadPropertiesAndContracts() {
       try {
-        const res = await apiClient<{ properties: Array<{ id: string; name: string }> }>("/api/properties");
-        if (res.properties && res.properties.length > 0) {
-          setProperties(res.properties);
-          setBatchPropertyId(res.properties[0].id);
+        const [pRes, cRes] = await Promise.all([
+          apiClient<{ properties: Array<{ id: string; name: string }> }>("/api/properties"),
+          apiClient<{ contracts: ContractRow[] }>("/api/contracts"),
+        ]);
+        if (pRes.properties && pRes.properties.length > 0) {
+          setProperties(pRes.properties);
+          setBatchPropertyId(pRes.properties[0].id);
+        }
+        if (cRes.contracts && cRes.contracts.length > 0) {
+          setAvailableContracts(cRes.contracts.filter((c) => c.status === "active" || c.status === "draft"));
         }
       } catch {
         // ignore
       }
     }
-    void loadProperties();
+    void loadPropertiesAndContracts();
   }, [user, authLoading, router, loadInvoices]);
 
   const handleBatchGenerate = async (e: FormEvent) => {
@@ -495,8 +505,37 @@ export default function InvoicesPage() {
               <form onSubmit={handleCreateInvoice}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label htmlFor="inv-contract">Contract ID *</label>
-                    <input id="inv-contract" type="text" className="form-control" placeholder="ID hợp đồng" value={cContractId} onChange={(e) => setCContractId(e.target.value)} required autoFocus />
+                    <label htmlFor="inv-contract">Chọn Hợp đồng / Phòng thuê *</label>
+                    <select
+                      id="inv-contract"
+                      className="form-control"
+                      value={cContractId}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCContractId(val);
+                        const found = availableContracts.find((c) => c.id === val);
+                        if (found) {
+                          setCItems([
+                            {
+                              itemType: "rent",
+                              description: `Tiền thuê Phòng ${found.roomNumber} - ${found.propertyName}`,
+                              quantity: 1,
+                              unitPriceSnapshot: found.monthlyRentSnapshot,
+                              amount: found.monthlyRentSnapshot,
+                            },
+                          ]);
+                        }
+                      }}
+                      required
+                      autoFocus
+                    >
+                      <option value="">-- Chọn hợp đồng phòng thuê --</option>
+                      {availableContracts.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          Phòng {c.roomNumber} ({c.propertyName}) — {c.tenants?.[0]?.fullName || "Chưa có tên khách"} — {money.format(c.monthlyRentSnapshot)}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="inv-period">Kỳ thu tiền (Ngày 01) *</label>

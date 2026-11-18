@@ -7,8 +7,8 @@ import { AiFloatingChat } from "../components/ai-assistant/ai-floating-chat";
 const THEME_INIT_SCRIPT = `(function(){try{var s=localStorage.getItem("nha-tro-theme");var t=s==="light"||s==="dark"?s:(window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.setAttribute("data-theme",t);}catch(e){}})();`;
 
 export const metadata = {
-  title: "Nhà Trọ Thông Minh — Hệ thống Quản lý",
-  description: "Quản lý nhà trọ, phòng, khách thuê, điện nước và hóa đơn tự động",
+  title: "HManagers — Hệ thống Quản lý Nhà trọ & Căn hộ",
+  description: "HManagers - Quản lý nhà trọ, phòng, khách thuê, điện nước và hóa đơn tự động",
 };
 
 export default function RootLayout({

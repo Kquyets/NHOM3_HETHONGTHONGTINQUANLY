@@ -107,6 +107,7 @@ export default function MetersPage() {
 
   const [showAddReading, setShowAddReading] = useState(false);
   const [submittingReading, setSubmittingReading] = useState(false);
+  const [readingFormRooms, setReadingFormRooms] = useState<RoomRow[]>([]);
   const [rRoomId, setRRoomId] = useState("");
   const [rPropId, setRPropId] = useState("");
   const [rType, setRType] = useState<UtilityType>("electricity");
@@ -993,12 +994,54 @@ export default function MetersPage() {
               <form onSubmit={handleCreateReading}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)" }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label htmlFor="r-prop">Nhà trọ ID *</label>
-                    <input id="r-prop" type="text" className="form-control" placeholder="ID nhà trọ" value={rPropId} onChange={(e) => setRPropId(e.target.value)} required autoFocus />
+                    <label htmlFor="r-prop">Chọn Nhà trọ *</label>
+                    <select
+                      id="r-prop"
+                      className="form-control"
+                      value={rPropId}
+                      onChange={async (e) => {
+                        const pId = e.target.value;
+                        setRPropId(pId);
+                        if (pId) {
+                          try {
+                            const res = await apiClient<{ rooms: RoomRow[] }>(`/api/properties/${pId}/rooms`);
+                            setReadingFormRooms(res.rooms || []);
+                            if (res.rooms && res.rooms.length > 0) {
+                              setRRoomId(res.rooms[0].id);
+                            }
+                          } catch {
+                            setReadingFormRooms([]);
+                            setRRoomId("");
+                          }
+                        } else {
+                          setReadingFormRooms([]);
+                          setRRoomId("");
+                        }
+                      }}
+                      required
+                      autoFocus
+                    >
+                      <option value="">-- Chọn nhà trọ --</option>
+                      {properties.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label htmlFor="r-room">Phòng ID *</label>
-                    <input id="r-room" type="text" className="form-control" placeholder="ID phòng" value={rRoomId} onChange={(e) => setRRoomId(e.target.value)} required />
+                    <label htmlFor="r-room">Chọn Phòng *</label>
+                    <select
+                      id="r-room"
+                      className="form-control"
+                      value={rRoomId}
+                      onChange={(e) => setRRoomId(e.target.value)}
+                      required
+                      disabled={!rPropId}
+                    >
+                      <option value="">{rPropId ? "-- Chọn phòng --" : "-- Hãy chọn nhà trọ trước --"}</option>
+                      {readingFormRooms.map((r) => (
+                        <option key={r.id} value={r.id}>Phòng {r.roomNumber}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="r-type">Loại tiện ích *</label>
@@ -1042,8 +1085,20 @@ export default function MetersPage() {
               <form onSubmit={handleCreateRate}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)" }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label htmlFor="rate-prop">Nhà trọ ID *</label>
-                    <input id="rate-prop" type="text" className="form-control" placeholder="ID nhà trọ" value={ratePropId} onChange={(e) => setRatePropId(e.target.value)} required autoFocus />
+                    <label htmlFor="rate-prop">Chọn Nhà trọ *</label>
+                    <select
+                      id="rate-prop"
+                      className="form-control"
+                      value={ratePropId}
+                      onChange={(e) => setRatePropId(e.target.value)}
+                      required
+                      autoFocus
+                    >
+                      <option value="">-- Chọn nhà trọ --</option>
+                      {properties.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="rate-type">Loại tiện ích *</label>

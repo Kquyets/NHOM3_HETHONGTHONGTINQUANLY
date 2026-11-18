@@ -45,7 +45,8 @@ describe("bearer tokens", () => {
 
   it("rejects a token modified after signing", async () => {
     const token = await issueAccessToken(user, secret);
-    await expect(verifyAccessToken(`${token.slice(0, -1)}x`, secret)).rejects.toThrow();
+    const tampered = token.endsWith("x") ? `${token.slice(0, -1)}y` : `${token.slice(0, -1)}x`;
+    await expect(verifyAccessToken(tampered, secret)).rejects.toThrow();
   });
 
   it("stores a hash instead of the refresh-token value", () => {

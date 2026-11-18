@@ -102,7 +102,7 @@ export function AppHeader() {
               <div className="brand-icon">
                 <BrandLogo />
               </div>
-              <span>Rental SaaS</span>
+              <span>HManagers</span>
             </Link>
           </motion.div>
         </div>

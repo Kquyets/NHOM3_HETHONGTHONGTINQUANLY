@@ -577,7 +577,7 @@ export function LandingPage() {
           </div>
 
           <div style={{ fontSize: 12, color: "var(--color-fg-3)" }}>
-            &copy; {new Date().getFullYear()} Nhom 3. All rights reserved.
+            &copy; {new Date().getFullYear()} HManagers. All rights reserved.
           </div>
         </div>
       </footer>
