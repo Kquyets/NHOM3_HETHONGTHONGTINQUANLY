@@ -107,16 +107,16 @@ Nhà trọ → Phòng → Khách thuê → Hợp đồng → Điện/Nước →
 | Backend / API     | Next.js API      | REST API, business logic, xử lý nghiệp vụ                |
 | Database chính    | PostgreSQL       | Dữ liệu nghiệp vụ có tính quan hệ                        |
 | Database phụ      | MongoDB Atlas    | AI conversation log, notification log, dữ liệu linh hoạt |
-| ORM               | TODO: Chưa quyết định (Prisma / Drizzle) | Kết nối và migration PostgreSQL    |
-| Auth              | TODO: Chưa quyết định (NextAuth.js / JWT) | Xác thực và phân quyền           |
+| ORM               | Drizzle ORM      | Kết nối PostgreSQL và định nghĩa schema                |
+| Auth              | JWT + bcryptjs   | Access token, refresh token rotation, xác thực phân quyền |
 | Container         | Docker           | Đóng gói ứng dụng, chuẩn hóa môi trường                  |
 | Quản lý mã nguồn  | Git + GitHub     | Version control, phối hợp phát triển                     |
 | Triển khai backend| Railway          | Host backend và database PostgreSQL production            |
 | Triển khai frontend| Vercel          | Host frontend Next.js                                     |
 | DNS / Bảo mật     | Cloudflare       | DNS, SSL/TLS, bảo vệ cơ bản                              |
-| AI Model          | TODO: Chưa quyết định (Gemini API / OpenAI) | Xử lý ngôn ngữ tự nhiên cho AI Agent |
-| Payment           | TODO: Chưa quyết định | MoMo / VNPAY (giai đoạn Advanced)               |
-| Notification      | TODO: Chưa quyết định | Email / Telegram (giai đoạn Advanced)           |
+| AI Model          | Google Gemini API (`@google/genai`) | Xử lý ngôn ngữ tự nhiên, tra cứu nghiệp vụ, kèm fallback local engine |
+| Payment           | VietQR (NAPAS 247)| Sinh mã QR thanh toán động cho từng hóa đơn theo tài khoản chủ trọ |
+| Notification      | In-App Notification Center | Trung tâm thông báo thời gian thực với chuông cảnh báo |
 
 ---
 
@@ -124,9 +124,9 @@ Nhà trọ → Phòng → Khách thuê → Hợp đồng → Điện/Nước →
 
 ### Nguyên tắc phân chia dữ liệu
 
-**PostgreSQL** lưu toàn bộ dữ liệu nghiệp vụ có tính quan hệ, cần tính nhất quán (ACID):
+**PostgreSQL** lưu dữ liệu nghiệp vụ có tính quan hệ, cần tính nhất quán (ACID). Schema khởi tạo hiện có tại [`drizzle/0000_core_schema.sql`](drizzle/0000_core_schema.sql), gồm tài khoản, nhà trọ, phòng, khách thuê, hợp đồng, chỉ số điện/nước, hóa đơn và thanh toán. Schema Drizzle nằm tại `src/lib/database/schema.ts`.
 
-| Bảng (dự kiến) | Dữ liệu                                                    |
+| Một số bảng chính | Dữ liệu |
 | -------------- | ---------------------------------------------------------- |
 | `users`        | Tài khoản người dùng hệ thống, role                        |
 | `properties`   | Thông tin nhà trọ (tên, địa chỉ, chủ nhà)                 |
@@ -137,7 +137,7 @@ Nhà trọ → Phòng → Khách thuê → Hợp đồng → Điện/Nước →
 | `invoices`     | Hóa đơn tổng (phòng, tháng, tổng tiền, trạng thái)        |
 | `payments`     | Lịch sử thanh toán (hóa đơn, ngày, số tiền, phương thức)  |
 
-> Schema chi tiết (tên trường, kiểu dữ liệu, quan hệ) do **Thanh** thiết kế và thống nhất với **Quyết** trước khi triển khai.
+> Khi thay đổi schema, thống nhất trong nhóm và cập nhật cả schema Drizzle lẫn file SQL tương ứng. Sử dụng lệnh `npm run db:migrate` để áp dụng tạo bảng cho cơ sở dữ liệu local.
 
 **MongoDB Atlas** chỉ dùng cho dữ liệu thực sự phù hợp với mô hình document:
 
@@ -219,19 +219,27 @@ Status   : 200 | 201 | 400 | 401 | 403 | 404 | 500
 
 ### Danh sách API theo module
 
-| Module      | Endpoints              | Method                       | Status          |
-| ----------- | ---------------------- | ---------------------------- | --------------- |
-| Auth        | `/api/auth/*`          | TODO                         | Chưa triển khai |
-| Property    | `/api/properties`      | TODO                         | Chưa triển khai |
-| Room        | `/api/rooms`           | TODO                         | Chưa triển khai |
-| Tenant      | `/api/tenants`         | TODO                         | Chưa triển khai |
-| Contract    | `/api/contracts`       | TODO                         | Chưa triển khai |
-| Meter       | `/api/meters`          | TODO                         | Chưa triển khai |
-| Invoice     | `/api/invoices`        | TODO                         | Chưa triển khai |
-| Payment     | `/api/payments`        | TODO                         | Chưa triển khai |
-| Dashboard   | `/api/dashboard`       | TODO                         | Chưa triển khai |
-| AI Agent    | `/api/ai/*`            | TODO                         | Chưa triển khai |
-| Notification| `/api/notifications`   | TODO                         | Chưa triển khai |
+| Module      | Endpoints                               | Method                       | Chức năng                                                  | Status        |
+| ----------- | --------------------------------------- | ---------------------------- | ---------------------------------------------------------- | ------------- |
+| Auth        | `/api/auth/register`                    | POST                         | Đăng ký tài khoản (chủ nhà / quản lý / khách thuê)        | Hoàn thành    |
+| Auth        | `/api/auth/login`, `/api/auth/logout`   | POST                         | Đăng nhập, đăng xuất, cấp phát JWT Cookie HTTP-only        | Hoàn thành    |
+| Auth        | `/api/auth/me`, `/api/auth/refresh`     | GET, POST                    | Lấy thông tin phiên hiện tại, làm mới token tự động        | Hoàn thành    |
+| Property    | `/api/properties`, `/[propertyId]`      | GET, POST, PATCH, DELETE     | CRUD nhà trọ, cấu hình tài khoản ngân hàng nhận VietQR     | Hoàn thành    |
+| Room        | `/api/properties/[id]/rooms`, `/rooms/[id]`| GET, POST, PATCH, DELETE  | CRUD phòng, trạng thái phòng (ready / occupied / maint)   | Hoàn thành    |
+| Members     | `/api/properties/[id]/members`          | GET, POST, DELETE            | Quản lý phân quyền ban quản lý từng cơ sở nhà trọ         | Hoàn thành    |
+| Tenant      | `/api/tenants`, `/[tenantId]`           | GET, POST, PATCH, DELETE     | CRUD hồ sơ khách thuê, SĐT, CCCD/CMND                      | Hoàn thành    |
+| Contract    | `/api/contracts`, `/[contractId]`       | GET, POST, PATCH, DELETE     | Tạo hợp đồng thuê, gia hạn, chấm dứt, xem mẫu in chuẩn     | Hoàn thành    |
+| Contract    | `/api/contracts/[id]/tenants`           | POST, DELETE                 | Thêm / xóa người ở trong phòng thuộc hợp đồng              | Hoàn thành    |
+| Meter       | `/api/meters`, `/[readingId]`           | GET, POST, PATCH, DELETE     | Ghi nhận chỉ số điện/nước hàng tháng, tính lượng tiêu thụ  | Hoàn thành    |
+| Utility Rate| `/api/utility-rates`                    | GET, POST                    | Thiết lập đơn giá điện/nước theo từng nhà trọ              | Hoàn thành    |
+| Invoice     | `/api/invoices`, `/[invoiceId]`         | GET, POST, PATCH, DELETE     | Lập hóa đơn tổng hợp, tính tiền phòng + dịch vụ, hủy hđ    | Hoàn thành    |
+| Payment     | `/api/invoices/[id]/payments`, `/payments`| GET, POST                  | Ghi nhận thanh toán hóa đơn, tra cứu lịch sử giao dịch     | Hoàn thành    |
+| Dashboard   | `/api/dashboard`, `/dashboard/overview` | GET                          | Thống kê KPI, tỷ lệ lấp đầy, doanh thu xu hướng 6 tháng    | Hoàn thành    |
+| Tenant Portal| `/api/tenant-portal`                   | GET                          | Cổng tra cứu dành riêng cho khách thuê (hóa đơn, VietQR)   | Hoàn thành    |
+| Maintenance | `/api/maintenance`, `/[requestId]`      | GET, POST, PATCH, DELETE     | Tiếp nhận và xử lý yêu cầu sửa chữa phòng                  | Hoàn thành    |
+| AI Agent    | `/api/ai/chat`                          | POST                         | Trợ lý AI hỏi đáp dữ liệu vận hành bằng tiếng Việt         | Hoàn thành    |
+| Profile     | `/api/profile`, `/api/profile/password` | GET, PATCH, POST             | Cập nhật hồ sơ cá nhân và đổi mật khẩu                     | Hoàn thành    |
+| Notification| `/api/notifications`, `/[id]`           | GET, PATCH                   | Danh sách thông báo hệ thống và đánh dấu đã đọc            | Hoàn thành    |
 
 > Endpoint cụ thể, request/response schema sẽ được cập nhật khi từng module được thiết kế và thống nhất với Frontend.
 
@@ -274,11 +282,18 @@ Trả kết quả cho người dùng
 - Các thao tác ghi dữ liệu quan trọng phải có **bước xác nhận** từ người dùng trước khi thực hiện.
 - AI Agent tuân thủ **validation và business rules** của Backend.
 
-### Tools dự kiến cấp cho AI Agent
+### Danh sách Tools đã cấp cho AI Agent
 
-```
-TODO: Xác định danh sách tools cụ thể khi bắt đầu Phase 6
-```
+Hệ thống AI Agent hỗ trợ gọi các function calling chuẩn hóa để tra cứu thông tin:
+
+1. `toolGetOverviewStats`: Tra cứu số liệu tổng quan (tổng số phòng, tỷ lệ lấp đầy, doanh thu, nợ đọng).
+2. `toolLookupRooms`: Tra cứu danh sách phòng theo số phòng, tòa nhà hoặc trạng thái (trống, đang thuê, bảo trì).
+3. `toolLookupTenants`: Tra cứu thông tin cá nhân và phương thức liên lạc của khách thuê.
+4. `toolLookupContracts`: Tra cứu hợp đồng thuê, danh sách hợp đồng sắp hết hạn trong 30 ngày.
+5. `toolLookupUnpaidInvoices`: Tra cứu danh sách hóa đơn chưa thanh toán, nợ đọng quá hạn.
+6. `toolLookupMaintenanceRequests`: Tra cứu các yêu cầu sửa chữa, phân loại theo danh mục và mức độ ưu tiên.
+
+> Hệ thống tích hợp song song cả **Google Gemini 2.5 Flash** trực tiếp qua SDK `@google/genai` lẫn **Natural Language Intent Engine local** chạy độc lập khi không có kết nối internet hoặc API Key.
 
 ---
 
@@ -529,92 +544,131 @@ Một module chỉ được xem là **hoàn thành** khi đủ tất cả điề
 
 ## 15. Cách chạy project
 
-> TODO: Cập nhật khi project structure được khởi tạo.
+### Công cụ cần có
 
-**Yêu cầu môi trường:**
+- **Node.js 20.9 trở lên** và npm đi kèm: chạy Next.js, TypeScript và các script của dự án.
+- **Git**: lấy mã nguồn và làm việc theo branch.
+- **Docker Desktop** (Windows/macOS) hoặc Docker Engine + Compose plugin (Linux): chạy PostgreSQL local. Có thể bỏ qua nếu đã có PostgreSQL bên ngoài.
+- **VS Code** (khuyến nghị): mở dự án TypeScript/Next.js. Có thể dùng editor khác; không cần cài extension để chạy ứng dụng.
+- **GitHub**: tài khoản cần thiết để clone/push và tạo Pull Request.
 
-```
-Node.js >= 18
-Docker Desktop
-Git
-```
+Không cần cài PostgreSQL riêng nếu dùng Docker. MongoDB, dịch vụ AI, thanh toán và thông báo chưa được cấu hình trong bản hiện tại.
 
-**Bước 1: Clone repository**
+### Cài đặt và chạy local
 
-```bash
-git clone https://github.com/Kquyets/NHOM3_HETHONGTHONGTINQUANLY.git
-cd NHOM3_HETHONGTHONGTINQUANLY
-```
+1. Clone repository, sau đó mở terminal tại thư mục dự án.
 
-**Bước 2: Cài dependencies**
+2. Cài dependency đúng theo lockfile:
 
 ```bash
-npm install
-# hoặc
-pnpm install
+npm ci
 ```
 
-**Bước 3: Cấu hình environment**
+3. Tạo `.env.local` từ mẫu:
 
 ```bash
+# macOS / Linux / Git Bash
 cp .env.example .env.local
-# Điền các giá trị thực vào .env.local
 ```
 
-**Bước 4: Chạy database (Docker)**
+PowerShell:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+Điền các giá trị local, ví dụ:
+
+```env
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=nhom3
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/nhom3
+```
+
+Giữ user, password và tên database nhất quán giữa `DATABASE_URL` và các biến `POSTGRES_*`. Không dùng thông tin mẫu này cho môi trường dùng chung hoặc production.
+
+4. Khởi động PostgreSQL 17 bằng Docker Compose:
 
 ```bash
-docker-compose up -d
+docker compose --env-file .env.local up -d postgres
 ```
 
-**Bước 5: Migration database**
+Compose có health check để chờ PostgreSQL sẵn sàng. Khi PostgreSQL báo `healthy`, thực hiện các bước tạo bảng và dữ liệu mẫu:
+
+Kiểm tra trạng thái container:
 
 ```bash
-# TODO: Cập nhật lệnh migration theo ORM được chọn
+docker compose --env-file .env.local ps
 ```
 
-**Bước 6: Chạy development server**
+5. Tạo bảng và di trú cơ sở dữ liệu (Migration):
+
+```bash
+npm run db:migrate
+```
+
+Lệnh này sẽ tự động nạp `drizzle/0000_core_schema.sql` vào database local được cấu hình trong `.env.local` và lưu lịch sử vào bảng `schema_migrations`.
+
+6. Nạp dữ liệu mẫu cho demo (Seeding - tuỳ chọn):
+
+```bash
+npm run db:seed
+```
+
+Sau khi chạy `npm run db:seed`, hệ thống sẽ khởi tạo sẵn 3 tài khoản demo phục vụ thuyết trình:
+
+| Vai trò | Email đăng nhập | Mật khẩu mặc định | Quyền hạn |
+| :--- | :--- | :--- | :--- |
+| **Chủ nhà (Owner)** | `owner.demo@example.com` | `DemoPassword123!` | Toàn quyền quản trị cơ sở, phòng, hợp đồng, tài chính, VietQR |
+| **Quản lý (Manager)** | `manager.demo@example.com` | `DemoPassword123!` | Quản lý nhà trọ An Bình, ghi chỉ số điện nước, lập hóa đơn |
+| **Khách thuê (Tenant)** | `tenant.demo@example.com` | `DemoPassword123!` | Đăng nhập Cổng khách thuê, xem hóa đơn, quét mã VietQR |
+
+7. Kiểm tra kết nối database:
+
+```bash
+npm run db:check
+```
+
+8. Chạy ứng dụng ở chế độ phát triển:
 
 ```bash
 npm run dev
 ```
 
+Mở URL được Next.js hiển thị trong terminal (mặc định `http://localhost:3000`). Để dừng PostgreSQL khi không dùng:
+
+```bash
+docker compose --env-file .env.local down
+```
+
+Muốn xóa cả dữ liệu PostgreSQL local và tạo lại từ đầu, chạy `docker compose --env-file .env.local down -v`; thao tác này xóa volume database.
+
+### Lệnh kiểm tra
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+Các lệnh trên chạy lint, kiểm tra TypeScript, test và production build. Toàn bộ các module nghiệp vụ, API, xác thực và AI Agent đã được triển khai hoàn chỉnh và vượt qua toàn bộ 271 bài kiểm tra tự động. Xem chi tiết endpoint tại mục [API Contract](#7-api-contract).
+
 ---
 
 ## 16. Environment Variables
 
-Sao chép `.env.example` thành `.env.local` và điền giá trị thực. Không commit `.env.local`.
+Sao chép `.env.example` thành `.env.local` và điền cấu hình PostgreSQL local theo mục [Cách chạy project](#15-cách-chạy-project). Không commit `.env.local`.
 
 ```env
-# Database
+POSTGRES_USER=
+POSTGRES_PASSWORD=
+POSTGRES_DB=
 DATABASE_URL=
-MONGODB_URI=
-
-# Authentication
-JWT_SECRET=
-NEXTAUTH_SECRET=
-NEXTAUTH_URL=
-
-# AI Agent
-AI_API_KEY=
-
-# Notification (Phase 5)
-TELEGRAM_BOT_TOKEN=
-EMAIL_HOST=
-EMAIL_PORT=
-EMAIL_USER=
-EMAIL_PASS=
-
-# Payment (Phase 5)
-MOMO_PARTNER_CODE=
-MOMO_ACCESS_KEY=
-MOMO_SECRET_KEY=
-VNPAY_TMN_CODE=
-VNPAY_HASH_SECRET=
-VNPAY_URL=
 ```
 
-> Các biến chưa được sử dụng (Phase 5 trở đi) có thể để trống. Không giả vờ đã tích hợp.
+Các biến xác thực, MongoDB, AI và thanh toán sẽ được bổ sung khi triển khai các phần tương ứng.
 
 ---
 

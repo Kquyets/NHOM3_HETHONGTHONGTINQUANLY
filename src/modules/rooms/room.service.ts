@@ -1,0 +1,423 @@
+import { and, eq } from "drizzle-orm";
+import { getDatabase } from "../../lib/database/client";
+import { properties, propertyMembers, rooms } from "../../lib/database/schema";
+import { AppError } from "../../errors/app-error";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export type RoomRow = {
+  id: string;
+  propertyId: string;
+  roomNumber: string;
+  areaM2: string | null;
+  monthlyRent: number;
+  status: "ready" | "maintenance";
+  isPublicListed?: boolean;
+  listingTitle?: string | null;
+  listingDescription?: string | null;
+  city?: string | null;
+  district?: string | null;
+  ward?: string | null;
+  address?: string | null;
+  floor?: number | null;
+  maxOccupants?: number | null;
+  isArchived?: boolean;
+  furnitureList?: string[] | null;
+  furnishing?: string | null;
+  amenities?: string[] | null;
+  imageUrls?: string[] | null;
+  contactPhone?: string | null;
+  contactZalo?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateRoomInput = {
+  roomNumber: string;
+  monthlyRent: number;
+  areaM2?: number | null;
+  floor?: number | null;
+  maxOccupants?: number | null;
+  furnitureList?: string[] | null;
+  isPublicListed?: boolean;
+  listingTitle?: string | null;
+  listingDescription?: string | null;
+  city?: string | null;
+  district?: string | null;
+  ward?: string | null;
+  address?: string | null;
+  furnishing?: string | null;
+  amenities?: string[] | null;
+  imageUrls?: string[] | null;
+  contactPhone?: string | null;
+  contactZalo?: string | null;
+};
+
+export type UpdateRoomInput = {
+  roomNumber?: string;
+  monthlyRent?: number;
+  areaM2?: number | null;
+  status?: "ready" | "maintenance";
+  floor?: number | null;
+  maxOccupants?: number | null;
+  isArchived?: boolean;
+  furnitureList?: string[] | null;
+  isPublicListed?: boolean;
+  listingTitle?: string | null;
+  listingDescription?: string | null;
+  city?: string | null;
+  district?: string | null;
+  ward?: string | null;
+  address?: string | null;
+  furnishing?: string | null;
+  amenities?: string[] | null;
+  imageUrls?: string[] | null;
+  contactPhone?: string | null;
+  contactZalo?: string | null;
+};
+
+// ---------------------------------------------------------------------------
+// Authorization helpers
+// ---------------------------------------------------------------------------
+
+/** Verify user has active access to the property (owner or active manager) */
+async function assertPropertyAccess(
+  userId: string,
+  role: string,
+  propertyId: string,
+): Promise<void> {
+  const db = getDatabase();
+
+  if (role === "owner") {
+    const [row] = await db
+      .select({ id: properties.id })
+      .from(properties)
+      .where(and(eq(properties.id, propertyId), eq(properties.ownerId, userId)))
+      .limit(1);
+    if (!row) throw new AppError("FORBIDDEN", "You do not have access to this property.", []);
+    return;
+  }
+
+  if (role === "manager") {
+    const [row] = await db
+      .select({ id: propertyMembers.id })
+      .from(propertyMembers)
+      .where(
+        and(
+          eq(propertyMembers.propertyId, propertyId),
+          eq(propertyMembers.userId, userId),
+          eq(propertyMembers.status, "active"),
+        ),
+      )
+      .limit(1);
+    if (!row) throw new AppError("FORBIDDEN", "You do not have access to this property.", []);
+    return;
+  }
+
+  throw new AppError("FORBIDDEN", "You do not have access to this property.", []);
+}
+
+// ---------------------------------------------------------------------------
+// Service
+// ---------------------------------------------------------------------------
+
+/**
+ * List all rooms in a property.
+ */
+export async function listRooms(
+  userId: string,
+  role: string,
+  propertyId: string,
+): Promise<RoomRow[]> {
+  await assertPropertyAccess(userId, role, propertyId);
+
+  const db = getDatabase();
+  return db
+    .select({
+      id: rooms.id,
+      propertyId: rooms.propertyId,
+      roomNumber: rooms.roomNumber,
+      areaM2: rooms.areaM2,
+      monthlyRent: rooms.monthlyRent,
+      status: rooms.status,
+      createdAt: rooms.createdAt,
+      updatedAt: rooms.updatedAt,
+    })
+    .from(rooms)
+    .where(eq(rooms.propertyId, propertyId))
+    .orderBy(rooms.roomNumber);
+}
+
+/**
+ * Get a single room.
+ */
+export async function getRoom(
+  userId: string,
+  role: string,
+  propertyId: string,
+  roomId: string,
+): Promise<RoomRow> {
+  await assertPropertyAccess(userId, role, propertyId);
+
+  const db = getDatabase();
+  const [row] = await db
+    .select({
+      id: rooms.id,
+      propertyId: rooms.propertyId,
+      roomNumber: rooms.roomNumber,
+      areaM2: rooms.areaM2,
+      monthlyRent: rooms.monthlyRent,
+      status: rooms.status,
+      createdAt: rooms.createdAt,
+      updatedAt: rooms.updatedAt,
+    })
+    .from(rooms)
+    .where(and(eq(rooms.id, roomId), eq(rooms.propertyId, propertyId)))
+    .limit(1);
+
+  if (!row) throw new AppError("NOT_FOUND", "Room not found.", []);
+  return row;
+}
+
+/**
+ * Create a room. Owner and manager can create rooms.
+ */
+export async function createRoom(
+  userId: string,
+  role: string,
+  propertyId: string,
+  input: CreateRoomInput,
+): Promise<RoomRow> {
+  await assertPropertyAccess(userId, role, propertyId);
+
+  const roomNumber = input.roomNumber?.trim();
+  if (!roomNumber) {
+    throw new AppError("VALIDATION_ERROR", "Room number is required.", [
+      { field: "roomNumber", message: "Số phòng không được để trống." },
+    ]);
+  }
+
+  if (!Number.isInteger(input.monthlyRent) || input.monthlyRent < 0) {
+    throw new AppError("VALIDATION_ERROR", "Monthly rent must be a non-negative integer (VND).", [
+      { field: "monthlyRent", message: "Giá thuê phải là số nguyên không âm (VND)." },
+    ]);
+  }
+
+  if (input.areaM2 !== undefined && input.areaM2 !== null && input.areaM2 <= 0) {
+    throw new AppError("VALIDATION_ERROR", "Area must be a positive number.", [
+      { field: "areaM2", message: "Diện tích phải lớn hơn 0." },
+    ]);
+  }
+
+  const db = getDatabase();
+
+  // Check duplicate room number in same property
+  const [existing] = await db
+    .select({ id: rooms.id })
+    .from(rooms)
+    .where(and(eq(rooms.propertyId, propertyId), eq(rooms.roomNumber, roomNumber)))
+    .limit(1);
+
+  if (existing) {
+    throw new AppError("CONFLICT", `Room number "${roomNumber}" already exists in this property.`, [
+      { field: "roomNumber", message: `Số phòng "${roomNumber}" đã tồn tại trong nhà trọ này.` },
+    ]);
+  }
+
+  const [row] = await db
+    .insert(rooms)
+    .values({
+      propertyId,
+      roomNumber,
+      monthlyRent: input.monthlyRent,
+      areaM2: input.areaM2 != null ? String(input.areaM2) : null,
+      floor: input.floor ?? null,
+      maxOccupants: input.maxOccupants ?? 2,
+      furnitureList: input.furnitureList ?? [],
+      isPublicListed: input.isPublicListed ?? false,
+      listingTitle: input.listingTitle ?? null,
+      listingDescription: input.listingDescription ?? null,
+      city: input.city ?? null,
+      district: input.district ?? null,
+      ward: input.ward ?? null,
+      address: input.address ?? null,
+      furnishing: input.furnishing ?? null,
+      amenities: input.amenities ?? [],
+      imageUrls: input.imageUrls ?? [],
+      contactPhone: input.contactPhone ?? null,
+      contactZalo: input.contactZalo ?? null,
+    })
+    .returning({
+      id: rooms.id,
+      propertyId: rooms.propertyId,
+      roomNumber: rooms.roomNumber,
+      areaM2: rooms.areaM2,
+      monthlyRent: rooms.monthlyRent,
+      status: rooms.status,
+      floor: rooms.floor,
+      maxOccupants: rooms.maxOccupants,
+      isArchived: rooms.isArchived,
+      furnitureList: rooms.furnitureList,
+      isPublicListed: rooms.isPublicListed,
+      listingTitle: rooms.listingTitle,
+      listingDescription: rooms.listingDescription,
+      city: rooms.city,
+      district: rooms.district,
+      ward: rooms.ward,
+      address: rooms.address,
+      furnishing: rooms.furnishing,
+      amenities: rooms.amenities,
+      imageUrls: rooms.imageUrls,
+      contactPhone: rooms.contactPhone,
+      contactZalo: rooms.contactZalo,
+      createdAt: rooms.createdAt,
+      updatedAt: rooms.updatedAt,
+    });
+
+  if (!row) throw new AppError("DATABASE_ERROR", "Failed to create room.");
+  return row;
+}
+
+/**
+ * Update a room. Owner and manager can update.
+ */
+export async function updateRoom(
+  userId: string,
+  role: string,
+  propertyId: string,
+  roomId: string,
+  input: UpdateRoomInput,
+): Promise<RoomRow> {
+  await assertPropertyAccess(userId, role, propertyId);
+
+  const updates: Partial<typeof rooms.$inferInsert> = {
+    updatedAt: new Date(),
+  };
+
+  if (input.roomNumber !== undefined) {
+    const roomNumber = input.roomNumber.trim();
+    if (!roomNumber) {
+      throw new AppError("VALIDATION_ERROR", "Room number cannot be empty.", [
+        { field: "roomNumber", message: "Số phòng không được để trống." },
+      ]);
+    }
+
+    // Check duplicate (exclude self)
+    const db = getDatabase();
+    const [existing] = await db
+      .select({ id: rooms.id })
+      .from(rooms)
+      .where(and(eq(rooms.propertyId, propertyId), eq(rooms.roomNumber, roomNumber)))
+      .limit(1);
+
+    if (existing && existing.id !== roomId) {
+      throw new AppError("CONFLICT", `Room number "${roomNumber}" already exists.`, [
+        { field: "roomNumber", message: `Số phòng "${roomNumber}" đã tồn tại.` },
+      ]);
+    }
+    updates.roomNumber = roomNumber;
+  }
+
+  if (input.monthlyRent !== undefined) {
+    if (!Number.isInteger(input.monthlyRent) || input.monthlyRent < 0) {
+      throw new AppError("VALIDATION_ERROR", "Monthly rent must be a non-negative integer.", [
+        { field: "monthlyRent", message: "Giá thuê phải là số nguyên không âm." },
+      ]);
+    }
+    updates.monthlyRent = input.monthlyRent;
+  }
+
+  if (input.areaM2 !== undefined) {
+    if (input.areaM2 !== null && input.areaM2 <= 0) {
+      throw new AppError("VALIDATION_ERROR", "Area must be a positive number.", [
+        { field: "areaM2", message: "Diện tích phải lớn hơn 0." },
+      ]);
+    }
+    updates.areaM2 = input.areaM2 != null ? String(input.areaM2) : null;
+  }
+
+  if (input.status !== undefined) {
+    updates.status = input.status;
+  }
+
+  if (input.isPublicListed !== undefined) updates.isPublicListed = input.isPublicListed;
+  if (input.listingTitle !== undefined) updates.listingTitle = input.listingTitle;
+  if (input.listingDescription !== undefined) updates.listingDescription = input.listingDescription;
+  if (input.city !== undefined) updates.city = input.city;
+  if (input.district !== undefined) updates.district = input.district;
+  if (input.ward !== undefined) updates.ward = input.ward;
+  if (input.address !== undefined) updates.address = input.address;
+  if (input.floor !== undefined) updates.floor = input.floor;
+  if (input.maxOccupants !== undefined) updates.maxOccupants = input.maxOccupants;
+  if (input.isArchived !== undefined) updates.isArchived = input.isArchived;
+  if (input.furnitureList !== undefined) updates.furnitureList = input.furnitureList;
+  if (input.furnishing !== undefined) updates.furnishing = input.furnishing;
+  if (input.amenities !== undefined) updates.amenities = input.amenities;
+  if (input.imageUrls !== undefined) updates.imageUrls = input.imageUrls;
+  if (input.contactPhone !== undefined) updates.contactPhone = input.contactPhone;
+  if (input.contactZalo !== undefined) updates.contactZalo = input.contactZalo;
+
+  const db = getDatabase();
+  const [row] = await db
+    .update(rooms)
+    .set(updates)
+    .where(and(eq(rooms.id, roomId), eq(rooms.propertyId, propertyId)))
+    .returning({
+      id: rooms.id,
+      propertyId: rooms.propertyId,
+      roomNumber: rooms.roomNumber,
+      areaM2: rooms.areaM2,
+      monthlyRent: rooms.monthlyRent,
+      status: rooms.status,
+      floor: rooms.floor,
+      maxOccupants: rooms.maxOccupants,
+      isArchived: rooms.isArchived,
+      furnitureList: rooms.furnitureList,
+      isPublicListed: rooms.isPublicListed,
+      listingTitle: rooms.listingTitle,
+      listingDescription: rooms.listingDescription,
+      city: rooms.city,
+      district: rooms.district,
+      ward: rooms.ward,
+      address: rooms.address,
+      furnishing: rooms.furnishing,
+      amenities: rooms.amenities,
+      imageUrls: rooms.imageUrls,
+      contactPhone: rooms.contactPhone,
+      contactZalo: rooms.contactZalo,
+      createdAt: rooms.createdAt,
+      updatedAt: rooms.updatedAt,
+    });
+
+  if (!row) throw new AppError("NOT_FOUND", "Room not found.", []);
+  return row;
+}
+
+/**
+ * Delete a room. Owner only.
+ */
+export async function deleteRoom(
+  userId: string,
+  role: string,
+  propertyId: string,
+  roomId: string,
+): Promise<void> {
+  if (role !== "owner") {
+    throw new AppError("FORBIDDEN", "Only owners can delete rooms.", []);
+  }
+  await assertPropertyAccess(userId, role, propertyId);
+
+  const db = getDatabase();
+  try {
+    await db
+      .delete(rooms)
+      .where(and(eq(rooms.id, roomId), eq(rooms.propertyId, propertyId)));
+  } catch {
+    await db
+      .update(rooms)
+      .set({ isArchived: true, updatedAt: new Date() })
+      .where(and(eq(rooms.id, roomId), eq(rooms.propertyId, propertyId)));
+  }
+}

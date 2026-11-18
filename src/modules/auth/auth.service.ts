@@ -1,0 +1,377 @@
+import crypto from "node:crypto";
+import { and, eq, gt, isNull, or } from "drizzle-orm";
+import { getDatabase } from "../../lib/database/client";
+import { refreshTokens, tenants, users } from "../../lib/database/schema";
+import { REFRESH_TOKEN_TTL_MS, signAccessToken } from "../../lib/auth/jwt";
+import { hashPassword, verifyPassword } from "../../lib/auth/password";
+import { AppError } from "../../errors/app-error";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export type RegisterInput = {
+  email: string;
+  password: string;
+  role: "owner" | "manager" | "tenant";
+  fullName?: string;
+  phone?: string;
+};
+
+export type LoginInput = {
+  email: string;
+  password: string;
+};
+
+export type AuthTokens = {
+  accessToken: string;
+  refreshToken: string;
+};
+
+export type UserPublic = {
+  id: string;
+  email: string;
+  role: "owner" | "manager" | "tenant";
+  status: "active" | "disabled";
+  fullName?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  createdAt: Date;
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+/** Hash a raw refresh token string for storage */
+function hashToken(raw: string): string {
+  return crypto.createHash("sha256").update(raw).digest("hex");
+}
+
+// ---------------------------------------------------------------------------
+// Service
+// ---------------------------------------------------------------------------
+
+/**
+ * Register a new owner, manager, or tenant account.
+ */
+export async function register(input: RegisterInput): Promise<{ user: UserPublic; tokens: AuthTokens }> {
+  const email = normalizeEmail(input.email);
+
+  if (input.password.length < 8) {
+    throw new AppError("VALIDATION_ERROR", "Password must be at least 8 characters.", [
+      { field: "password", message: "Mật khẩu phải có ít nhất 8 ký tự." },
+    ]);
+  }
+
+  const db = getDatabase();
+
+  // Check duplicate email
+  const existing = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+
+  if (existing.length > 0) {
+    throw new AppError("CONFLICT", "Email already registered.", [
+      { field: "email", message: "Email đã được đăng ký." },
+    ]);
+  }
+
+  const passwordHash = await hashPassword(input.password);
+
+  const [user] = await db
+    .insert(users)
+    .values({
+      email,
+      passwordHash,
+      role: input.role,
+      fullName: input.fullName?.trim() || null,
+      phone: input.phone?.trim() || null,
+    })
+    .returning({
+      id: users.id,
+      email: users.email,
+      role: users.role,
+      status: users.status,
+      fullName: users.fullName,
+      phone: users.phone,
+      avatarUrl: users.avatarUrl,
+      createdAt: users.createdAt,
+    });
+
+  if (!user) throw new AppError("DATABASE_ERROR", "Failed to create user.");
+
+  // If registering as a tenant, link or create tenant profile record
+  if (input.role === "tenant") {
+    const rawPhone = input.phone?.trim();
+    if (rawPhone) {
+      const [existingTenant] = await db
+        .select()
+        .from(tenants)
+        .where(and(eq(tenants.phone, rawPhone), isNull(tenants.userId)))
+        .limit(1);
+
+      if (existingTenant) {
+        await db
+          .update(tenants)
+          .set({ userId: user.id, updatedAt: new Date() })
+          .where(eq(tenants.id, existingTenant.id));
+      } else {
+        await db.insert(tenants).values({
+          userId: user.id,
+          fullName: input.fullName?.trim() || email.split("@")[0],
+          phone: rawPhone,
+        });
+      }
+    } else {
+      await db.insert(tenants).values({
+        userId: user.id,
+        fullName: input.fullName?.trim() || email.split("@")[0],
+      });
+    }
+  }
+
+  const tokens = await _issueTokens(user.id, user.role);
+
+  return { user, tokens };
+}
+
+/**
+ * Authenticate with email or phone + password, return tokens.
+ */
+export async function login(input: LoginInput): Promise<{ user: UserPublic; tokens: AuthTokens }> {
+  const query = input.email.trim();
+  const db = getDatabase();
+
+  const isEmail = query.includes("@");
+  let user: (typeof users.$inferSelect) | undefined;
+
+  if (isEmail) {
+    const normalized = normalizeEmail(query);
+    const [found] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, normalized))
+      .limit(1);
+    user = found;
+  } else {
+    // Phone query: match stripped or formatted numbers, or fallback email
+    const cleanPhone = query.replace(/[\s.-]/g, "");
+    const altPhone = cleanPhone.startsWith("+84")
+      ? "0" + cleanPhone.slice(3)
+      : cleanPhone.startsWith("84") && cleanPhone.length > 9
+        ? "0" + cleanPhone.slice(2)
+        : cleanPhone.startsWith("0")
+          ? "+84" + cleanPhone.slice(1)
+          : cleanPhone;
+
+    const [found] = await db
+      .select()
+      .from(users)
+      .where(
+        or(
+          eq(users.phone, query),
+          eq(users.phone, cleanPhone),
+          eq(users.phone, altPhone),
+          eq(users.email, query.toLowerCase()),
+          eq(users.email, `${cleanPhone}@hmanagers.local`),
+        ),
+      )
+      .limit(1);
+    user = found;
+  }
+
+  // Constant-time guard: always hash even if user not found to prevent timing attacks
+  const hashToCompare = user?.passwordHash ?? "$2a$12$invalidhashtopreventtimingattack";
+  const passwordOk = await verifyPassword(input.password, hashToCompare);
+
+  if (!user || !passwordOk) {
+    throw new AppError("UNAUTHORIZED", "Invalid email or password.", []);
+  }
+
+  if (user.status === "disabled") {
+    throw new AppError("FORBIDDEN", "Account is disabled.", []);
+  }
+
+  const tokens = await _issueTokens(user.id, user.role);
+
+  return {
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      fullName: user.fullName ?? null,
+      phone: user.phone ?? null,
+      avatarUrl: user.avatarUrl ?? null,
+      createdAt: user.createdAt,
+    },
+    tokens,
+  };
+}
+
+/**
+ * Rotate refresh token — revoke old one, issue new pair.
+ */
+export async function refreshTokens_(rawRefreshToken: string): Promise<AuthTokens> {
+  const parsed = parseRefreshTokenCookie(rawRefreshToken);
+  if (!parsed) {
+    throw new AppError("UNAUTHORIZED", "Invalid or expired refresh token.", []);
+  }
+
+  const tokenHash = hashToken(parsed.rawSecret);
+  const db = getDatabase();
+  const now = new Date();
+
+  // Find valid token in DB
+  const [stored] = await db
+    .select()
+    .from(refreshTokens)
+    .where(
+      and(
+        eq(refreshTokens.id, parsed.tokenId),
+        eq(refreshTokens.tokenHash, tokenHash),
+        isNull(refreshTokens.revokedAt),
+        gt(refreshTokens.expiresAt, now),
+      ),
+    )
+    .limit(1);
+
+  if (!stored) {
+    throw new AppError("UNAUTHORIZED", "Refresh token has been revoked or expired.", []);
+  }
+
+  // Get user
+  const [user] = await db
+    .select({ id: users.id, role: users.role, status: users.status })
+    .from(users)
+    .where(eq(users.id, stored.userId))
+    .limit(1);
+
+  if (!user || user.status === "disabled") {
+    throw new AppError("UNAUTHORIZED", "Account not found or disabled.", []);
+  }
+
+  // Revoke old token atomically so it cannot be rotated twice
+  const [revoked] = await db
+    .update(refreshTokens)
+    .set({ revokedAt: now })
+    .where(and(eq(refreshTokens.id, stored.id), isNull(refreshTokens.revokedAt)))
+    .returning({ id: refreshTokens.id });
+
+  if (!revoked) {
+    throw new AppError("UNAUTHORIZED", "Refresh token has been revoked or expired.", []);
+  }
+
+  // Issue new tokens
+  return _issueTokens(user.id, user.role, stored.id);
+}
+
+/**
+ * Revoke a specific refresh token (logout).
+ */
+export async function logout(rawRefreshToken: string): Promise<void> {
+  const parsed = parseRefreshTokenCookie(rawRefreshToken);
+  if (!parsed) {
+    // Token already invalid — treat as success without querying DB
+    return;
+  }
+
+  const tokenHash = hashToken(parsed.rawSecret);
+  const db = getDatabase();
+
+  await db
+    .update(refreshTokens)
+    .set({ revokedAt: new Date() })
+    .where(
+      and(
+        eq(refreshTokens.id, parsed.tokenId),
+        eq(refreshTokens.tokenHash, tokenHash),
+        isNull(refreshTokens.revokedAt),
+      ),
+    );
+}
+
+/**
+ * Get public user info by ID.
+ */
+export async function getMe(userId: string): Promise<UserPublic> {
+  const db = getDatabase();
+
+  const [user] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      role: users.role,
+      status: users.status,
+      fullName: users.fullName,
+      phone: users.phone,
+      avatarUrl: users.avatarUrl,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!user) throw new AppError("NOT_FOUND", "User not found.", []);
+
+  return user;
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+async function _issueTokens(
+  userId: string,
+  role: "owner" | "manager" | "tenant",
+  replacesTokenId?: string,
+): Promise<AuthTokens> {
+  const db = getDatabase();
+  const rawRefresh = crypto.randomUUID();
+  const tokenHash = hashToken(rawRefresh);
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
+
+  const [dbToken] = await db
+    .insert(refreshTokens)
+    .values({
+      userId,
+      tokenHash,
+      expiresAt,
+      replacedByTokenId: replacesTokenId ?? null,
+    })
+    .returning({ id: refreshTokens.id });
+
+  if (!dbToken) throw new AppError("DATABASE_ERROR", "Failed to create refresh token.");
+
+  const accessToken = signAccessToken({ sub: userId, role });
+  // Client stores "${dbToken.id}.${rawRefresh}" while DB persists sha256(rawRefresh).
+
+  return { accessToken, refreshToken: `${dbToken.id}.${rawRefresh}` };
+}
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Parse composite refresh token string "tokenId.rawSecret"
+ * and validate UUID + non-empty secret before hitting PostgreSQL.
+ */
+export function parseRefreshTokenCookie(value: string): { tokenId: string; rawSecret: string } | null {
+  if (!value) return null;
+  const dotIdx = value.indexOf(".");
+  if (dotIdx <= 0) return null;
+
+  const tokenId = value.slice(0, dotIdx);
+  const rawSecret = value.slice(dotIdx + 1);
+  if (!UUID_REGEX.test(tokenId) || !rawSecret) {
+    return null;
+  }
+
+  return { tokenId, rawSecret };
+}

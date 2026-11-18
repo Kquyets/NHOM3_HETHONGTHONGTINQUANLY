@@ -1,0 +1,741 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import {
+  Sparkle,
+  PaperPlaneRight,
+  ArrowsCounterClockwise,
+  Copy,
+  Check,
+  Buildings,
+  Receipt,
+  FileText,
+  ChartBar,
+  Wrench,
+  Users,
+  Lightning,
+  ShieldCheck,
+} from "@phosphor-icons/react";
+import { AppHeader } from "../../components/layout/app-header";
+import { apiClient } from "../../lib/api-client";
+import { useAuth } from "../../lib/auth-context";
+
+type ChatItem = {
+  id: string;
+  role: "user" | "model";
+  text: string;
+  toolsUsed?: string[];
+  suggestions?: string[];
+  timestamp: Date;
+};
+
+const OWNER_TEMPLATE_CATEGORIES = [
+  {
+    icon: Receipt,
+    label: "Công nợ & Hóa đơn",
+    queries: [
+      "Tháng này có bao nhiêu phòng chưa thanh toán?",
+      "Tổng số tiền nợ hiện tại là bao nhiêu?",
+      "Phòng nào có hóa đơn quá hạn?",
+    ],
+  },
+  {
+    icon: Buildings,
+    label: "Phòng & Lấp đầy",
+    queries: [
+      "Danh sách các phòng đang trống hiện tại",
+      "Phòng 101 tình trạng thế nào?",
+      "Tỷ lệ lấp đầy phòng tháng này",
+    ],
+  },
+  {
+    icon: FileText,
+    label: "Hợp đồng & Đáo hạn",
+    queries: [
+      "Hợp đồng nào sắp hết hạn trong 30 ngày?",
+      "Hợp đồng phòng 101 còn bao nhiêu ngày?",
+      "Hợp đồng nào sắp hết hạn trong 7 ngày tới?",
+    ],
+  },
+  {
+    icon: ChartBar,
+    label: "Doanh thu & Tiện ích",
+    queries: [
+      "Doanh thu tháng này là bao nhiêu?",
+      "Báo cáo tổng quan vận hành tháng này",
+      "Tiêu thụ điện nước tháng này thế nào?",
+    ],
+  },
+  {
+    icon: Wrench,
+    label: "Sự cố & Bảo trì",
+    queries: [
+      "Có sự cố sửa chữa nào chưa giải quyết không?",
+      "Danh sách báo hỏng hóc thiết bị",
+    ],
+  },
+  {
+    icon: Users,
+    label: "Khách thuê",
+    queries: [
+      "Danh bạ khách thuê đang ở trọ",
+      "Tìm khách thuê theo phòng",
+    ],
+  },
+];
+
+const TENANT_TEMPLATE_CATEGORIES = [
+  {
+    icon: Receipt,
+    label: "Hóa đơn & Tiền phòng",
+    queries: [
+      "Hóa đơn tháng này của phòng tôi là bao nhiêu?",
+      "Hạn thanh toán tiền phòng khi nào?",
+      "Tôi có khoản nợ hay hóa đơn nào chưa đóng không?",
+    ],
+  },
+  {
+    icon: Lightning,
+    label: "Điện & Nước phòng tôi",
+    queries: [
+      "Chỉ số điện nước phòng tôi tháng này thế nào?",
+      "Đơn giá điện và nước tính như thế nào?",
+      "Cách kiểm tra số điện nước chốt hàng tháng",
+    ],
+  },
+  {
+    icon: ShieldCheck,
+    label: "Nội quy & An ninh",
+    queries: [
+      "Giờ giấc đóng mở cửa và an ninh nhà trọ thế nào?",
+      "Quy định về rác thải và vệ sinh chung khu trọ",
+      "Khách hoặc bạn bè đến chơi qua đêm cần lưu ý gì?",
+      "Quy định an toàn phòng cháy chữa cháy (PCCC) trong phòng",
+    ],
+  },
+  {
+    icon: Wrench,
+    label: "Báo hỏng & Sửa chữa",
+    queries: [
+      "Làm thế nào để gửi yêu cầu sửa chữa thiết bị?",
+      "Thời gian thợ đến khắc phục sự cố thường là bao lâu?",
+      "Hỏng bóng đèn hoặc vòi nước ai chịu chi phí?",
+    ],
+  },
+  {
+    icon: FileText,
+    label: "Hợp đồng & Tạm trú",
+    queries: [
+      "Hợp đồng thuê phòng của tôi có hiệu lực đến khi nào?",
+      "Thủ tục khai báo tạm trú CT01 cần chuẩn bị những gì?",
+      "Quy định báo trước khi hết hạn hợp đồng hoặc trả phòng",
+    ],
+  },
+];
+
+function renderMarkdown(content: string) {
+  const lines = content.split("\n");
+  return lines.map((line, idx) => {
+    if (line.startsWith("### ")) {
+      return (
+        <h4 key={idx} style={{ fontSize: "1rem", fontWeight: 700, margin: "12px 0 6px", color: "var(--color-fg)" }}>
+          {line.replace("### ", "")}
+        </h4>
+      );
+    }
+    if (line.startsWith("> ")) {
+      return (
+        <blockquote
+          key={idx}
+          style={{
+            margin: "10px 0",
+            padding: "8px 14px",
+            borderLeft: "3px solid var(--color-primary)",
+            background: "var(--color-primary-light)",
+            borderRadius: "0 var(--radius-sm, 4px) var(--radius-sm, 4px) 0",
+            fontSize: "0.88rem",
+            color: "var(--color-fg-2)",
+          }}
+        >
+          {line.replace("> ", "")}
+        </blockquote>
+      );
+    }
+    if (line.startsWith("- ")) {
+      const parts = line.replace("- ", "").split(/(\*\*.*?\*\*)/g);
+      return (
+        <div key={idx} style={{ display: "flex", gap: "8px", margin: "4px 0", fontSize: "0.92rem", lineHeight: 1.55 }}>
+          <span style={{ color: "var(--color-primary)" }}>•</span>
+          <div>
+            {parts.map((part, pIdx) =>
+              part.startsWith("**") && part.endsWith("**") ? (
+                <strong key={pIdx} style={{ color: "var(--color-fg)" }}>
+                  {part.slice(2, -2)}
+                </strong>
+              ) : (
+                part
+              ),
+            )}
+          </div>
+        </div>
+      );
+    }
+    if (line.startsWith("  • ")) {
+      const parts = line.replace("  • ", "").split(/(\*\*.*?\*\*)/g);
+      return (
+        <div key={idx} style={{ display: "flex", gap: "8px", margin: "3px 0 3px 20px", fontSize: "0.875rem", color: "var(--color-fg-2)", lineHeight: 1.5 }}>
+          <span>◦</span>
+          <div>
+            {parts.map((part, pIdx) =>
+              part.startsWith("**") && part.endsWith("**") ? (
+                <strong key={pIdx} style={{ color: "var(--color-fg)" }}>
+                  {part.slice(2, -2)}
+                </strong>
+              ) : (
+                part
+              ),
+            )}
+          </div>
+        </div>
+      );
+    }
+    if (!line.trim()) {
+      return <div key={idx} style={{ height: "8px" }} />;
+    }
+    const parts = line.split(/(\*\*.*?\*\*)/g);
+    return (
+      <p key={idx} style={{ margin: "6px 0", fontSize: "0.92rem", lineHeight: 1.6 }}>
+        {parts.map((part, pIdx) =>
+          part.startsWith("**") && part.endsWith("**") ? (
+            <strong key={pIdx} style={{ color: "var(--color-fg)" }}>
+              {part.slice(2, -2)}
+            </strong>
+          ) : (
+            part
+          ),
+        )}
+      </p>
+    );
+  });
+}
+
+export default function AiAssistantPage() {
+  const { user } = useAuth();
+  const isTenant = user?.role === "tenant";
+
+  const categories = isTenant ? TENANT_TEMPLATE_CATEGORIES : OWNER_TEMPLATE_CATEGORIES;
+
+  const getInitialMessage = (tenant: boolean, name?: string): ChatItem => ({
+    id: "init",
+    role: "model",
+    text: tenant
+      ? `👋 **Xin chào ${name || "bạn"}! Tôi là Trợ lý AI Cư dân HManagers.**\n\nTôi được kết nối để hỗ trợ bạn tra cứu chi tiết hóa đơn phòng thuê, chỉ số điện nước, giải đáp nội quy an ninh nhà trọ, hướng dẫn báo sự cố sửa chữa và hỗ trợ thủ tục khai báo tạm trú CT01.\n\nBạn có thể nhấp vào một trong các câu hỏi mẫu ở cột bên trái hoặc tự do gõ câu hỏi của mình!`
+      : "👋 **Xin chào! Tôi là Trợ lý AI Vận hành Nhà trọ.**\n\nTôi được kết nối trực tiếp với hệ thống quản lý để cung cấp câu trả lời chính xác theo thời gian thực về phòng trọ, khách thuê, hợp đồng, hóa đơn và doanh thu.\n\nBạn có thể nhấp vào một trong các câu hỏi mẫu ở cột bên trái hoặc tự do gõ câu hỏi của mình!",
+    suggestions: tenant
+      ? [
+          "Hóa đơn tháng này của phòng tôi là bao nhiêu?",
+          "Chỉ số điện nước phòng tôi tháng này",
+          "Nội quy an ninh và giờ giấc nhà trọ",
+        ]
+      : [
+          "Tháng này có bao nhiêu phòng chưa thanh toán?",
+          "Hợp đồng nào sắp hết hạn trong 30 ngày?",
+          "Danh sách các phòng đang trống",
+        ],
+    timestamp: new Date(),
+  });
+
+  const [messages, setMessages] = useState<ChatItem[]>([
+    getInitialMessage(false),
+  ]);
+
+  useEffect(() => {
+    if (messages.length === 1 && messages[0].id === "init") {
+      setMessages([getInitialMessage(isTenant, user?.fullName ?? undefined)]);
+    }
+  }, [isTenant, user?.fullName]);
+
+  const [inputMessage, setInputMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isLoading]);
+
+  const handleSend = async (textToSend?: string) => {
+    const query = (textToSend || inputMessage).trim();
+    if (!query || isLoading) return;
+
+    const userMsg: ChatItem = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      text: query,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+    setInputMessage("");
+    setIsLoading(true);
+
+    try {
+      const history = messages
+        .filter((m) => m.id !== "init")
+        .slice(-6)
+        .map((m) => ({ role: m.role, text: m.text }));
+
+      const res = await apiClient<{
+        reply: string;
+        toolsUsed: string[];
+        suggestions: string[];
+      }>("/api/ai/chat", {
+        method: "POST",
+        body: JSON.stringify({ message: query, history }),
+      });
+
+      const modelMsg: ChatItem = {
+        id: `model-${Date.now()}`,
+        role: "model",
+        text: res.reply,
+        toolsUsed: res.toolsUsed,
+        suggestions: res.suggestions,
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, modelMsg]);
+    } catch (err: unknown) {
+      const errMsg: ChatItem = {
+        id: `err-${Date.now()}`,
+        role: "model",
+        text: `⚠️ **Không thể xử lý yêu cầu lúc này:** ${err instanceof Error ? err.message : "Đã xảy ra lỗi kết nối."}\nVui lòng thử lại.`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errMsg]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReset = () => {
+    setMessages([
+      {
+        id: "reset",
+        role: "model",
+        text: "✨ Cuộc trò chuyện đã được làm mới. Hãy nhập câu hỏi để bắt đầu!",
+        suggestions: isTenant
+          ? [
+              "Hóa đơn tháng này của phòng tôi là bao nhiêu?",
+              "Chỉ số điện nước phòng tôi tháng này",
+              "Nội quy an ninh và giờ giấc nhà trọ",
+            ]
+          : [
+              "Tháng này có bao nhiêu phòng chưa thanh toán?",
+              "Hợp đồng nào sắp hết hạn trong 30 ngày?",
+              "Doanh thu và tỷ lệ lấp đầy tháng này",
+            ],
+        timestamp: new Date(),
+      },
+    ]);
+  };
+
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  return (
+    <div className="app-shell">
+      <AppHeader />
+      <main className="main-container" style={{ paddingBottom: 40 }}>
+        {/* Header bar */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: "var(--radius-lg, 12px)",
+                  background: "linear-gradient(135deg, #D2C3F6 0%, #A384F5 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#151026",
+                  boxShadow: "0 4px 14px rgba(210, 195, 246, 0.45)",
+                }}
+              >
+                <Sparkle size={22} weight="fill" />
+              </div>
+              <div>
+                <h1 style={{ fontSize: "1.45rem", fontWeight: 800, margin: 0, color: "var(--color-fg)" }}>
+                  {isTenant ? "Trợ lý AI Cư dân" : "Trợ lý AI Quản lý Nhà trọ"}
+                </h1>
+                <p style={{ margin: "2px 0 0", fontSize: "0.85rem", color: "var(--color-fg-3)" }}>
+                  {isTenant
+                    ? "Hỗ trợ 24/7 về hóa đơn phòng, chỉ số điện nước, nội quy nhà trọ, báo sự cố và thủ tục tạm trú"
+                    : "Truy vấn ngôn ngữ tự nhiên kết hợp Gemini Function Calling & trích xuất dữ liệu vận hành thời gian thực"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleReset}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "rgba(210, 195, 246, 0.08)",
+              border: "1px solid rgba(210, 195, 246, 0.22)",
+              color: "var(--color-fg-2)",
+              padding: "8px 14px",
+              borderRadius: "var(--radius-md, 8px)",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+            }}
+          >
+            <ArrowsCounterClockwise size={16} />
+            <span>Làm mới hội thoại</span>
+          </button>
+        </div>
+
+        {/* Two-column layout */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "320px 1fr",
+            gap: 20,
+            alignItems: "stretch",
+            height: "calc(100vh - 210px)",
+            minHeight: 560,
+          }}
+        >
+          {/* Left Column: Quick Query Templates */}
+          <div
+            style={{
+              background: "var(--color-chat-window-bg, var(--color-surface))",
+              backdropFilter: "blur(20px) saturate(180%)",
+              WebkitBackdropFilter: "blur(20px) saturate(180%)",
+              border: "1px solid var(--color-glass-border)",
+              borderRadius: "var(--radius-xl, 16px)",
+              boxShadow: "var(--shadow-glass)",
+              padding: 16,
+              display: "flex",
+              flexDirection: "column",
+              overflowY: "auto",
+              gap: 16,
+            }}
+          >
+            <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--color-fg-2)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              💡 Mẫu câu hỏi nhanh
+            </div>
+
+            {categories.map((cat, cIdx) => {
+              const IconComp = cat.icon;
+              return (
+                <div key={cIdx} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.82rem", fontWeight: 600, color: "var(--color-primary)" }}>
+                    <IconComp size={15} weight="bold" />
+                    <span>{cat.label}</span>
+                  </div>
+                  {cat.queries.map((q, qIdx) => (
+                    <button
+                      key={qIdx}
+                      type="button"
+                      disabled={isLoading}
+                      onClick={() => handleSend(q)}
+                      style={{
+                        background: "var(--color-chat-chip-bg)",
+                        border: "1px solid var(--color-chat-chip-border)",
+                        color: "var(--color-fg-2)",
+                        padding: "8px 10px",
+                        borderRadius: "var(--radius-md, 8px)",
+                        fontSize: "0.82rem",
+                        textAlign: "left",
+                        cursor: isLoading ? "not-allowed" : "pointer",
+                        lineHeight: 1.4,
+                        transition: "all 0.15s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "var(--color-primary)";
+                        e.currentTarget.style.color = "var(--color-fg)";
+                        e.currentTarget.style.background = "var(--color-chat-chip-hover-bg)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "var(--color-chat-chip-border)";
+                        e.currentTarget.style.color = "var(--color-fg-2)";
+                        e.currentTarget.style.background = "var(--color-chat-chip-bg)";
+                      }}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Right Column: Interactive Chat Stream */}
+          <div
+            style={{
+              background: "var(--color-chat-window-bg, var(--color-surface))",
+              backdropFilter: "blur(20px) saturate(180%)",
+              WebkitBackdropFilter: "blur(20px) saturate(180%)",
+              border: "1px solid var(--color-glass-border)",
+              borderRadius: "var(--radius-xl, 16px)",
+              boxShadow: "var(--shadow-glass)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            {/* Messages Scroll Area */}
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                padding: "20px 24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "18px",
+                background: "var(--color-chat-scroll-bg)",
+              }}
+            >
+              {messages.map((m) => {
+                const isUser = m.role === "user";
+                return (
+                  <div
+                    key={m.id}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: isUser ? "flex-end" : "flex-start",
+                    }}
+                  >
+                    <div
+                      style={{
+                        maxWidth: "85%",
+                        padding: isUser ? "12px 18px" : "16px 20px",
+                        borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                        background: isUser
+                          ? "var(--color-chat-bubble-user-bg)"
+                          : "var(--color-chat-bubble-ai-bg)",
+                        color: isUser ? "var(--color-chat-bubble-user-fg)" : "var(--color-chat-bubble-ai-fg)",
+                        fontWeight: isUser ? 500 : 400,
+                        border: isUser ? "1px solid rgba(255, 255, 255, 0.4)" : "1px solid var(--color-chat-bubble-ai-border)",
+                        backdropFilter: isUser ? undefined : "blur(12px)",
+                        WebkitBackdropFilter: isUser ? undefined : "blur(12px)",
+                        boxShadow: isUser
+                          ? "0 4px 14px rgba(210, 195, 246, 0.3)"
+                          : "var(--shadow-sm)",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {isUser ? (
+                        <p style={{ margin: 0, fontSize: "0.95rem", lineHeight: 1.5 }}>{m.text}</p>
+                      ) : (
+                        <div>
+                          {renderMarkdown(m.text)}
+                          {m.toolsUsed && m.toolsUsed.length > 0 && (
+                            <div
+                              style={{
+                                marginTop: 12,
+                                paddingTop: 8,
+                                borderTop: "1px solid var(--color-border-soft)",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                fontSize: "0.78rem",
+                                color: "var(--color-fg-3)",
+                              }}
+                            >
+                              <Sparkle size={13} weight="fill" color="var(--color-primary)" />
+                              <span>Công cụ đã gọi: <strong style={{ color: "var(--color-primary)" }}>{m.toolsUsed.join(", ")}</strong></span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {!isUser && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6, paddingLeft: 4 }}>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(m.text, m.id)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "var(--color-fg-3)",
+                            fontSize: "0.76rem",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          {copiedId === m.id ? (
+                            <>
+                              <Check size={14} color="#10b981" />
+                              <span style={{ color: "#10b981" }}>Đã sao chép</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={14} />
+                              <span>Sao chép kết quả</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {!isUser && m.suggestions && m.suggestions.length > 0 && (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: "8px",
+                          marginTop: "10px",
+                          maxWidth: "85%",
+                        }}
+                      >
+                        {m.suggestions.map((sug, sIdx) => (
+                          <button
+                            key={sIdx}
+                            type="button"
+                            disabled={isLoading}
+                            onClick={() => handleSend(sug)}
+                            style={{
+                              background: "var(--color-chat-chip-bg)",
+                              border: "1px solid var(--color-chat-chip-border)",
+                              color: "var(--color-chat-chip-fg)",
+                              backdropFilter: "blur(6px)",
+                              WebkitBackdropFilter: "blur(6px)",
+                              borderRadius: "16px",
+                              padding: "6px 14px",
+                              fontSize: "0.82rem",
+                              fontWeight: 500,
+                              cursor: isLoading ? "not-allowed" : "pointer",
+                              transition: "all 0.18s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = "var(--color-primary)";
+                              e.currentTarget.style.background = "var(--color-chat-chip-hover-bg)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = "var(--color-chat-chip-border)";
+                              e.currentTarget.style.background = "var(--color-chat-chip-bg)";
+                            }}
+                          >
+                            💡 {sug}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {isLoading && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px" }}>
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      background: "var(--color-primary-light)",
+                      border: "1px solid var(--color-glass-border)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Sparkle size={16} className="animate-spin" color="var(--color-primary)" />
+                  </div>
+                  <span style={{ fontSize: "0.88rem", color: "var(--color-fg-3)" }}>
+                    AI đang tra cứu dữ liệu & xử lý câu trả lời...
+                  </span>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input Form */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleSend();
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "16px 20px",
+                borderTop: "1px solid var(--color-border)",
+                background: "var(--color-chat-input-bar-bg)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+              }}
+            >
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                placeholder={
+                  isTenant
+                    ? "Hỏi về hóa đơn phòng của bạn, chỉ số điện nước, nội quy, báo sự cố, tạm trú..."
+                    : "Hỏi bất kỳ điều gì: phòng nào nợ tiền, hợp đồng nào sắp hết hạn, tổng doanh thu..."
+                }
+                disabled={isLoading}
+                style={{
+                  flex: 1,
+                  background: "var(--color-input-bg)",
+                  border: "1px solid var(--color-input-border)",
+                  borderRadius: "var(--radius-lg, 10px)",
+                  padding: "12px 16px",
+                  fontSize: "0.95rem",
+                  color: "var(--color-fg)",
+                  outline: "none",
+                }}
+              />
+              <button
+                type="submit"
+                disabled={!inputMessage.trim() || isLoading}
+                style={{
+                  background: !inputMessage.trim() || isLoading ? "var(--color-border)" : "var(--color-primary)",
+                  color: !inputMessage.trim() || isLoading ? "var(--color-fg-3)" : "var(--color-on-primary)",
+                  border: "none",
+                  borderRadius: "var(--radius-lg, 10px)",
+                  padding: "12px 20px",
+                  fontWeight: 700,
+                  fontSize: "0.92rem",
+                  cursor: !inputMessage.trim() || isLoading ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  boxShadow: !inputMessage.trim() || isLoading ? "none" : "0 4px 14px var(--color-primary-glow)",
+                  transition: "all 0.18s ease",
+                }}
+              >
+                <span>Gửi</span>
+                <PaperPlaneRight size={18} weight="fill" />
+              </button>
+            </form>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
