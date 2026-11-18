@@ -241,8 +241,8 @@ export async function batchRecordMeterReadings(
   const db = getDatabase();
 
   const rates = await listUtilityRates(userId, role, input.propertyId);
-  const elecRate = rates.find((r) => r.utilityType === "electricity");
-  const waterRate = rates.find((r) => r.utilityType === "water");
+  let elecRate = rates.find((r) => r.utilityType === "electricity");
+  let waterRate = rates.find((r) => r.utilityType === "water");
 
   let recordedCount = 0;
   for (const item of input.items) {
