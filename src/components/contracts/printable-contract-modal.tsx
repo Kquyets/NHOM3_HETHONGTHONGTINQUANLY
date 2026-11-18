@@ -23,6 +23,10 @@ export function PrintableContractModal({
   initialTemplate = "rental",
   onClose,
 }: PrintableContractModalProps) {
+  if (!contract && initialTemplate !== "service") {
+    return null;
+  }
+
   const [template, setTemplate] = useState<"rental" | "service">(
     contract ? initialTemplate : "service",
   );
@@ -322,7 +326,7 @@ export function PrintableContractModal({
                     <div key={t.id} style={{ marginBottom: idx > 0 ? 8 : 4, paddingLeft: contract.tenants.length > 1 ? 12 : 0, borderLeft: contract.tenants.length > 1 ? "2px solid #e5e7eb" : "none" }}>
                       <div className="contract-row">
                         <span className="contract-label">{contract.tenants.length > 1 ? `Người thuê ${idx + 1}:` : "Họ và tên:"}</span>
-                        <span><strong>{t.fullName}</strong></span>
+                        <span><strong>{t.fullName || (t as any).name}</strong></span>
                       </div>
                       <div className="contract-row">
                         <span className="contract-label">Số điện thoại:</span>
@@ -330,7 +334,7 @@ export function PrintableContractModal({
                       </div>
                       <div className="contract-row">
                         <span className="contract-label">Số CCCD/CMND:</span>
-                        <span>{t.citizenId || "—"}</span>
+                        <span>{t.citizenId || (t as any).nationalId || "—"}</span>
                       </div>
                     </div>
                   ))
@@ -382,16 +386,16 @@ export function PrintableContractModal({
               <div className="contract-section">
                 <div className="contract-section-title">ĐIỀU 2: GIÁ THUÊ VÀ TIỀN ĐẶT CỌC</div>
                 <div>
-                  2.1. Giá thuê phòng là: <strong>{money.format(contract.monthlyRentSnapshot)} / tháng</strong>.
+                  2.1. Giá thuê phòng là: <strong>{money.format(Number(contract.monthlyRentSnapshot ?? (contract as any).monthlyRent ?? 0))} / tháng</strong>.
                 </div>
                 <div style={{ fontStyle: "italic", paddingLeft: 16 }}>
-                  (Bằng chữ: {numberToVietnameseWords(contract.monthlyRentSnapshot)})
+                  (Bằng chữ: {numberToVietnameseWords(Number(contract.monthlyRentSnapshot ?? (contract as any).monthlyRent ?? 0))})
                 </div>
                 <div>
-                  2.2. Tiền đặt cọc bảo đảm là: <strong>{money.format(contract.depositSnapshot)}</strong>.
+                  2.2. Tiền đặt cọc bảo đảm là: <strong>{money.format(Number(contract.depositSnapshot ?? (contract as any).depositAmount ?? 0))}</strong>.
                 </div>
                 <div style={{ fontStyle: "italic", paddingLeft: 16 }}>
-                  (Bằng chữ: {numberToVietnameseWords(contract.depositSnapshot)})
+                  (Bằng chữ: {numberToVietnameseWords(Number(contract.depositSnapshot ?? (contract as any).depositAmount ?? 0))})
                 </div>
                 <div>
                   2.3. Khoản tiền cọc được Bên B bàn giao cho Bên A ngay khi ký hợp đồng và sẽ được hoàn trả đầy đủ cho Bên B khi kết thúc hợp đồng sau khi trừ đi các chi phí chưa thanh toán hoặc hư hao trang thiết bị (nếu có).

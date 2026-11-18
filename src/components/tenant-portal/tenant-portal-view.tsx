@@ -1347,7 +1347,9 @@ export function TenantPortalView() {
       <PrintableInvoiceModal invoice={printInvoice} onClose={() => setPrintInvoice(null)} />
 
       {/* Printable Contract Modal */}
-      <PrintableContractModal contract={printContract} onClose={() => setPrintContract(null)} />
+      {printContract && (
+        <PrintableContractModal contract={printContract} onClose={() => setPrintContract(null)} />
+      )}
     </main>
   );
 }
