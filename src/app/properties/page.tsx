@@ -18,6 +18,10 @@ import {
   Megaphone,
   Archive,
   UsersThree,
+  SquaresFour,
+  ListDashes,
+  User,
+  MagnifyingGlass,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
@@ -30,6 +34,7 @@ import { validatePositiveNumber } from "../../utils/form-validation";
 import { VIETNAMESE_BANKS } from "../../utils/vietqr";
 import type { PropertyRow } from "../../modules/properties/property.service";
 import type { RoomRow } from "../../modules/rooms/room.service";
+import type { ContractRow } from "../../modules/contracts/contract.service";
 
 type PropertyWithRooms = PropertyRow & {
   rooms: RoomRow[];
@@ -133,11 +138,22 @@ export default function PropertiesPage() {
   const [showArchivedByProp, setShowArchivedByProp] = useState<Record<string, boolean>>({});
   const [submittingRoom, setSubmittingRoom] = useState(false);
 
+  const [contracts, setContracts] = useState<ContractRow[]>([]);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [activePropertyId, setActivePropertyId] = useState<string>("all");
+  const [roomSearch, setRoomSearch] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
   const loadProperties = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const propRes = await apiClient<{ properties: PropertyRow[] }>("/api/properties");
+      const [propRes, contractRes] = await Promise.all([
+        apiClient<{ properties: PropertyRow[] }>("/api/properties"),
+        apiClient<{ contracts: ContractRow[] }>("/api/contracts").catch(() => ({ contracts: [] })),
+      ]);
+      setContracts(contractRes.contracts || []);
+
       const withRooms: PropertyWithRooms[] = await Promise.all(
         propRes.properties.map(async (prop) => {
           try {
@@ -362,6 +378,117 @@ export default function PropertiesPage() {
             </motion.button>
           )}
         </motion.div>
+
+        {/* Top Control Bar: Property Switcher & KPI Cards & View Mode */}
+        {properties.length > 0 && (() => {
+          const displayedProperties = properties.filter(
+            (p) => activePropertyId === "all" || p.id === activePropertyId,
+          );
+          const allDisplayedRooms = displayedProperties.flatMap((p) => p.rooms);
+          const totalRoomsCount = allDisplayedRooms.length;
+          const occupiedRoomsCount = allDisplayedRooms.filter((r) =>
+            contracts.some((c) => c.roomId === r.id && c.status === "active"),
+          ).length;
+          const maintenanceRoomsCount = allDisplayedRooms.filter(
+            (r) => r.status === "maintenance" && !r.isArchived,
+          ).length;
+          const vacantRoomsCount = Math.max(0, totalRoomsCount - occupiedRoomsCount - maintenanceRoomsCount);
+
+          return (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+                backgroundColor: "var(--color-bg-panel, #ffffff)",
+                padding: "12px 18px",
+                borderRadius: "var(--radius-lg, 12px)",
+                border: "1px solid var(--color-border)",
+                marginBottom: "var(--space-3)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span style={{ fontSize: "var(--text-xs)", fontWeight: 700, color: "var(--color-fg-3)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Đang quản lý:
+                </span>
+                <select
+                  className="form-control"
+                  style={{ fontWeight: 600, minWidth: 220, maxWidth: 320, padding: "6px 12px", height: "auto" }}
+                  value={activePropertyId}
+                  onChange={(e) => setActivePropertyId(e.target.value)}
+                >
+                  <option value="all">🏢 Tất cả nhà trọ ({properties.reduce((s, p) => s + p.rooms.length, 0)} phòng)</option>
+                  {properties.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      🏠 {p.name} ({p.rooms.length} phòng)
+                    </option>
+                  ))}
+                </select>
+
+                {/* Status KPI Chips */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <span className="badge ready" style={{ fontSize: "11px", padding: "3px 8px" }}>
+                    🟢 Đang ở: <strong>{occupiedRoomsCount}</strong>
+                  </span>
+                  <span className="badge neutral" style={{ fontSize: "11px", padding: "3px 8px" }}>
+                    ⚪ Trống: <strong>{vacantRoomsCount}</strong>
+                  </span>
+                  <span className="badge maintenance" style={{ fontSize: "11px", padding: "3px 8px" }}>
+                    🟠 Bảo trì: <strong>{maintenanceRoomsCount}</strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* View Mode Toggle */}
+              <div style={{ display: "inline-flex", padding: 3, backgroundColor: "var(--color-bg-subtle)", borderRadius: 8, border: "1px solid var(--color-border)" }}>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    padding: "5px 12px",
+                    borderRadius: 6,
+                    fontSize: "var(--text-xs)",
+                    fontWeight: viewMode === "grid" ? 600 : 500,
+                    border: "none",
+                    backgroundColor: viewMode === "grid" ? "var(--color-primary)" : "transparent",
+                    color: viewMode === "grid" ? "#ffffff" : "var(--color-fg-2)",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <SquaresFour size={14} weight={viewMode === "grid" ? "fill" : "regular"} />
+                  <span>Sơ đồ phòng</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("table")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    padding: "5px 12px",
+                    borderRadius: 6,
+                    fontSize: "var(--text-xs)",
+                    fontWeight: viewMode === "table" ? 600 : 500,
+                    border: "none",
+                    backgroundColor: viewMode === "table" ? "var(--color-primary)" : "transparent",
+                    color: viewMode === "table" ? "#ffffff" : "var(--color-fg-2)",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <ListDashes size={14} weight={viewMode === "table" ? "bold" : "regular"} />
+                  <span>Danh sách</span>
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Error */}
         <AnimatePresence>
@@ -763,7 +890,9 @@ export default function PropertiesPage() {
         ) : (
           /* Property cards */
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {properties.map((prop, pi) => (
+            {properties
+              .filter((p) => activePropertyId === "all" || p.id === activePropertyId)
+              .map((prop, pi) => (
               <motion.article
                 className="card"
                 key={prop.id}
@@ -932,7 +1061,7 @@ export default function PropertiesPage() {
                   );
                 })()}
 
-                <div className="table-responsive">
+                <div>
                   {prop.rooms.length === 0 ? (
                     <p style={{ padding: "var(--space-3)", textAlign: "center", color: "var(--color-fg-3)", fontSize: "var(--text-sm)" }}>
                       Nhà này chưa có phòng nào.{" "}
@@ -961,82 +1090,96 @@ export default function PropertiesPage() {
                       );
                     }
 
-                    return (
-                      <table className="data-table">
-                        <thead>
-                          <tr>
-                            <th>Phòng / Tầng</th>
-                            <th>Diện tích</th>
-                            <th>Giá thuê</th>
-                            <th>Trạng thái</th>
-                            <th>Tiện nghi / Nội thất</th>
-                            <th>Sàn Nhà Tốt</th>
-                            <th style={{ textAlign: "right" }}>Thao tác</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {displayRooms.map((room) => (
-                            <tr key={room.id} style={{ opacity: room.isArchived ? 0.65 : 1 }}>
-                              <td>
-                                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
-                                    <Door size={14} style={{ color: "var(--color-fg-3)" }} />
-                                    Phòng {room.roomNumber}
-                                    {room.isArchived && (
-                                      <span className="badge warning" style={{ fontSize: "10px", padding: "1px 5px", display: "inline-flex", alignItems: "center", gap: 3 }}>
-                                        <Archive size={10} /> Đã lưu trữ
-                                      </span>
+                    if (viewMode === "grid") {
+                      return (
+                        <div style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                          gap: 12,
+                          padding: "var(--space-3)",
+                        }}>
+                          {displayRooms.map((room) => {
+                            const activeContract = contracts.find((c) => c.roomId === room.id && c.status === "active");
+                            const isOccupied = Boolean(activeContract);
+                            const borderColor = room.isArchived
+                              ? "var(--color-border)"
+                              : room.status === "maintenance"
+                              ? "#f97316"
+                              : isOccupied
+                              ? "#16a34a"
+                              : "var(--color-border)";
+                            const bgTint = room.isArchived
+                              ? "var(--color-bg-subtle)"
+                              : room.status === "maintenance"
+                              ? "rgba(249, 115, 22, 0.05)"
+                              : isOccupied
+                              ? "rgba(22, 163, 74, 0.05)"
+                              : "var(--color-bg-panel, #ffffff)";
+
+                            return (
+                              <div
+                                key={room.id}
+                                style={{
+                                  border: `1.5px solid ${borderColor}`,
+                                  borderRadius: 10,
+                                  backgroundColor: bgTint,
+                                  padding: 14,
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: 10,
+                                  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                                  opacity: room.isArchived ? 0.7 : 1,
+                                }}
+                              >
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                  <div>
+                                    <div style={{ fontWeight: 700, fontSize: "var(--text-base)", display: "flex", alignItems: "center", gap: 6 }}>
+                                      <Door size={16} style={{ color: "var(--color-primary)" }} />
+                                      <span>Phòng {room.roomNumber}</span>
+                                    </div>
+                                    <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginTop: 2 }}>
+                                      Tầng {room.floor != null ? room.floor : 1} {room.areaM2 ? `• ${room.areaM2} m²` : ""}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    {room.isArchived ? (
+                                      <span className="badge warning" style={{ fontSize: "10px", padding: "2px 6px" }}>📦 Lưu trữ</span>
+                                    ) : room.status === "maintenance" ? (
+                                      <span className="badge maintenance" style={{ fontSize: "10px", padding: "2px 6px" }}>🟠 Bảo trì</span>
+                                    ) : isOccupied ? (
+                                      <span className="badge ready" style={{ fontSize: "10px", padding: "2px 6px" }}>🟢 Đang ở</span>
+                                    ) : (
+                                      <span className="badge neutral" style={{ fontSize: "10px", padding: "2px 6px" }}>⚪ Trống</span>
                                     )}
-                                  </span>
-                                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                                    <span className="badge neutral" style={{ fontSize: "10px", padding: "1px 6px" }}>
-                                      Tầng {room.floor != null ? room.floor : 1}
+                                  </div>
+                                </div>
+
+                                <div style={{ padding: "8px 10px", borderRadius: 6, backgroundColor: "var(--color-bg-subtle)", fontSize: "var(--text-xs)" }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                                    <span style={{ color: "var(--color-fg-3)" }}>Giá thuê:</span>
+                                    <span style={{ fontWeight: 600, fontFamily: "var(--font-mono)", color: "var(--color-fg-1)" }}>
+                                      {money.format(room.monthlyRent)}/tháng
                                     </span>
-                                    <span className="badge neutral" style={{ fontSize: "10px", padding: "1px 6px", display: "inline-flex", alignItems: "center", gap: 3 }}>
-                                      <UsersThree size={10} /> {room.maxOccupants ?? 2} ng
+                                  </div>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <span style={{ color: "var(--color-fg-3)" }}>Khách:</span>
+                                    <span style={{ fontWeight: 500, color: isOccupied ? "var(--color-primary)" : "var(--color-fg-3)" }}>
+                                      {isOccupied ? (
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                          <User size={12} weight="bold" />
+                                          {activeContract?.tenants[0]?.fullName || "Hợp đồng hiệu lực"}
+                                        </span>
+                                      ) : (
+                                        "Chưa có khách"
+                                      )}
                                     </span>
                                   </div>
                                 </div>
-                              </td>
-                              <td className="text-muted">
-                                {room.areaM2 ? `${room.areaM2} m²` : "—"}
-                              </td>
-                              <td style={{ fontVariantNumeric: "tabular-nums", fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)", fontWeight: 500 }}>
-                                {money.format(room.monthlyRent)}
-                              </td>
-                              <td>
-                                <motion.button
-                                  type="button"
-                                  className={`badge ${room.status === "ready" ? "ready" : "maintenance"}`}
-                                  style={{ border: "none", cursor: "pointer", fontFamily: "var(--font-body)" }}
-                                  onClick={() => void handleToggleRoomStatus(prop.id, room.id, room.status)}
-                                  title="Bấm để đổi trạng thái"
-                                  whileHover={{ scale: 1.06 }}
-                                  whileTap={{ scale: 0.94 }}
-                                >
-                                  {room.status === "ready" ? (
-                                    <><CheckCircle size={10} weight="fill" /> Sẵn sàng</>
-                                  ) : (
-                                    <><Wrench size={10} weight="fill" /> Bảo trì</>
-                                  )}
-                                </motion.button>
-                              </td>
-                              <td>
-                                {room.furnitureList && room.furnitureList.length > 0 ? (
-                                  <div style={{ display: "flex", flexWrap: "wrap", gap: 3, maxWidth: 220 }}>
+
+                                {room.furnitureList && room.furnitureList.length > 0 && (
+                                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4, maxHeight: 42, overflow: "hidden" }}>
                                     {room.furnitureList.slice(0, 3).map((item) => (
-                                      <span
-                                        key={item}
-                                        style={{
-                                          fontSize: "10px",
-                                          padding: "1px 6px",
-                                          borderRadius: 4,
-                                          backgroundColor: "var(--color-bg-subtle)",
-                                          border: "1px solid var(--color-border)",
-                                          color: "var(--color-fg-2)",
-                                          whiteSpace: "nowrap",
-                                        }}
-                                      >
+                                      <span key={item} style={{ fontSize: "10px", padding: "1px 5px", borderRadius: 4, backgroundColor: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-fg-2)" }}>
                                         {item}
                                       </span>
                                     ))}
@@ -1046,85 +1189,231 @@ export default function PropertiesPage() {
                                       </span>
                                     )}
                                   </div>
-                                ) : (
-                                  <span style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>
-                                    Chưa kiểm kê
-                                  </span>
                                 )}
-                              </td>
-                              <td>
-                                <motion.button
-                                  type="button"
-                                  className={`badge ${room.isPublicListed ? "ready" : "neutral"}`}
-                                  style={{
-                                    border: "none",
-                                    cursor: "pointer",
-                                    fontFamily: "var(--font-body)",
-                                    backgroundColor: room.isPublicListed ? "#fff7ed" : "var(--color-bg-subtle)",
-                                    color: room.isPublicListed ? "#ea580c" : "var(--color-fg-3)",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 4,
-                                    padding: "4px 8px",
-                                    borderRadius: 6,
-                                    fontSize: "var(--text-xs)",
-                                    fontWeight: 600,
-                                  }}
-                                  onClick={() => setEditingListingRoom({ room, property: prop })}
-                                  title="Cài đặt đăng tin lên Sàn Nhà Tốt"
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                >
-                                  <Megaphone size={12} weight={room.isPublicListed ? "fill" : "regular"} />
-                                  <span>{room.isPublicListed ? "Đang đăng" : "Đăng tin"}</span>
-                                </motion.button>
-                              </td>
-                              <td style={{ textAlign: "right" }}>
-                                <div style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
-                                  <motion.button
-                                    type="button"
-                                    className="btn-secondary"
-                                    style={{ padding: "4px 8px", fontSize: "var(--text-xs)", gap: 4 }}
-                                    onClick={() => setEditingRoom({ room, property: prop })}
-                                    title="Sửa phòng & Kiểm kê nội thất"
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                  >
-                                    <PencilSimple size={12} />
-                                    <span>Kiểm kê</span>
-                                  </motion.button>
 
-                                  <motion.button
-                                    type="button"
-                                    className="btn-ghost"
-                                    style={{ padding: "4px 6px", fontSize: "var(--text-xs)", color: room.isArchived ? "var(--color-primary)" : "var(--color-fg-3)" }}
-                                    onClick={() => void handleToggleArchiveRoom(room)}
-                                    title={room.isArchived ? "Khôi phục phòng" : "Lưu trữ phòng (tạm ngưng)"}
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                  >
-                                    <Archive size={13} weight={room.isArchived ? "fill" : "regular"} />
-                                  </motion.button>
-
-                                  {user?.role === "owner" && (
-                                    <motion.button
+                                <div style={{ display: "flex", gap: 6, marginTop: "auto", paddingTop: 8, borderTop: "1px solid var(--color-border)", justifyContent: "space-between", alignItems: "center" }}>
+                                  <div style={{ display: "flex", gap: 4 }}>
+                                    <button
+                                      type="button"
+                                      className="btn-secondary"
+                                      style={{ padding: "3px 8px", fontSize: "11px", gap: 3 }}
+                                      onClick={() => setEditingRoom({ room, property: prop })}
+                                      title="Kiểm kê nội thất & Sửa"
+                                    >
+                                      <PencilSimple size={11} /> Sửa
+                                    </button>
+                                    <button
                                       type="button"
                                       className="btn-ghost"
-                                      style={{ padding: "4px 6px", fontSize: "var(--text-xs)", color: "var(--color-danger)" }}
+                                      style={{ padding: "3px 6px", fontSize: "11px" }}
+                                      onClick={() => void handleToggleRoomStatus(prop.id, room.id, room.status)}
+                                      title={room.status === "ready" ? "Chuyển sang bảo trì" : "Chuyển sang sẵn sàng"}
+                                    >
+                                      <Wrench size={12} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn-ghost"
+                                      style={{ padding: "3px 6px", fontSize: "11px", color: room.isArchived ? "var(--color-primary)" : "var(--color-fg-3)" }}
+                                      onClick={() => void handleToggleArchiveRoom(room)}
+                                      title={room.isArchived ? "Khôi phục" : "Lưu trữ"}
+                                    >
+                                      <Archive size={12} />
+                                    </button>
+                                  </div>
+                                  {user?.role === "owner" && (
+                                    <button
+                                      type="button"
+                                      className="btn-ghost"
+                                      style={{ padding: "3px 6px", fontSize: "11px", color: "var(--color-danger)" }}
                                       onClick={() => void handleDeleteRoom(prop.id, room.id, room.roomNumber)}
                                       title="Xóa phòng"
-                                      whileHover={{ scale: 1.05 }}
-                                      whileTap={{ scale: 0.95 }}
                                     >
-                                      <Trash size={13} />
-                                    </motion.button>
+                                      <Trash size={12} />
+                                    </button>
                                   )}
                                 </div>
-                              </td>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="table-responsive">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Phòng / Tầng</th>
+                              <th>Diện tích</th>
+                              <th>Giá thuê</th>
+                              <th>Khách thuê</th>
+                              <th>Trạng thái</th>
+                              <th>Tiện nghi / Nội thất</th>
+                              <th style={{ textAlign: "right" }}>Thao tác</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {displayRooms.map((room) => {
+                              const activeContract = contracts.find((c) => c.roomId === room.id && c.status === "active");
+                              const isOccupied = Boolean(activeContract);
+
+                              return (
+                                <tr key={room.id} style={{ opacity: room.isArchived ? 0.65 : 1 }}>
+                                  <td>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                                      <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
+                                        <Door size={14} style={{ color: "var(--color-fg-3)" }} />
+                                        Phòng {room.roomNumber}
+                                        {room.isArchived && (
+                                          <span className="badge warning" style={{ fontSize: "10px", padding: "1px 5px", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                                            <Archive size={10} /> Đã lưu trữ
+                                          </span>
+                                        )}
+                                      </span>
+                                      <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                                        <span className="badge neutral" style={{ fontSize: "10px", padding: "1px 6px" }}>
+                                          Tầng {room.floor != null ? room.floor : 1}
+                                        </span>
+                                        <span className="badge neutral" style={{ fontSize: "10px", padding: "1px 6px", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                                          <UsersThree size={10} /> {room.maxOccupants ?? 2} ng
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="text-muted">
+                                    {room.areaM2 ? `${room.areaM2} m²` : "—"}
+                                  </td>
+                                  <td style={{ fontVariantNumeric: "tabular-nums", fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)", fontWeight: 500 }}>
+                                    {money.format(room.monthlyRent)}
+                                  </td>
+                                  <td>
+                                    {isOccupied ? (
+                                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                        <User size={13} weight="bold" style={{ color: "var(--color-primary)" }} />
+                                        <span style={{ fontWeight: 600, fontSize: "var(--text-sm)", color: "var(--color-fg-1)" }}>
+                                          {activeContract?.tenants[0]?.fullName || "Hợp đồng hiệu lực"}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-muted" style={{ fontSize: "var(--text-xs)", fontStyle: "italic" }}>
+                                        Trống
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    {room.isArchived ? (
+                                      <span className="badge warning" style={{ fontSize: "11px" }}>📦 Đã lưu trữ</span>
+                                    ) : room.status === "maintenance" ? (
+                                      <motion.button
+                                        type="button"
+                                        className="badge maintenance"
+                                        style={{ border: "none", cursor: "pointer", fontFamily: "var(--font-body)" }}
+                                        onClick={() => void handleToggleRoomStatus(prop.id, room.id, room.status)}
+                                        title="Bấm để đổi sang sẵn sàng"
+                                        whileHover={{ scale: 1.06 }}
+                                        whileTap={{ scale: 0.94 }}
+                                      >
+                                        <Wrench size={10} weight="fill" /> Bảo trì
+                                      </motion.button>
+                                    ) : isOccupied ? (
+                                      <span className="badge ready" style={{ fontSize: "11px" }}>
+                                        <CheckCircle size={10} weight="fill" /> Đang ở
+                                      </span>
+                                    ) : (
+                                      <motion.button
+                                        type="button"
+                                        className="badge neutral"
+                                        style={{ border: "none", cursor: "pointer", fontFamily: "var(--font-body)" }}
+                                        onClick={() => void handleToggleRoomStatus(prop.id, room.id, room.status)}
+                                        title="Bấm để đổi sang bảo trì"
+                                        whileHover={{ scale: 1.06 }}
+                                        whileTap={{ scale: 0.94 }}
+                                      >
+                                        ⚪ Đang trống
+                                      </motion.button>
+                                    )}
+                                  </td>
+                                  <td>
+                                    {room.furnitureList && room.furnitureList.length > 0 ? (
+                                      <div style={{ display: "flex", flexWrap: "wrap", gap: 3, maxWidth: 220 }}>
+                                        {room.furnitureList.slice(0, 3).map((item) => (
+                                          <span
+                                            key={item}
+                                            style={{
+                                              fontSize: "10px",
+                                              padding: "1px 6px",
+                                              borderRadius: 4,
+                                              backgroundColor: "var(--color-bg-subtle)",
+                                              border: "1px solid var(--color-border)",
+                                              color: "var(--color-fg-2)",
+                                              whiteSpace: "nowrap",
+                                            }}
+                                          >
+                                            {item}
+                                          </span>
+                                        ))}
+                                        {room.furnitureList.length > 3 && (
+                                          <span style={{ fontSize: "10px", color: "var(--color-fg-3)", alignSelf: "center" }}>
+                                            +{room.furnitureList.length - 3}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>
+                                        Chưa kiểm kê
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td style={{ textAlign: "right" }}>
+                                    <div style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
+                                      <motion.button
+                                        type="button"
+                                        className="btn-secondary"
+                                        style={{ padding: "4px 8px", fontSize: "var(--text-xs)", gap: 4 }}
+                                        onClick={() => setEditingRoom({ room, property: prop })}
+                                        title="Sửa phòng & Kiểm kê nội thất"
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                      >
+                                        <PencilSimple size={12} />
+                                        <span>Kiểm kê</span>
+                                      </motion.button>
+
+                                      <motion.button
+                                        type="button"
+                                        className="btn-ghost"
+                                        style={{ padding: "4px 6px", fontSize: "var(--text-xs)", color: room.isArchived ? "var(--color-primary)" : "var(--color-fg-3)" }}
+                                        onClick={() => void handleToggleArchiveRoom(room)}
+                                        title={room.isArchived ? "Khôi phục phòng" : "Lưu trữ phòng (tạm ngưng)"}
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                      >
+                                        <Archive size={13} weight={room.isArchived ? "fill" : "regular"} />
+                                      </motion.button>
+
+                                      {user?.role === "owner" && (
+                                        <motion.button
+                                          type="button"
+                                          className="btn-ghost"
+                                          style={{ padding: "4px 6px", fontSize: "var(--text-xs)", color: "var(--color-danger)" }}
+                                          onClick={() => void handleDeleteRoom(prop.id, room.id, room.roomNumber)}
+                                          title="Xóa phòng"
+                                          whileHover={{ scale: 1.05 }}
+                                          whileTap={{ scale: 0.95 }}
+                                        >
+                                          <Trash size={13} />
+                                        </motion.button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     );
                   })()}
                 </div>
