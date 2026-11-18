@@ -42,6 +42,11 @@ export type MaintenanceRow = {
   priority: MaintenancePriority;
   description: string;
   status: MaintenanceStatus;
+  cost?: number | null;
+  payer?: string | null;
+  contractorName?: string | null;
+  contractorPhone?: string | null;
+  photoUrl?: string | null;
   resolutionNotes: string | null;
   resolvedAt: Date | null;
   createdAt: Date;
@@ -54,11 +59,21 @@ export type CreateMaintenanceInput = {
   category?: MaintenanceCategory;
   priority?: MaintenancePriority;
   description: string;
+  cost?: number;
+  payer?: "owner" | "tenant" | "deposit_deduction";
+  contractorName?: string | null;
+  contractorPhone?: string | null;
+  photoUrl?: string | null;
 };
 
 export type UpdateMaintenanceStatusInput = {
   status: MaintenanceStatus;
   resolutionNotes?: string | null;
+  cost?: number;
+  payer?: "owner" | "tenant" | "deposit_deduction";
+  contractorName?: string | null;
+  contractorPhone?: string | null;
+  photoUrl?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -87,6 +102,11 @@ export async function listMaintenanceRequests(params: {
     priority: maintenanceRequests.priority,
     description: maintenanceRequests.description,
     status: maintenanceRequests.status,
+    cost: maintenanceRequests.cost,
+    payer: maintenanceRequests.payer,
+    contractorName: maintenanceRequests.contractorName,
+    contractorPhone: maintenanceRequests.contractorPhone,
+    photoUrl: maintenanceRequests.photoUrl,
     resolutionNotes: maintenanceRequests.resolutionNotes,
     resolvedAt: maintenanceRequests.resolvedAt,
     createdAt: maintenanceRequests.createdAt,
@@ -272,6 +292,11 @@ export async function createMaintenanceRequest(
       priority: input.priority ?? "medium",
       description,
       status: "pending",
+      cost: input.cost ?? 0,
+      payer: input.payer ?? "owner",
+      contractorName: input.contractorName ?? null,
+      contractorPhone: input.contractorPhone ?? null,
+      photoUrl: input.photoUrl ?? null,
     })
     .returning();
 
@@ -428,6 +453,11 @@ export async function updateMaintenanceStatus(
     .set({
       status: input.status,
       resolutionNotes: input.resolutionNotes ? input.resolutionNotes.trim() : null,
+      cost: typeof input.cost === "number" ? input.cost : undefined,
+      payer: input.payer ?? undefined,
+      contractorName: input.contractorName !== undefined ? input.contractorName : undefined,
+      contractorPhone: input.contractorPhone !== undefined ? input.contractorPhone : undefined,
+      photoUrl: input.photoUrl !== undefined ? input.photoUrl : undefined,
       resolvedAt,
       updatedAt: new Date(),
     })

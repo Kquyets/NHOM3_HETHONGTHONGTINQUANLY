@@ -111,6 +111,9 @@ export function DashboardView() {
     totalDebt: 0,
     unpaidInvoiceCount: 0,
     collectionRate: 100,
+    totalExpenses: 0,
+    totalDepositsHeld: 0,
+    netProfit: 0,
   };
 
   const utilities = summary?.utilities ?? {
@@ -373,6 +376,74 @@ export function DashboardView() {
               <span className="stat-sub">Đã ghi chỉ số trong kỳ {selectedMonth}/{selectedYear}</span>
             </motion.article>
           </section>
+
+          {/* ── Cashflow & Net Profit (LOZIDO-style) ────────────────────── */}
+          <motion.section
+            className="card"
+            style={{
+              padding: "18px 20px",
+              marginBottom: "var(--space-3)",
+              background: "linear-gradient(135deg, var(--color-bg-subtle, rgba(255,255,255,0.03)) 0%, rgba(16, 185, 129, 0.05) 100%)",
+              border: "1px solid var(--color-border-subtle, rgba(0,0,0,0.08))",
+            }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981" }} />
+                <span style={{ fontSize: "var(--text-sm)", fontWeight: 700 }}>
+                  Dòng tiền thực tế &amp; Lợi nhuận thuần (T{selectedMonth}/{selectedYear})
+                </span>
+              </div>
+              <span style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>
+                Doanh thu thực thu - Chi phí vận hành &amp; sửa chữa
+              </span>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+              <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: "rgba(16, 185, 129, 0.08)" }}>
+                <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginBottom: 4 }}>Tổng thu thực tế</div>
+                <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, color: "#10b981" }}>
+                  {money.format(financials.totalCollected)}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--color-fg-3)", marginTop: 2 }}>
+                  Tỷ lệ thu: {financials.collectionRate}%
+                </div>
+              </div>
+
+              <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: "rgba(239, 68, 68, 0.08)" }}>
+                <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginBottom: 4 }}>Tổng chi vận hành &amp; bảo trì</div>
+                <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, color: "#ef4444" }}>
+                  {money.format(financials.totalExpenses)}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--color-fg-3)", marginTop: 2 }}>
+                  Sự cố sửa chữa chủ trọ chịu
+                </div>
+              </div>
+
+              <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: "rgba(59, 130, 246, 0.08)" }}>
+                <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginBottom: 4 }}>Tổng tiền cọc đang giữ</div>
+                <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, color: "#3b82f6" }}>
+                  {money.format(financials.totalDepositsHeld)}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--color-fg-3)", marginTop: 2 }}>
+                  Hợp đồng đang có hiệu lực
+                </div>
+              </div>
+
+              <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: "rgba(168, 85, 247, 0.08)", border: "1px solid rgba(168, 85, 247, 0.2)" }}>
+                <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginBottom: 4 }}>Lợi nhuận thuần (Net Profit)</div>
+                <div style={{ fontSize: "var(--text-xl)", fontWeight: 800, color: financials.netProfit >= 0 ? "#10b981" : "#ef4444" }}>
+                  {money.format(financials.netProfit)}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--color-fg-3)", marginTop: 2 }}>
+                  = Tổng thu - Chi phí sửa chữa
+                </div>
+              </div>
+            </div>
+          </motion.section>
 
           {/* ── Visual Breakdown Bars ───────────────────────────────────── */}
           <section

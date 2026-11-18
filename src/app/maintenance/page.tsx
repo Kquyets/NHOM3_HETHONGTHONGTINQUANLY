@@ -30,6 +30,12 @@ import type {
 import type { PropertyRow } from "../../modules/properties/property.service";
 import type { RoomRow } from "../../modules/rooms/room.service";
 
+const money = new Intl.NumberFormat("vi-VN", {
+  style: "currency",
+  currency: "VND",
+  maximumFractionDigits: 0,
+});
+
 const CATEGORY_CONFIG: Record<MaintenanceCategory, { label: string; Icon: React.ElementType; color: string }> = {
   electrical: { label: "Điện sinh hoạt", Icon: Lightning,   color: "#eab308" },
   plumbing:   { label: "Nước & Vệ sinh", Icon: Drop,        color: "#06b6d4" },
@@ -74,10 +80,15 @@ export default function MaintenancePage() {
   const [cCategory, setCCategory] = useState<MaintenanceCategory>("plumbing");
   const [cPriority, setCPriority] = useState<MaintenancePriority>("medium");
   const [cDescription, setCDescription] = useState("");
+  const [cPhotoUrl, setCPhotoUrl] = useState("");
 
   // Resolve modal state
   const [resolvingRequest, setResolvingRequest] = useState<MaintenanceRow | null>(null);
   const [resNotes, setResNotes] = useState("");
+  const [resCost, setResCost] = useState("");
+  const [resPayer, setResPayer] = useState("owner");
+  const [resContractorName, setResContractorName] = useState("");
+  const [resContractorPhone, setResContractorPhone] = useState("");
   const [submittingResolve, setSubmittingResolve] = useState(false);
 
   const loadRequests = useCallback(async () => {
@@ -141,12 +152,14 @@ export default function MaintenancePage() {
           category: cCategory,
           priority: cPriority,
           description: cDescription.trim(),
+          photoUrl: cPhotoUrl.trim() || undefined,
         }),
       });
 
       setShowCreate(false);
       setCTitle("");
       setCDescription("");
+      setCPhotoUrl("");
       await loadRequests();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Tạo yêu cầu sửa chữa thất bại.");
@@ -155,18 +168,36 @@ export default function MaintenancePage() {
     }
   };
 
-  const handleUpdateStatus = async (requestId: string, status: MaintenanceStatus, notes?: string) => {
+  const handleUpdateStatus = async (
+    requestId: string,
+    status: MaintenanceStatus,
+    options?: {
+      notes?: string;
+      cost?: number;
+      payer?: string;
+      contractorName?: string;
+      contractorPhone?: string;
+    },
+  ) => {
     try {
       await apiClient(`/api/maintenance/${requestId}`, {
         method: "PATCH",
         body: JSON.stringify({
           status,
-          resolutionNotes: notes ?? null,
+          resolutionNotes: options?.notes ?? null,
+          cost: options?.cost,
+          payer: options?.payer,
+          contractorName: options?.contractorName || null,
+          contractorPhone: options?.contractorPhone || null,
         }),
       });
       await loadRequests();
       setResolvingRequest(null);
       setResNotes("");
+      setResCost("");
+      setResPayer("owner");
+      setResContractorName("");
+      setResContractorPhone("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Cập nhật trạng thái sự cố thất bại.");
     }
@@ -322,6 +353,18 @@ export default function MaintenancePage() {
                   />
                 </div>
 
+                <div className="form-group" style={{ marginBottom: "var(--space-2)" }}>
+                  <label htmlFor="mnt-photo">Link ảnh hiện trường / sự cố (nếu có)</label>
+                  <input
+                    id="mnt-photo"
+                    type="url"
+                    className="form-control"
+                    placeholder="https://images.unsplash.com/... hoặc link ảnh"
+                    value={cPhotoUrl}
+                    onChange={(e) => setCPhotoUrl(e.target.value)}
+                  />
+                </div>
+
                 <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                   <button type="button" className="btn-ghost" onClick={() => setShowCreate(false)}>Hủy</button>
                   <button type="submit" className="btn-primary" disabled={submittingCreate}>
@@ -387,6 +430,7 @@ export default function MaintenancePage() {
                     <th>Phòng / Nhà</th>
                     <th>Người báo</th>
                     <th>Mức độ</th>
+                    <th>Chi phí &amp; Bên chịu</th>
                     <th>Trạng thái</th>
                     <th style={{ textAlign: "right" }}>Thao tác</th>
                   </tr>
@@ -409,6 +453,16 @@ export default function MaintenancePage() {
                               <p className="text-muted" style={{ margin: "2px 0 0", fontSize: "var(--text-xs)", maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {req.description}
                               </p>
+                              {req.photoUrl && (
+                                <a
+                                  href={req.photoUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ fontSize: "11px", color: "var(--color-primary)", display: "inline-block", marginTop: 2, textDecoration: "underline" }}
+                                >
+                                  📷 Xem ảnh sự cố
+                                </a>
+                              )}
                               {req.resolutionNotes && (
                                 <p style={{ margin: "3px 0 0", fontSize: "11px", color: "var(--color-success)" }}>
                                   ✓ Xử lý: {req.resolutionNotes}
@@ -431,6 +485,23 @@ export default function MaintenancePage() {
                         </td>
                         <td>
                           <span className={prio.badgeCls} style={{ fontSize: "11px" }}>{prio.label}</span>
+                        </td>
+                        <td>
+                          {req.cost && req.cost > 0 ? (
+                            <div style={{ fontSize: "var(--text-xs)" }}>
+                              <strong style={{ color: "var(--color-primary)" }}>{money.format(req.cost)}</strong>
+                              <div className="text-muted" style={{ fontSize: "11px" }}>
+                                {req.payer === "owner" ? "Chủ trọ chịu" : req.payer === "tenant" ? "Khách thuê chịu" : "Trừ tiền cọc"}
+                              </div>
+                              {req.contractorName && (
+                                <div style={{ fontSize: "11px", color: "var(--color-fg-3)" }}>
+                                  Thợ: {req.contractorName} {req.contractorPhone ? `(${req.contractorPhone})` : ""}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted" style={{ fontSize: "var(--text-xs)" }}>Chưa ghi nhận</span>
+                          )}
                         </td>
                         <td>
                           <span className={st.cls} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "11px" }}>
@@ -535,6 +606,62 @@ export default function MaintenancePage() {
                   />
                 </div>
 
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="res-cost">Chi phí sửa chữa (VND)</label>
+                    <input
+                      id="res-cost"
+                      type="number"
+                      min="0"
+                      step="10000"
+                      className="form-control"
+                      placeholder="VD: 250000"
+                      value={resCost}
+                      onChange={(e) => setResCost(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="res-payer">Bên chi trả chi phí</label>
+                    <select
+                      id="res-payer"
+                      className="form-control"
+                      value={resPayer}
+                      onChange={(e) => setResPayer(e.target.value)}
+                    >
+                      <option value="owner">Chủ trọ chịu (Chi phí vận hành)</option>
+                      <option value="tenant">Khách thuê tự chịu</option>
+                      <option value="deposit_deduction">Khấu trừ vào tiền cọc</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="res-cname">Tên thợ / Nhà thầu</label>
+                    <input
+                      id="res-cname"
+                      type="text"
+                      className="form-control"
+                      placeholder="VD: Thợ điện Hùng"
+                      value={resContractorName}
+                      onChange={(e) => setResContractorName(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="res-cphone">Số điện thoại thợ</label>
+                    <input
+                      id="res-cphone"
+                      type="tel"
+                      className="form-control"
+                      placeholder="VD: 0912345678"
+                      value={resContractorPhone}
+                      onChange={(e) => setResContractorPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+
                 <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                   <button type="button" className="btn-ghost" onClick={() => setResolvingRequest(null)}>
                     Đóng
@@ -545,7 +672,13 @@ export default function MaintenancePage() {
                     disabled={submittingResolve}
                     onClick={async () => {
                       setSubmittingResolve(true);
-                      await handleUpdateStatus(resolvingRequest.id, "resolved", resNotes);
+                      await handleUpdateStatus(resolvingRequest.id, "resolved", {
+                        notes: resNotes,
+                        cost: resCost ? Number(resCost) : undefined,
+                        payer: resPayer,
+                        contractorName: resContractorName,
+                        contractorPhone: resContractorPhone,
+                      });
                       setSubmittingResolve(false);
                     }}
                   >

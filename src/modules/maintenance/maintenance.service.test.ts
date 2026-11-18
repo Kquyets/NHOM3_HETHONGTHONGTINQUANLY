@@ -21,6 +21,11 @@ vi.mock("../../lib/database/schema", () => ({
     priority: "priority",
     description: "description",
     status: "status",
+    cost: "cost",
+    payer: "payer",
+    contractorName: "contractorName",
+    contractorPhone: "contractorPhone",
+    photoUrl: "photoUrl",
     resolutionNotes: "resolutionNotes",
     resolvedAt: "resolvedAt",
     createdAt: "createdAt",
@@ -170,5 +175,32 @@ describe("maintenance.service", () => {
 
     expect(res.status).toBe("resolved");
     expect(res.resolutionNotes).toBe("Đã thay vòi mới");
+  });
+
+  it("updates maintenance request with contractor cost and payer", async () => {
+    mockDb.select.mockReturnValueOnce(
+      chain([{ id: "req-1", propertyId: "p-1", ownerId: "u-owner" }]),
+    );
+    mockDb.update.mockReturnValueOnce(chain([]));
+    const updatedMock = {
+      ...mockRequest,
+      status: "resolved" as const,
+      cost: 250000,
+      payer: "owner",
+      contractorName: "Thợ điện nước Hùng",
+      contractorPhone: "0912345678",
+    };
+    mockDb.select.mockReturnValueOnce(chain([updatedMock]));
+
+    const res = await updateMaintenanceStatus("u-owner", "owner", "req-1", {
+      status: "resolved",
+      cost: 250000,
+      payer: "owner",
+      contractorName: "Thợ điện nước Hùng",
+      contractorPhone: "0912345678",
+    });
+
+    expect(res.cost).toBe(250000);
+    expect(res.contractorName).toBe("Thợ điện nước Hùng");
   });
 });

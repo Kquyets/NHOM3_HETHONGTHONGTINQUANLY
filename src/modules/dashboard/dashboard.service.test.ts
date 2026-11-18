@@ -28,6 +28,7 @@ vi.mock("../../lib/database/schema", () => ({
     status: "status",
     startDate: "startDate",
     endDate: "endDate",
+    depositSnapshot: "depositSnapshot",
   },
   contractTenants: { contractId: "contractId", tenantId: "tenantId" },
   tenants: { id: "id", fullName: "fullName" },
@@ -40,6 +41,12 @@ vi.mock("../../lib/database/schema", () => ({
     totalAmount: "totalAmount",
   },
   payments: { invoiceId: "invoiceId", amount: "amount" },
+  maintenanceRequests: {
+    propertyId: "propertyId",
+    cost: "cost",
+    payer: "payer",
+    status: "status",
+  },
   meterReadings: {
     propertyId: "propertyId",
     utilityType: "utilityType",
@@ -225,6 +232,11 @@ describe("Dashboard Service", () => {
       { invoiceId: "inv-2", amount: 3200000 },
     ];
 
+    // 5b. Maintenance requests
+    const mockMaintenance = [
+      { cost: 200000, payer: "owner", status: "resolved" },
+    ];
+
     // 6. Meter readings (Electricity: 150 kWh, Water: 12 m3)
     const mockMeterReadings = [
       {
@@ -249,6 +261,7 @@ describe("Dashboard Service", () => {
       .mockReturnValueOnce(chain(mockContractTenants))
       .mockReturnValueOnce(chain(mockInvoices))
       .mockReturnValueOnce(chain(mockPayments))
+      .mockReturnValueOnce(chain(mockMaintenance))
       .mockReturnValueOnce(chain(mockMeterReadings));
 
     const result = await getDashboardSummary({
@@ -275,6 +288,8 @@ describe("Dashboard Service", () => {
     expect(result.financials.totalDebt).toBe(2000000);
     expect(result.financials.unpaidInvoiceCount).toBe(1);
     expect(result.financials.collectionRate).toBe(70.1);
+    expect(result.financials.totalExpenses).toBe(200000);
+    expect(result.financials.netProfit).toBe(4500000);
 
     // 3. Expiring contracts:
     expect(result.expiringContracts.length).toBe(2);

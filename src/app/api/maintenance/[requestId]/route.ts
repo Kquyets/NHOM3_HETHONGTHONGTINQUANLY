@@ -19,6 +19,11 @@ export async function PATCH(
     const updated = await updateMaintenanceStatus(ctx.userId, ctx.role, requestId, {
       status: body.status as MaintenanceStatus,
       resolutionNotes: body.resolutionNotes,
+      cost: typeof body.cost === "number" ? body.cost : undefined,
+      payer: body.payer,
+      contractorName: body.contractorName,
+      contractorPhone: body.contractorPhone,
+      photoUrl: body.photoUrl,
     });
 
     return successResponse({ request: updated });

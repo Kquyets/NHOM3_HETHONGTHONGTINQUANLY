@@ -4,6 +4,7 @@ import {
   contracts,
   contractTenants,
   invoices,
+  maintenanceRequests,
   meterReadings,
   payments,
   properties,
@@ -37,6 +38,9 @@ export type FinancialStats = {
   totalDebt: number;
   unpaidInvoiceCount: number;
   collectionRate: number; // 0 - 100, 1 decimal place
+  totalExpenses: number;
+  totalDepositsHeld: number;
+  netProfit: number;
 };
 
 export type UtilityStats = {
@@ -151,6 +155,9 @@ export async function getDashboardSummary({
       totalDebt: 0,
       unpaidInvoiceCount: 0,
       collectionRate: 100,
+      totalExpenses: 0,
+      totalDepositsHeld: 0,
+      netProfit: 0,
     },
     utilities: {
       electricityKwh: 0,
@@ -208,6 +215,7 @@ export async function getDashboardSummary({
       status: contracts.status,
       startDate: contracts.startDate,
       endDate: contracts.endDate,
+      depositSnapshot: contracts.depositSnapshot,
     })
     .from(contracts)
     .innerJoin(rooms, eq(rooms.id, contracts.roomId))
@@ -318,6 +326,25 @@ export async function getDashboardSummary({
   }, 0);
   const collectionRate =
     totalBilled > 0 ? Number(((totalCollectedInPeriod / totalBilled) * 100).toFixed(1)) : 100;
+
+  // Deposits held on active contracts
+  const totalDepositsHeld = activeContracts.reduce((sum, c) => sum + (c.depositSnapshot ?? 0), 0);
+
+  // Operational & maintenance expenses where owner pays
+  const maintenanceRows = await db
+    .select({
+      cost: maintenanceRequests.cost,
+      payer: maintenanceRequests.payer,
+      status: maintenanceRequests.status,
+    })
+    .from(maintenanceRequests)
+    .where(inArray(maintenanceRequests.propertyId, targetPropertyIds));
+
+  const totalExpenses = maintenanceRows
+    .filter((m) => m.status === "resolved" && (m.payer === "owner" || !m.payer))
+    .reduce((sum, m) => sum + (m.cost ?? 0), 0);
+
+  const netProfit = totalCollectedInPeriod - totalExpenses;
 
   // 9. Outstanding Debt and Unpaid Invoices across all periods
   const activeUnpaidInvoices = allInvoices.filter(
@@ -440,6 +467,9 @@ export async function getDashboardSummary({
       totalDebt,
       unpaidInvoiceCount: unpaidItems.length,
       collectionRate,
+      totalExpenses,
+      totalDepositsHeld,
+      netProfit,
     },
     utilities: {
       electricityKwh: Math.round(electricityKwh * 10) / 10,
