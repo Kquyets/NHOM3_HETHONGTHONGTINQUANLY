@@ -158,6 +158,7 @@ export async function getDashboardSummary({
     },
     expiringContracts: [],
     unpaidInvoices: [],
+    revenueTrend: [],
   };
 
   if (accessibleProps.length === 0) {
