@@ -37,6 +37,13 @@ export type ContractRow = {
   status: ContractStatus;
   monthlyRentSnapshot: number;
   depositSnapshot: number;
+  paymentCycleMonths?: number;
+  handoverInventory?: string | null;
+  damageDeduction?: number | null;
+  utilityDeduction?: number | null;
+  depositRefundAmount?: number | null;
+  liquidationNotes?: string | null;
+  liquidatedAt?: Date | null;
   tenants: ContractTenantInfo[];
   landlordName?: string | null;
   landlordPhone?: string | null;
@@ -50,7 +57,15 @@ export type CreateContractInput = {
   endDate?: string | null;
   monthlyRentSnapshot: number;
   depositSnapshot: number;
+  paymentCycleMonths?: number;
+  handoverInventory?: string | null;
   tenantIds?: string[];
+};
+
+export type LiquidateContractInput = {
+  damageDeduction?: number;
+  utilityDeduction?: number;
+  liquidationNotes?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -74,6 +89,13 @@ const SELECT_COLUMNS = {
   status: contracts.status,
   monthlyRentSnapshot: contracts.monthlyRentSnapshot,
   depositSnapshot: contracts.depositSnapshot,
+  paymentCycleMonths: contracts.paymentCycleMonths,
+  handoverInventory: contracts.handoverInventory,
+  damageDeduction: contracts.damageDeduction,
+  utilityDeduction: contracts.utilityDeduction,
+  depositRefundAmount: contracts.depositRefundAmount,
+  liquidationNotes: contracts.liquidationNotes,
+  liquidatedAt: contracts.liquidatedAt,
   landlordName: users.fullName,
   landlordPhone: users.phone,
   createdAt: contracts.createdAt,
@@ -91,6 +113,13 @@ type ContractDbRow = {
   status: ContractStatus;
   monthlyRentSnapshot: number;
   depositSnapshot: number;
+  paymentCycleMonths: number;
+  handoverInventory: string | null;
+  damageDeduction: number | null;
+  utilityDeduction: number | null;
+  depositRefundAmount: number | null;
+  liquidationNotes: string | null;
+  liquidatedAt: Date | null;
   landlordName: string | null;
   landlordPhone: string | null;
   createdAt: Date;
@@ -258,6 +287,8 @@ export async function createContract(
       status: "draft",
       monthlyRentSnapshot: input.monthlyRentSnapshot,
       depositSnapshot: input.depositSnapshot,
+      paymentCycleMonths: input.paymentCycleMonths ?? 1,
+      handoverInventory: input.handoverInventory ?? null,
     })
     .returning({
       id: contracts.id,
@@ -267,6 +298,8 @@ export async function createContract(
       status: contracts.status,
       monthlyRentSnapshot: contracts.monthlyRentSnapshot,
       depositSnapshot: contracts.depositSnapshot,
+      paymentCycleMonths: contracts.paymentCycleMonths,
+      handoverInventory: contracts.handoverInventory,
       createdAt: contracts.createdAt,
       updatedAt: contracts.updatedAt,
     });
@@ -433,6 +466,59 @@ export async function updateContractStatus(
     ...existing,
     ...row,
     status: row.status as ContractStatus,
+  };
+}
+
+/**
+ * Liquidate contract: assess damages, deduct final utilities, compute final deposit refund, and transition to 'ended'.
+ */
+export async function liquidateContract(
+  userId: string,
+  role: string,
+  contractId: string,
+  input: LiquidateContractInput,
+): Promise<ContractRow> {
+  assertStaff(role);
+
+  const existing = await getContract(userId, role, contractId);
+  const damage = Math.max(0, input.damageDeduction || 0);
+  const utility = Math.max(0, input.utilityDeduction || 0);
+  const refundAmount = Math.max(0, existing.depositSnapshot - damage - utility);
+
+  const db = getDatabase();
+  const [row] = await db
+    .update(contracts)
+    .set({
+      status: "ended",
+      damageDeduction: damage,
+      utilityDeduction: utility,
+      depositRefundAmount: refundAmount,
+      liquidationNotes: input.liquidationNotes?.trim() || null,
+      liquidatedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(contracts.id, contractId))
+    .returning({
+      id: contracts.id,
+      status: contracts.status,
+      damageDeduction: contracts.damageDeduction,
+      utilityDeduction: contracts.utilityDeduction,
+      depositRefundAmount: contracts.depositRefundAmount,
+      liquidationNotes: contracts.liquidationNotes,
+      liquidatedAt: contracts.liquidatedAt,
+      updatedAt: contracts.updatedAt,
+    });
+
+  if (!row) throw new AppError("NOT_FOUND", "Không tìm thấy hợp đồng.", []);
+
+  return {
+    ...existing,
+    status: "ended",
+    damageDeduction: damage,
+    utilityDeduction: utility,
+    depositRefundAmount: refundAmount,
+    liquidationNotes: input.liquidationNotes?.trim() || null,
+    liquidatedAt: row.liquidatedAt,
   };
 }
 

@@ -26,7 +26,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       );
     }
 
-    const { roomId, startDate, endDate, monthlyRentSnapshot, depositSnapshot } =
+    const { roomId, startDate, endDate, monthlyRentSnapshot, depositSnapshot, paymentCycleMonths, handoverInventory } =
       body as Record<string, unknown>;
 
     if (typeof roomId !== "string") {
@@ -41,6 +41,8 @@ export async function POST(request: NextRequest): Promise<Response> {
       endDate: typeof endDate === "string" ? endDate : null,
       monthlyRentSnapshot: Number(monthlyRentSnapshot),
       depositSnapshot: Number(depositSnapshot),
+      paymentCycleMonths: paymentCycleMonths ? Number(paymentCycleMonths) : 1,
+      handoverInventory: typeof handoverInventory === "string" ? handoverInventory : null,
       tenantIds: Array.isArray(body.tenantIds) ? body.tenantIds.map(String) : undefined,
     });
 
