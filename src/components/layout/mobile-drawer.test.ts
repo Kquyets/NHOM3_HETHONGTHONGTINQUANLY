@@ -33,6 +33,7 @@ describe("MobileDrawer role-based menu items", () => {
     expect(labels).toContain("Hợp đồng");
     expect(labels).toContain("Điện & Nước");
     expect(labels).toContain("Hoá đơn");
+    expect(labels).toContain("Giao dịch");
     expect(labels).toContain("Sự cố & Sửa chữa");
     expect(labels).toContain("Nhân viên");
     expect(labels).toContain("Trợ lý AI");
@@ -49,6 +50,7 @@ describe("MobileDrawer role-based menu items", () => {
     expect(labels).toContain("Hợp đồng");
     expect(labels).toContain("Điện & Nước");
     expect(labels).toContain("Hoá đơn");
+    expect(labels).toContain("Giao dịch");
     expect(labels).toContain("Sự cố & Sửa chữa");
 
     // Managers cannot manage other staff members

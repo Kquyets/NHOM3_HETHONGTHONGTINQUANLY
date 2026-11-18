@@ -20,6 +20,7 @@ import {
   UserGear,
   List,
   ShieldCheck,
+  CreditCard,
 } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
@@ -34,6 +35,7 @@ const navItems = [
   { href: "/contracts",  label: "Hợp đồng",       Icon: FileText,  match: (p: string) => p.startsWith("/contracts") },
   { href: "/meters",     label: "Điện & Nước",    Icon: Lightning, match: (p: string) => p.startsWith("/meters") },
   { href: "/invoices",   label: "Hoá đơn",        Icon: Receipt,   match: (p: string) => p.startsWith("/invoices") },
+  { href: "/transactions",label: "Giao dịch",     Icon: CreditCard,match: (p: string) => p.startsWith("/transactions") },
   { href: "/maintenance",label: "Sự cố",          Icon: Wrench,    match: (p: string) => p.startsWith("/maintenance") },
   { href: "/staff",      label: "Nhân viên",      Icon: ShieldCheck,match: (p: string) => p.startsWith("/staff"), ownerOnly: true },
   { href: "/ai",         label: "Trợ lý AI",      Icon: Sparkle,   match: (p: string) => p.startsWith("/ai") },
