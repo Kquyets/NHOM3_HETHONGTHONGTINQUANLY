@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { hashPassword, verifyPassword } from "./password";
 import { hashRefreshToken, issueAccessToken, newRefreshToken, verifyAccessToken } from "./tokens";
+import { signAccessToken } from "./jwt";
 import { requireAuthenticatedUser } from "./session";
 
 describe("password credentials", () => {
@@ -59,5 +60,20 @@ describe("bearer tokens", () => {
     await expect(requireAuthenticatedUser(new Request("http://localhost/api/properties"))).rejects.toMatchObject({
       code: "UNAUTHORIZED",
     });
+  });
+
+  it("authenticates requests with jwt.ts signed access token", async () => {
+    process.env.JWT_SECRET = "0123456789abcdef0123456789abcdef";
+    const token = signAccessToken({
+      sub: user.id,
+      role: user.role,
+    });
+    const authUser = await requireAuthenticatedUser(
+      new Request("http://localhost/api/rooms/room-1", {
+        headers: { authorization: `Bearer ${token}` },
+      }),
+    );
+    expect(authUser.userId).toBe(user.id);
+    expect(authUser.role).toBe(user.role);
   });
 });
