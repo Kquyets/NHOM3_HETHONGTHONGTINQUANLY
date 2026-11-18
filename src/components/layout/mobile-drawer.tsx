@@ -54,10 +54,7 @@ export const OWNER_MANAGER_MENU_ITEMS: MenuItem[] = [
 ];
 
 export const TENANT_MENU_ITEMS: MenuItem[] = [
-  { href: "/", label: "Cổng thông tin phòng", Icon: House, match: (p: string) => p === "/" || p.startsWith("/dashboard") },
-  { href: "/#invoices", label: "Hóa đơn phòng", Icon: Receipt, match: () => false },
-  { href: "/#utilities", label: "Điện & Nước", Icon: Lightning, match: () => false },
-  { href: "/#maintenance", label: "Báo sự cố & Sửa chữa", Icon: Wrench, match: () => false },
+  { href: "/", label: "Cổng thông tin", Icon: House, match: (p: string) => p === "/" || p.startsWith("/dashboard") },
   { href: "/ai", label: "Trợ lý AI", Icon: Sparkle, match: (p: string) => p.startsWith("/ai"), isAi: true },
   { href: "/profile", label: "Cài đặt & Hồ sơ", Icon: Gear, match: (p: string) => p.startsWith("/profile") },
 ];

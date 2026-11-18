@@ -9,15 +9,15 @@ describe("MobileDrawer role-based menu items", () => {
   it("provides tailored menu items for tenant role", () => {
     const items = getDrawerMenuItems("tenant");
     expect(items).toEqual(TENANT_MENU_ITEMS);
+    expect(items).toHaveLength(3);
 
     const labels = items.map((i) => i.label);
-    expect(labels).toContain("Cổng thông tin phòng");
-    expect(labels).toContain("Hóa đơn phòng");
-    expect(labels).toContain("Báo sự cố & Sửa chữa");
-    expect(labels).toContain("Trợ lý AI");
-    expect(labels).toContain("Cài đặt & Hồ sơ");
+    expect(labels).toEqual(["Cổng thông tin", "Trợ lý AI", "Cài đặt & Hồ sơ"]);
 
-    // Must NOT contain landlord administration items
+    // Must NOT contain redundant section anchors or landlord administration items
+    expect(labels).not.toContain("Hóa đơn phòng");
+    expect(labels).not.toContain("Điện & Nước");
+    expect(labels).not.toContain("Báo sự cố & Sửa chữa");
     expect(labels).not.toContain("Nhà trọ & Phòng");
     expect(labels).not.toContain("Khách thuê");
     expect(labels).not.toContain("Nhân viên");

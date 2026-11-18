@@ -619,7 +619,7 @@ export function TenantPortalView() {
       {stay && (
         <div className="portal-cards-grid">
           {/* Room info card */}
-          <div className="card">
+          <div className="card" style={{ padding: "18px 20px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{ width: 36, height: 36, borderRadius: "var(--radius-md)", background: "rgba(37,99,235,0.1)", color: "var(--color-primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -679,7 +679,7 @@ export function TenantPortalView() {
           </div>
 
           {/* Profile & Temporary Residence Card */}
-          <div className="card">
+          <div className="card" style={{ padding: "18px 20px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{ width: 36, height: 36, borderRadius: "var(--radius-md)", background: "rgba(16,185,129,0.1)", color: "var(--color-success)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -740,7 +740,7 @@ export function TenantPortalView() {
           </div>
 
           {/* Landlord VietQR Bank Account info */}
-          <div className="card">
+          <div className="card" style={{ padding: "18px 20px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
               <div style={{ width: 36, height: 36, borderRadius: "var(--radius-md)", background: "rgba(245,158,11,0.1)", color: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Bank size={20} />
