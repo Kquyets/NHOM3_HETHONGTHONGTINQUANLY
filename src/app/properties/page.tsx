@@ -175,6 +175,7 @@ export default function PropertiesPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.replace("/login"); return; }
+    if (user.role === "tenant") { router.replace("/"); return; }
     void loadProperties();
   }, [user, authLoading, router, loadProperties]);
 

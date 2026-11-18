@@ -19,6 +19,7 @@ import {
   Wrench,
   UserGear,
   List,
+  ShieldCheck,
 } from "@phosphor-icons/react";
 
 import { useAuth } from "../../lib/auth-context";
@@ -34,6 +35,7 @@ const navItems = [
   { href: "/meters",     label: "Điện & Nước",    Icon: Lightning, match: (p: string) => p.startsWith("/meters") },
   { href: "/invoices",   label: "Hoá đơn",        Icon: Receipt,   match: (p: string) => p.startsWith("/invoices") },
   { href: "/maintenance",label: "Sự cố",          Icon: Wrench,    match: (p: string) => p.startsWith("/maintenance") },
+  { href: "/staff",      label: "Nhân viên",      Icon: ShieldCheck,match: (p: string) => p.startsWith("/staff"), ownerOnly: true },
   { href: "/ai",         label: "Trợ lý AI",      Icon: Sparkle,   match: (p: string) => p.startsWith("/ai") },
 ];
 
@@ -110,7 +112,12 @@ export function AppHeader() {
         {/* Nav */}
         <nav aria-label="Điều hướng chính">
           <ul className="nav-links">
-            {(!user ? guestNavItems : user.role === "tenant" ? tenantNavItems : navItems).map(({ href, label, Icon, match }, i) => {
+            {(!user
+              ? guestNavItems
+              : user.role === "tenant"
+              ? tenantNavItems
+              : navItems.filter((item) => !item.ownerOnly || user.role === "owner")
+            ).map(({ href, label, Icon, match }, i) => {
               const isActive = match(pathname);
               return (
                 <motion.li

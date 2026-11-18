@@ -30,7 +30,16 @@ export type MobileDrawerProps = {
   onClose: () => void;
 };
 
-export const DRAWER_MENU_ITEMS = [
+export type MenuItem = {
+  href: string;
+  label: string;
+  Icon: React.ComponentType<any>;
+  match: (p: string) => boolean;
+  isAi?: boolean;
+  ownerOnly?: boolean;
+};
+
+export const OWNER_MANAGER_MENU_ITEMS: MenuItem[] = [
   { href: "/", label: "Dashboard", Icon: House, match: (p: string) => p === "/" || p.startsWith("/dashboard") },
   { href: "/properties", label: "Nhà trọ & Phòng", Icon: Buildings, match: (p: string) => p.startsWith("/properties") },
   { href: "/tenants", label: "Khách thuê", Icon: Users, match: (p: string) => p.startsWith("/tenants") },
@@ -38,9 +47,27 @@ export const DRAWER_MENU_ITEMS = [
   { href: "/meters", label: "Điện & Nước", Icon: Lightning, match: (p: string) => p.startsWith("/meters") },
   { href: "/invoices", label: "Hoá đơn", Icon: Receipt, match: (p: string) => p.startsWith("/invoices") },
   { href: "/maintenance", label: "Sự cố & Sửa chữa", Icon: Wrench, match: (p: string) => p.startsWith("/maintenance") },
+  { href: "/staff", label: "Nhân viên", Icon: ShieldCheck, match: (p: string) => p.startsWith("/staff"), ownerOnly: true },
   { href: "/ai", label: "Trợ lý AI", Icon: Sparkle, match: (p: string) => p.startsWith("/ai"), isAi: true },
   { href: "/profile", label: "Cài đặt & Hồ sơ", Icon: Gear, match: (p: string) => p.startsWith("/profile") },
 ];
+
+export const TENANT_MENU_ITEMS: MenuItem[] = [
+  { href: "/", label: "Cổng thông tin phòng", Icon: House, match: (p: string) => p === "/" || p.startsWith("/dashboard") },
+  { href: "/#invoices", label: "Hóa đơn phòng", Icon: Receipt, match: () => false },
+  { href: "/#utilities", label: "Điện & Nước", Icon: Lightning, match: () => false },
+  { href: "/#maintenance", label: "Báo sự cố & Sửa chữa", Icon: Wrench, match: () => false },
+  { href: "/ai", label: "Trợ lý AI", Icon: Sparkle, match: (p: string) => p.startsWith("/ai"), isAi: true },
+  { href: "/profile", label: "Cài đặt & Hồ sơ", Icon: Gear, match: (p: string) => p.startsWith("/profile") },
+];
+
+export const DRAWER_MENU_ITEMS = OWNER_MANAGER_MENU_ITEMS;
+
+export function getDrawerMenuItems(role?: string): MenuItem[] {
+  if (role === "tenant") return TENANT_MENU_ITEMS;
+  if (role === "manager") return OWNER_MANAGER_MENU_ITEMS.filter((item) => !item.ownerOnly);
+  return OWNER_MANAGER_MENU_ITEMS;
+}
 
 export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
   const pathname = usePathname();
@@ -182,7 +209,7 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
             {/* Menu List */}
             <nav style={{ flex: 1, overflowY: "auto", padding: "12px 8px" }}>
               <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-                {DRAWER_MENU_ITEMS.map((item) => {
+                {getDrawerMenuItems(user?.role).map((item) => {
                   const isActive = item.match(pathname);
                   const Icon = item.Icon;
                   return (
