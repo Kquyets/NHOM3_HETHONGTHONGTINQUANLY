@@ -307,6 +307,7 @@ p:last-child { margin-bottom: 0; }
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow-x: clip;
 }
 
 .main-container {
@@ -315,6 +316,8 @@ p:last-child { margin-bottom: 0; }
   padding: var(--space-4) var(--space-3) var(--space-8);
   width: 100%;
   flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 /* --------------------------------------------------------------------------
@@ -330,6 +333,7 @@ p:last-child { margin-bottom: 0; }
   top: 0;
   z-index: var(--z-sticky);
   transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
 }
 
 .header-container {
@@ -343,6 +347,16 @@ p:last-child { margin-bottom: 0; }
   gap: 14px;
   white-space: nowrap;
   flex-wrap: nowrap;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.header-nav {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
 }
 
 .brand {
@@ -617,6 +631,8 @@ p:last-child { margin-bottom: 0; }
   box-shadow: var(--shadow-glass);
   overflow: hidden;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .card:hover {
@@ -1204,28 +1220,48 @@ table.data-table tbody tr:last-child td {
   display: none !important;
 }
 
+@media (max-width: 1080px) {
+  .header-container {
+    gap: 8px;
+    padding: 0 var(--space-2);
+  }
+  .nav-item a {
+    padding: 5px 8px;
+    font-size: 12px;
+    gap: 4px;
+  }
+  .user-badge-email {
+    max-width: 80px;
+  }
+}
+
 @media (max-width: 860px) {
   .mobile-menu-trigger {
     display: flex !important;
   }
   .header-container {
-    height: auto;
-    min-height: 48px;
-    padding: 6px var(--space-2);
-    flex-wrap: wrap;
+    height: 52px;
+    min-height: 52px;
+    padding: 0 var(--space-2);
+    flex-wrap: nowrap;
     gap: 8px;
   }
+  .header-nav,
   .nav-links {
-    order: 3;
-    width: 100%;
-    padding: 2px 0 4px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    border-top: 1px solid var(--color-border-soft);
+    display: none !important;
   }
-  .nav-item a {
-    padding: 4px 8px;
-    font-size: 12.5px;
+  .user-badge {
+    padding: 2px 6px;
+    font-size: 11px;
+  }
+  .user-badge-email {
+    display: none;
+  }
+  .btn-logout span {
+    display: none;
+  }
+  .btn-logout {
+    padding: 6px;
   }
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -1241,6 +1277,79 @@ table.data-table tbody tr:last-child td {
   }
   .role-selector {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 360px) {
+  .header-container {
+    gap: 4px;
+    padding: 0 4px;
+  }
+  .brand span {
+    display: none;
+  }
+  .user-badge {
+    display: none;
+  }
+  .user-controls {
+    gap: 4px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Tenant Portal Responsive & Card Readability
+   -------------------------------------------------------------------------- */
+.portal-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  min-width: 0;
+}
+@media (max-width: 1024px) {
+  .portal-cards-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+}
+@media (max-width: 768px) {
+  .portal-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.portal-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 7px;
+  min-width: 0;
+}
+.portal-info-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.portal-info-label {
+  color: var(--color-fg-3);
+  font-size: var(--text-xs);
+  flex-shrink: 0;
+}
+.portal-info-value {
+  font-size: var(--text-xs);
+  text-align: right;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+@media (max-width: 480px) {
+  .portal-info-row {
+    flex-direction: column;
+    gap: 2px;
+    align-items: flex-start;
+  }
+  .portal-info-value {
+    text-align: left;
   }
 }
 

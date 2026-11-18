@@ -114,7 +114,7 @@ export function AppHeader() {
         </div>
 
         {/* Nav */}
-        <nav aria-label="Điều hướng chính">
+        <nav className="header-nav" aria-label="Điều hướng chính">
           <ul className="nav-links">
             {(!user
               ? guestNavItems

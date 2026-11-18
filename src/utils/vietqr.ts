@@ -98,10 +98,58 @@ export function buildVietQrUrl({
 
 /**
  * Returns bank information by code or shortName.
+ * Handles variations, case-insensitivity, and common aliases like "MB", "MBBank", "MB BANK".
  */
-export function getBankInfo(bankCodeOrName: string): BankInfo | undefined {
-  const upper = bankCodeOrName.trim().toUpperCase();
-  return VIETNAMESE_BANKS.find(
-    (b) => b.code.toUpperCase() === upper || b.shortName.toUpperCase() === upper,
-  );
+export function getBankInfo(bankCodeOrName?: string | null): BankInfo | undefined {
+  if (!bankCodeOrName) return undefined;
+  const raw = bankCodeOrName.trim();
+  if (!raw || raw.toLowerCase() === "undefined" || raw.toLowerCase() === "null") return undefined;
+
+  const normalized = raw.toUpperCase().replace(/[\s-_]/g, "");
+
+  return VIETNAMESE_BANKS.find((b) => {
+    const bCode = b.code.toUpperCase().replace(/[\s-_]/g, "");
+    const bShort = b.shortName.toUpperCase().replace(/[\s-_]/g, "");
+    return (
+      bCode === normalized ||
+      bShort === normalized ||
+      b.bin === normalized ||
+      (normalized === "MB" && b.code === "MB") ||
+      (normalized === "MBBANK" && b.code === "MB")
+    );
+  });
+}
+
+/**
+ * Returns a friendly, safe display name for a bank.
+ * Avoids outputting "undefined" or raw nulls to the user interface.
+ */
+export function formatBankDisplayName(
+  bankCode?: string | null,
+  fallback = "MB Bank (Ngân hàng TMCP Quân Đội)",
+): string {
+  if (!bankCode) return fallback;
+  const trimmed = bankCode.trim();
+  if (!trimmed || trimmed.toLowerCase() === "undefined" || trimmed.toLowerCase() === "null") {
+    return fallback;
+  }
+
+  const info = getBankInfo(trimmed);
+  if (info) {
+    return `${info.shortName} (${info.name})`;
+  }
+
+  // Common fallbacks by partial keyword
+  const upper = trimmed.toUpperCase();
+  if (upper.includes("MB")) {
+    return "MBBank (Ngân hàng TMCP Quân Đội)";
+  }
+  if (upper.includes("VIETCOM") || upper.includes("VCB")) {
+    return "Vietcombank (Ngân hàng TMCP Ngoại Thương VN)";
+  }
+  if (upper.includes("TECHCOM") || upper.includes("TCB")) {
+    return "Techcombank (Ngân hàng TMCP Kỹ Thương VN)";
+  }
+
+  return trimmed;
 }

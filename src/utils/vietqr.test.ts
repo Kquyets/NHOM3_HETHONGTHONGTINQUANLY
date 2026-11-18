@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildVietQrUrl,
+  formatBankDisplayName,
   getBankInfo,
   removeVietnameseTones,
   VIETNAMESE_BANKS,
@@ -57,6 +58,22 @@ describe("VietQR Utility", () => {
 
     const unknown = getBankInfo("UNKNOWN_BANK");
     expect(unknown).toBeUndefined();
+
+    // Check robust handling of variations, nulls, and undefined
+    expect(getBankInfo("mbbank")?.code).toBe("MB");
+    expect(getBankInfo("MB Bank")?.code).toBe("MB");
+    expect(getBankInfo(undefined)).toBeUndefined();
+    expect(getBankInfo("undefined")).toBeUndefined();
+    expect(getBankInfo("")).toBeUndefined();
+  });
+
+  it("formats friendly bank display name avoiding undefined string outputs", () => {
+    expect(formatBankDisplayName("MB")).toContain("MBBank");
+    expect(formatBankDisplayName("mbbank")).toContain("MBBank");
+    expect(formatBankDisplayName("undefined")).toBe("MB Bank (Ngân hàng TMCP Quân Đội)");
+    expect(formatBankDisplayName(undefined)).toBe("MB Bank (Ngân hàng TMCP Quân Đội)");
+    expect(formatBankDisplayName(null)).toBe("MB Bank (Ngân hàng TMCP Quân Đội)");
+    expect(formatBankDisplayName("VCB")).toContain("Vietcombank");
   });
 
   it("exports a non-empty list of recognized Vietnamese banks", () => {

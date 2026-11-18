@@ -35,7 +35,7 @@ import {
 
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
-import { buildVietQrUrl, getBankInfo } from "../../utils/vietqr";
+import { buildVietQrUrl, getBankInfo, formatBankDisplayName } from "../../utils/vietqr";
 import { PrintableInvoiceModal } from "../invoices/printable-invoice-modal";
 import { PrintableContractModal } from "../contracts/printable-contract-modal";
 import type { InvoiceDetail, InvoiceStatus } from "../../modules/invoices/invoice.service";
@@ -617,7 +617,7 @@ export function TenantPortalView() {
 
       {/* Stay Details Grid */}
       {stay && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "var(--space-3)", marginBottom: "var(--space-3)" }}>
+        <div className="portal-cards-grid">
           {/* Room info card */}
           <div className="card">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
@@ -636,7 +636,7 @@ export function TenantPortalView() {
                   ) : stay.contractStatus === "expired" ? (
                     <span className="badge maintenance" style={{ fontSize: "10px" }}>Đã hết hạn</span>
                   ) : (
-                    <span className="badge" style={{ fontSize: "10px" }}>{stay.contractStatus}</span>
+                    <span className="badge" style={{ fontSize: "10px" }}>{stay.contractStatus || "Chưa kích hoạt"}</span>
                   )}
                 </div>
               </div>
@@ -655,25 +655,25 @@ export function TenantPortalView() {
             </div>
 
             <div style={{ display: "grid", gap: 8, fontSize: "var(--text-xs)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                <span className="text-muted">Nhà trọ:</span>
-                <strong>{stay.propertyName}</strong>
+              <div className="portal-info-row">
+                <span className="portal-info-label">Nhà trọ:</span>
+                <strong className="portal-info-value">{stay.propertyName}</strong>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                <span className="text-muted">Phòng số:</span>
-                <strong style={{ color: "var(--color-primary)", fontSize: "var(--text-sm)" }}>Phòng {stay.roomNumber}</strong>
+              <div className="portal-info-row">
+                <span className="portal-info-label">Phòng số:</span>
+                <strong className="portal-info-value" style={{ color: "var(--color-primary)", fontSize: "var(--text-sm)" }}>Phòng {stay.roomNumber}</strong>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                <span className="text-muted">Địa chỉ:</span>
-                <span>{stay.propertyAddress || "—"}</span>
+              <div className="portal-info-row">
+                <span className="portal-info-label">Địa chỉ:</span>
+                <span className="portal-info-value">{stay.propertyAddress || "—"}</span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                <span className="text-muted">Tiền phòng/tháng:</span>
-                <strong style={{ fontFamily: "var(--font-mono)" }}>{money.format(stay.monthlyRent)}</strong>
+              <div className="portal-info-row">
+                <span className="portal-info-label">Tiền phòng/tháng:</span>
+                <strong className="portal-info-value" style={{ fontFamily: "var(--font-mono)" }}>{money.format(stay.monthlyRent)}</strong>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span className="text-muted">Tiền cọc giữ chỗ:</span>
-                <strong style={{ fontFamily: "var(--font-mono)" }}>{money.format(stay.deposit)}</strong>
+              <div className="portal-info-row">
+                <span className="portal-info-label">Tiền cọc giữ chỗ:</span>
+                <strong className="portal-info-value" style={{ fontFamily: "var(--font-mono)" }}>{money.format(stay.deposit)}</strong>
               </div>
             </div>
           </div>
@@ -704,33 +704,33 @@ export function TenantPortalView() {
             </div>
 
             <div style={{ display: "grid", gap: 8, fontSize: "var(--text-xs)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                <span className="text-muted">Họ và tên:</span>
-                <strong>{tenant?.fullName}</strong>
+              <div className="portal-info-row">
+                <span className="portal-info-label">Họ và tên:</span>
+                <strong className="portal-info-value">{tenant?.fullName}</strong>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                <span className="text-muted">Số điện thoại:</span>
-                <strong>{tenant?.phone || "Chưa cập nhật"}</strong>
+              <div className="portal-info-row">
+                <span className="portal-info-label">Số điện thoại:</span>
+                <strong className="portal-info-value">{tenant?.phone || "Chưa cập nhật"}</strong>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                <span className="text-muted">Ngày sinh:</span>
-                <span>{tenant?.birthDate ? formatDateVN(tenant.birthDate) : "Chưa cập nhật"}</span>
+              <div className="portal-info-row">
+                <span className="portal-info-label">Ngày sinh:</span>
+                <span className="portal-info-value">{tenant?.birthDate ? formatDateVN(tenant.birthDate) : "Chưa cập nhật"}</span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                <span className="text-muted">Số CCCD:</span>
-                <strong>{tenant?.citizenId || "Chưa cập nhật"}</strong>
+              <div className="portal-info-row">
+                <span className="portal-info-label">Số CCCD:</span>
+                <strong className="portal-info-value">{tenant?.citizenId || "Chưa cập nhật"}</strong>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                <span className="text-muted">Biển số xe gửi:</span>
-                <strong>{tenant?.vehicleNumber || "Chưa đăng ký"}</strong>
+              <div className="portal-info-row">
+                <span className="portal-info-label">Biển số xe gửi:</span>
+                <strong className="portal-info-value">{tenant?.vehicleNumber || "Chưa đăng ký"}</strong>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                <span className="text-muted">Quê quán:</span>
-                <span>{tenant?.hometown || "Chưa cập nhật"}</span>
+              <div className="portal-info-row">
+                <span className="portal-info-label">Quê quán:</span>
+                <span className="portal-info-value">{tenant?.hometown || "Chưa cập nhật"}</span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span className="text-muted">LH khẩn cấp:</span>
-                <span>
+              <div className="portal-info-row">
+                <span className="portal-info-label">LH khẩn cấp:</span>
+                <span className="portal-info-value">
                   {tenant?.emergencyContactName
                     ? `${tenant.emergencyContactName} (${tenant.emergencyContactPhone || ""})`
                     : "Chưa cập nhật"}
@@ -755,15 +755,14 @@ export function TenantPortalView() {
 
             {stay.bankCode && stay.bankAccount ? (
               <div style={{ display: "grid", gap: 8, fontSize: "var(--text-xs)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                  <span className="text-muted">Ngân hàng:</span>
-                  <strong>{(() => {
-                    const info = getBankInfo(stay.bankCode!);
-                    return info ? `${info.shortName} (${info.code})` : stay.bankCode;
-                  })()}</strong>
+                <div className="portal-info-row">
+                  <span className="portal-info-label">Ngân hàng:</span>
+                  <strong className="portal-info-value">
+                    {formatBankDisplayName(stay.bankCode)}
+                  </strong>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                  <span className="text-muted">Số tài khoản:</span>
+                <div className="portal-info-row">
+                  <span className="portal-info-label">Số tài khoản:</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <strong style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)" }}>{stay.bankAccount}</strong>
                     <button
@@ -777,14 +776,14 @@ export function TenantPortalView() {
                     </button>
                   </div>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span className="text-muted">Chủ tài khoản:</span>
-                  <strong style={{ textTransform: "uppercase" }}>{stay.accountHolder || "Chủ nhà"}</strong>
+                <div className="portal-info-row">
+                  <span className="portal-info-label">Chủ tài khoản:</span>
+                  <strong className="portal-info-value" style={{ textTransform: "uppercase" }}>{stay.accountHolder || "Chủ nhà"}</strong>
                 </div>
               </div>
             ) : (
-              <p className="text-muted" style={{ fontSize: "var(--text-xs)", margin: 0 }}>
-                Chủ nhà chưa cấu hình STK tự động. Vui lòng thanh toán trực tiếp hoặc theo hướng dẫn của chủ nhà.
+              <p className="text-muted" style={{ fontSize: "var(--text-xs)", margin: 0, lineHeight: 1.6 }}>
+                Chủ nhà chưa cấu hình STK tự động cho nhà trọ này. Vui lòng liên hệ trực tiếp với chủ nhà để nhận thông tin chuyển khoản hoặc thanh toán tiền mặt.
               </p>
             )}
           </div>
@@ -842,12 +841,22 @@ export function TenantPortalView() {
         </div>
 
         {invoices.length === 0 ? (
-          <div className="card" style={{ padding: "var(--space-3)", textAlign: "center" }}>
-            <p className="text-muted" style={{ margin: 0 }}>Chưa có hóa đơn nào được phát hành.</p>
+          <div className="card" style={{ padding: "var(--space-4) var(--space-3)", textAlign: "center" }}>
+            <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(37,99,235,0.08)", color: "var(--color-primary)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 10px" }}>
+              <Receipt size={22} />
+            </div>
+            <h3 style={{ fontSize: "var(--text-sm)", fontWeight: 700, margin: "0 0 6px" }}>
+              Chưa có hóa đơn nào được phát hành cho phòng này
+            </h3>
+            <p className="text-muted" style={{ margin: "0 auto", maxWidth: 480, fontSize: "var(--text-xs)", lineHeight: 1.6 }}>
+              Chủ nhà hoặc Quản lý sẽ lập và gửi hóa đơn tiền phòng & dịch vụ định kỳ hàng tháng (thường từ ngày 1 đến ngày 5). Sau khi phát hành, bạn có thể xem chi tiết từng khoản thu và quét mã VietQR để thanh toán trực tiếp tại đây.
+            </p>
           </div>
         ) : filteredInvoices.length === 0 ? (
           <div className="card" style={{ padding: "var(--space-3)", textAlign: "center" }}>
-            <p className="text-muted" style={{ margin: 0 }}>Không tìm thấy hóa đơn nào phù hợp với bộ lọc.</p>
+            <p className="text-muted" style={{ margin: 0, fontSize: "var(--text-xs)" }}>
+              Không tìm thấy hóa đơn nào khớp với từ khóa &quot;{invSearch}&quot; hoặc bộ lọc đã chọn.
+            </p>
           </div>
         ) : (
           <div className="card" style={{ padding: 0 }}>
@@ -970,8 +979,16 @@ export function TenantPortalView() {
         </div>
 
         {meters.length === 0 ? (
-          <div className="card" style={{ padding: "var(--space-3)", textAlign: "center" }}>
-            <p className="text-muted" style={{ margin: 0 }}>Chưa có dữ liệu chốt số điện nước.</p>
+          <div className="card" style={{ padding: "var(--space-4) var(--space-3)", textAlign: "center" }}>
+            <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(234,179,8,0.08)", color: "#eab308", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 10px" }}>
+              <Lightning size={22} />
+            </div>
+            <h3 style={{ fontSize: "var(--text-sm)", fontWeight: 700, margin: "0 0 6px" }}>
+              Chưa có dữ liệu chốt số điện & nước
+            </h3>
+            <p className="text-muted" style={{ margin: "0 auto", maxWidth: 480, fontSize: "var(--text-xs)", lineHeight: 1.6 }}>
+              Ban quản lý sẽ chốt chỉ số công tơ điện nước định kỳ vào cuối mỗi tháng để tính số lượng tiêu thụ (kWh/m³). Dữ liệu đối chiếu kèm tiền ước tính sẽ hiển thị tại đây ngay khi có số liệu mới.
+            </p>
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
@@ -1053,8 +1070,16 @@ export function TenantPortalView() {
         </div>
 
         {maintenanceRequests.length === 0 ? (
-          <div className="card" style={{ padding: "var(--space-3)", textAlign: "center" }}>
-            <p className="text-muted" style={{ margin: 0 }}>Chưa có yêu cầu sửa chữa nào. Nhấn "Tạo yêu cầu" nếu phòng gặp sự cố.</p>
+          <div className="card" style={{ padding: "var(--space-4) var(--space-3)", textAlign: "center" }}>
+            <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(37,99,235,0.08)", color: "var(--color-primary)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 10px" }}>
+              <Wrench size={22} />
+            </div>
+            <h3 style={{ fontSize: "var(--text-sm)", fontWeight: 700, margin: "0 0 6px" }}>
+              Chưa có yêu cầu sửa chữa nào
+            </h3>
+            <p className="text-muted" style={{ margin: "0 auto", maxWidth: 480, fontSize: "var(--text-xs)", lineHeight: 1.6 }}>
+              Nếu phòng trọ xảy ra sự cố kỹ thuật (điện, nước, bóng đèn hỏng, thiết bị hư hỏng...), bạn hãy nhấn nút <strong>&quot;Tạo yêu cầu&quot;</strong> bên trên để gửi thông báo đến Ban quản lý hỗ trợ xử lý kịp thời.
+            </p>
           </div>
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
@@ -1281,7 +1306,7 @@ export function TenantPortalView() {
                         <div>
                           <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>Ngân hàng</div>
                           <div style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>
-                            {bankInfo ? `${bankInfo.shortName} (${bankInfo.code})` : qrInvoice.bankCode}
+                            {formatBankDisplayName(qrInvoice.bankCode)}
                           </div>
                         </div>
                       </div>
