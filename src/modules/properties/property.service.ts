@@ -441,3 +441,77 @@ export async function removePropertyMember(
     );
 }
 
+export type StaffMemberSummary = {
+  userId: string;
+  fullName: string | null;
+  email: string;
+  phone: string | null;
+  assignments: Array<{
+    memberId: string;
+    propertyId: string;
+    propertyName: string;
+    status: string;
+    createdAt: Date;
+  }>;
+};
+
+/**
+ * List all staff members managing any property owned by this owner.
+ */
+export async function listAllStaffForOwner(
+  ownerId: string,
+  role: string,
+): Promise<StaffMemberSummary[]> {
+  if (role !== "owner") {
+    throw new AppError("FORBIDDEN", "Only owners can view global staff.", []);
+  }
+
+  const db = getDatabase();
+  const rows = await db
+    .select({
+      memberId: propertyMembers.id,
+      propertyId: propertyMembers.propertyId,
+      propertyName: properties.name,
+      status: propertyMembers.status,
+      createdAt: propertyMembers.createdAt,
+      userId: users.id,
+      email: users.email,
+      fullName: users.fullName,
+      phone: users.phone,
+    })
+    .from(propertyMembers)
+    .innerJoin(properties, eq(properties.id, propertyMembers.propertyId))
+    .innerJoin(users, eq(users.id, propertyMembers.userId))
+    .where(
+      and(
+        eq(properties.ownerId, ownerId),
+        eq(propertyMembers.status, "active"),
+      ),
+    );
+
+  const userMap = new Map<string, StaffMemberSummary>();
+  for (const r of rows) {
+    let staff = userMap.get(r.userId);
+    if (!staff) {
+      staff = {
+        userId: r.userId,
+        fullName: r.fullName,
+        email: r.email,
+        phone: r.phone,
+        assignments: [],
+      };
+      userMap.set(r.userId, staff);
+    }
+    staff.assignments.push({
+      memberId: r.memberId,
+      propertyId: r.propertyId,
+      propertyName: r.propertyName,
+      status: r.status,
+      createdAt: r.createdAt,
+    });
+  }
+
+  return Array.from(userMap.values());
+}
+
+

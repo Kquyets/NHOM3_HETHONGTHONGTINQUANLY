@@ -68,6 +68,7 @@ import {
   listPropertyMembers,
   addPropertyMember,
   removePropertyMember,
+  listAllStaffForOwner,
 } from "./property.service";
 
 const OWNER = { userId: "owner-1", role: "owner" as const };
@@ -231,5 +232,46 @@ describe("property members management", () => {
     await expect(
       removePropertyMember(OWNER.userId, OWNER.role, PROP_ID, "member-1"),
     ).resolves.toBeUndefined();
+  });
+
+  it("lists all staff members across owner properties grouped by user", async () => {
+    mockDb.select.mockReturnValueOnce(
+      chain([
+        {
+          memberId: "m-1",
+          propertyId: "p-1",
+          propertyName: "Nhà trọ A",
+          status: "active",
+          createdAt: new Date(),
+          userId: "user-1",
+          email: "staff1@test.com",
+          fullName: "Nguyễn Văn Staff",
+          phone: "0901234567",
+        },
+        {
+          memberId: "m-2",
+          propertyId: "p-2",
+          propertyName: "Nhà trọ B",
+          status: "active",
+          createdAt: new Date(),
+          userId: "user-1",
+          email: "staff1@test.com",
+          fullName: "Nguyễn Văn Staff",
+          phone: "0901234567",
+        },
+      ]),
+    );
+
+    const staffList = await listAllStaffForOwner(OWNER.userId, OWNER.role);
+    expect(staffList).toHaveLength(1);
+    expect(staffList[0].userId).toBe("user-1");
+    expect(staffList[0].assignments).toHaveLength(2);
+    expect(staffList[0].assignments[0].propertyName).toBe("Nhà trọ A");
+  });
+
+  it("rejects non-owner from listing global staff", async () => {
+    await expect(
+      listAllStaffForOwner(MANAGER.userId, MANAGER.role),
+    ).rejects.toThrow("Only owners can view global staff.");
   });
 });
