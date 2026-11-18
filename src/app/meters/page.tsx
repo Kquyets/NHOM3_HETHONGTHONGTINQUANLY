@@ -19,6 +19,7 @@ import {
 import { AppHeader } from "../../components/layout/app-header";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
+import { exportTableToCsv } from "../../utils/export-csv";
 import type { MeterReadingRow, UtilityRateRow, UtilityType } from "../../modules/meters/meter.service";
 
 const money = new Intl.NumberFormat("vi-VN", {
@@ -225,7 +226,7 @@ export default function MetersPage() {
       return [
         r.id,
         `P${r.roomNumber}`,
-        `"${r.propertyName.replace(/"/g, '""')}"`,
+        r.propertyName,
         r.utilityType === "electricity" ? "Điện" : "Nước",
         r.billingPeriod,
         r.previousValue,
@@ -237,15 +238,11 @@ export default function MetersPage() {
       ];
     });
 
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Chi_so_dien_nuoc_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportTableToCsv(
+      `Chi_so_dien_nuoc_${new Date().toISOString().slice(0, 10)}`,
+      headers,
+      rows,
+    );
   };
 
   return (

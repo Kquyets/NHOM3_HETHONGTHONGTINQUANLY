@@ -30,6 +30,8 @@ import { AppHeader } from "../../components/layout/app-header";
 import { PrintableContractModal } from "../../components/contracts/printable-contract-modal";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
+import { exportTableToCsv } from "../../utils/export-csv";
+import { validateDateRange, validatePositiveNumber } from "../../utils/form-validation";
 import type { ContractRow, ContractStatus } from "../../modules/contracts/contract.service";
 import type { PropertyRow } from "../../modules/properties/property.service";
 import type { RoomRow } from "../../modules/rooms/room.service";
@@ -166,8 +168,26 @@ function CreateContractForm({
     );
   };
 
+  const [formError, setFormError] = useState<string | null>(null);
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    const dateErr = validateDateRange(startDate, endDate);
+    if (dateErr) {
+      setFormError(dateErr);
+      return;
+    }
+    const rentErr = validatePositiveNumber(monthlyRent, "Tiền thuê");
+    if (rentErr) {
+      setFormError(rentErr);
+      return;
+    }
+    const depositErr = validatePositiveNumber(deposit, "Tiền cọc");
+    if (depositErr) {
+      setFormError(depositErr);
+      return;
+    }
+    setFormError(null);
     onSubmit({
       roomId,
       startDate,
@@ -393,6 +413,13 @@ function CreateContractForm({
           </div>
         )}
       </div>
+
+      {formError && (
+        <div style={{ color: "var(--color-danger, #ef4444)", fontSize: 13, background: "rgba(239, 68, 68, 0.1)", padding: "8px 12px", borderRadius: 6, display: "flex", alignItems: "center", gap: 6 }}>
+          <WarningCircle size={15} />
+          {formError}
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
         <button type="button" className="btn-ghost" onClick={onCancel}>
@@ -701,8 +728,8 @@ export default function ContractsPage() {
     const rows = filtered.map((c) => [
       c.id,
       `P${c.roomNumber}`,
-      `"${c.propertyName.replace(/"/g, '""')}"`,
-      `"${(c.tenants?.[0]?.fullName || "").replace(/"/g, '""')}"`,
+      c.propertyName,
+      c.tenants?.[0]?.fullName || "",
       c.tenants?.[0]?.phone || "",
       c.startDate,
       c.endDate || "",
@@ -711,15 +738,11 @@ export default function ContractsPage() {
       STATUS_CONFIG[c.status].label,
     ]);
 
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Danh_sach_hop_dong_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportTableToCsv(
+      `Danh_sach_hop_dong_${new Date().toISOString().slice(0, 10)}`,
+      headers,
+      rows,
+    );
   };
 
   const filtered = contracts.filter((c) => {

@@ -21,6 +21,7 @@ import { AppHeader } from "../../components/layout/app-header";
 import { PropertyMembersModal } from "../../components/properties/property-members-modal";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
+import { validatePositiveNumber } from "../../utils/form-validation";
 import { VIETNAMESE_BANKS } from "../../utils/vietqr";
 import type { PropertyRow } from "../../modules/properties/property.service";
 import type { RoomRow } from "../../modules/rooms/room.service";
@@ -207,8 +208,23 @@ export default function PropertiesPage() {
   const handleCreateRoom = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedPropId || !roomNumber.trim() || !roomRent) return;
+
+    const rentErr = validatePositiveNumber(roomRent, "Tiền thuê phòng");
+    if (rentErr) {
+      setError(rentErr);
+      return;
+    }
+    if (roomArea) {
+      const areaErr = validatePositiveNumber(roomArea, "Diện tích phòng");
+      if (areaErr) {
+        setError(areaErr);
+        return;
+      }
+    }
+
     try {
       setSubmittingRoom(true);
+      setError(null);
       await apiClient(`/api/properties/${selectedPropId}/rooms`, {
         method: "POST",
         body: JSON.stringify({

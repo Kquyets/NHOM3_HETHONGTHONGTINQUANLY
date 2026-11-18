@@ -20,6 +20,8 @@ import {
 import { AppHeader } from "../../components/layout/app-header";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
+import { exportTableToCsv } from "../../utils/export-csv";
+import { validateVietnamesePhone } from "../../utils/form-validation";
 import type { TenantRow } from "../../modules/tenants/tenant.service";
 
 const fadeUp = {
@@ -88,9 +90,16 @@ function TenantForm({
   const [fullName, setFullName] = useState(initial?.fullName ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
   const [birthDate, setBirthDate] = useState(initial?.birthDate ?? "");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    const err = validateVietnamesePhone(phone);
+    if (err) {
+      setPhoneError(err);
+      return;
+    }
+    setPhoneError(null);
     onSubmit({ fullName, phone, birthDate });
   };
 
@@ -132,9 +141,17 @@ function TenantForm({
               style={{ paddingLeft: 34 }}
               placeholder="VD: 0901 234 567"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => {
+                setPhone(e.target.value);
+                if (phoneError) setPhoneError(null);
+              }}
             />
           </div>
+          {phoneError && (
+            <div style={{ color: "var(--color-danger, #ef4444)", fontSize: 12, marginTop: 4 }}>
+              {phoneError}
+            </div>
+          )}
         </div>
 
         {/* Ngày sinh */}
@@ -302,21 +319,17 @@ export default function TenantsPage() {
     ];
     const rows = filtered.map((t) => [
       t.id,
-      `"${t.fullName.replace(/"/g, '""')}"`,
+      t.fullName,
       t.phone || "",
       formatDate(t.birthDate),
       t.createdAt ? new Date(t.createdAt).toLocaleDateString("vi-VN") : "",
     ]);
 
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Danh_sach_khach_thue_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportTableToCsv(
+      `Danh_sach_khach_thue_${new Date().toISOString().slice(0, 10)}`,
+      headers,
+      rows,
+    );
   };
 
   return (

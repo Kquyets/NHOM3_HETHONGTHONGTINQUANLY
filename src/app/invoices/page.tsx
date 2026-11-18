@@ -29,6 +29,7 @@ import { AppHeader } from "../../components/layout/app-header";
 import { PrintableInvoiceModal } from "../../components/invoices/printable-invoice-modal";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
+import { exportTableToCsv } from "../../utils/export-csv";
 import { buildVietQrUrl, getBankInfo } from "../../utils/vietqr";
 import type {
   InvoiceDetail,
@@ -280,7 +281,7 @@ export default function InvoicesPage() {
       return [
         inv.id,
         `P${inv.roomNumber}`,
-        `"${inv.propertyName.replace(/"/g, '""')}"`,
+        inv.propertyName,
         inv.billingPeriodStart,
         inv.dueDate || "",
         inv.totalAmount,
@@ -290,15 +291,11 @@ export default function InvoicesPage() {
       ];
     });
 
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Danh_sach_hoa_don_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportTableToCsv(
+      `Danh_sach_hoa_don_${new Date().toISOString().slice(0, 10)}`,
+      headers,
+      rows,
+    );
   };
 
   return (
