@@ -18,6 +18,8 @@ import {
   MapPin,
   Image as ImageIcon,
   FirstAid,
+  Buildings,
+  Door,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
@@ -26,6 +28,7 @@ import { useAuth } from "../../lib/auth-context";
 import { exportTableToCsv } from "../../utils/export-csv";
 import { validateVietnamesePhone } from "../../utils/form-validation";
 import type { TenantRow } from "../../modules/tenants/tenant.service";
+import type { ContractRow } from "../../modules/contracts/contract.service";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -355,6 +358,9 @@ export default function TenantsPage() {
   const router = useRouter();
 
   const [tenants, setTenants] = useState<TenantRow[]>([]);
+  const [contracts, setContracts] = useState<ContractRow[]>([]);
+  const [propertyFilter, setPropertyFilter] = useState<string>("all");
+  const [occupancyFilter, setOccupancyFilter] = useState<"all" | "active" | "unassigned">("all");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -370,8 +376,12 @@ export default function TenantsPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await apiClient<{ tenants: TenantRow[] }>("/api/tenants");
+      const [res, contractRes] = await Promise.all([
+        apiClient<{ tenants: TenantRow[] }>("/api/tenants"),
+        apiClient<{ contracts: ContractRow[] }>("/api/contracts").catch(() => ({ contracts: [] })),
+      ]);
       setTenants(res.tenants);
+      setContracts(contractRes.contracts || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không thể tải danh sách khách thuê.");
     } finally {
@@ -463,11 +473,45 @@ export default function TenantsPage() {
     );
   }
 
-  const filtered = tenants.filter(
-    (t) =>
-      t.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      (t.phone ?? "").includes(search),
+  const getTenantContract = useCallback(
+    (tenant: TenantRow) => {
+      return contracts.find(
+        (c) =>
+          c.status === "active" &&
+          c.tenants.some(
+            (t) =>
+              t.id === tenant.id ||
+              (t.phone && tenant.phone && t.phone === tenant.phone) ||
+              t.fullName.toLowerCase() === tenant.fullName.toLowerCase(),
+          ),
+      );
+    },
+    [contracts],
   );
+
+  const uniqueProperties = Array.from(
+    new Set(contracts.filter((c) => Boolean(c.propertyName)).map((c) => c.propertyName)),
+  );
+
+  const activeTenantsCount = tenants.filter((t) => Boolean(getTenantContract(t))).length;
+  const unassignedTenantsCount = tenants.length - activeTenantsCount;
+
+  const filtered = tenants.filter((t) => {
+    const matchesSearch =
+      t.fullName.toLowerCase().includes(search.toLowerCase()) ||
+      (t.phone ?? "").includes(search) ||
+      (t.hometown ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (t.vehicleNumber ?? "").toLowerCase().includes(search.toLowerCase());
+    if (!matchesSearch) return false;
+
+    const contract = getTenantContract(t);
+    if (propertyFilter !== "all" && contract?.propertyName !== propertyFilter) return false;
+
+    if (occupancyFilter === "active" && !contract) return false;
+    if (occupancyFilter === "unassigned" && contract) return false;
+
+    return true;
+  });
 
   const formatDate = (d: string | null) => {
     if (!d) return "—";
@@ -481,6 +525,9 @@ export default function TenantsPage() {
       "Mã Khách Thuê",
       "Họ và Tên",
       "Số điện thoại",
+      "Nhà trọ",
+      "Số phòng",
+      "Trạng thái thuê",
       "Ngày sinh",
       "Thường trú (Khai báo tạm trú)",
       "Biển số phương tiện",
@@ -488,17 +535,23 @@ export default function TenantsPage() {
       "SĐT khẩn cấp",
       "Ngày tạo hồ sơ",
     ];
-    const rows = filtered.map((t) => [
-      t.id,
-      t.fullName,
-      t.phone || "",
-      formatDate(t.birthDate),
-      t.hometown || "",
-      t.vehicleNumber || "",
-      t.emergencyContactName || "",
-      t.emergencyContactPhone || "",
-      t.createdAt ? new Date(t.createdAt).toLocaleDateString("vi-VN") : "",
-    ]);
+    const rows = filtered.map((t) => {
+      const contract = getTenantContract(t);
+      return [
+        t.id,
+        t.fullName,
+        t.phone || "",
+        contract?.propertyName || "—",
+        contract ? `Phòng ${contract.roomNumber}` : "—",
+        contract ? "Đang thuê" : "Chưa gán",
+        formatDate(t.birthDate),
+        t.hometown || "",
+        t.vehicleNumber || "",
+        t.emergencyContactName || "",
+        t.emergencyContactPhone || "",
+        t.createdAt ? new Date(t.createdAt).toLocaleDateString("vi-VN") : "",
+      ];
+    });
 
     exportTableToCsv(
       `Danh_sach_khach_thue_${new Date().toISOString().slice(0, 10)}`,
@@ -598,27 +651,111 @@ export default function TenantsPage() {
           )}
         </AnimatePresence>
 
-        {/* Search */}
+        {/* Filter & Search Bar */}
         {tenants.length > 0 && (
-          <motion.div
-            style={{ position: "relative", marginBottom: "var(--space-2)" }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1 }}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+              backgroundColor: "var(--color-bg-panel, #ffffff)",
+              padding: "12px 16px",
+              borderRadius: "var(--radius-lg, 12px)",
+              border: "1px solid var(--color-border)",
+              marginBottom: "var(--space-2)",
+            }}
           >
-            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-fg-3)", display: "flex", pointerEvents: "none" }}>
-              <MagnifyingGlass size={15} />
-            </span>
-            <input
-              type="search"
-              className="form-control"
-              style={{ paddingLeft: 34, maxWidth: 360 }}
-              placeholder="Tìm theo tên hoặc số điện thoại..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Tìm kiếm khách thuê"
-            />
-          </motion.div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--color-fg-3)", display: "flex", pointerEvents: "none" }}>
+                  <MagnifyingGlass size={14} />
+                </span>
+                <input
+                  type="search"
+                  className="form-control"
+                  style={{ paddingLeft: 30, width: 230, height: 34, fontSize: "var(--text-xs)" }}
+                  placeholder="Tìm tên, SĐT, quê quán..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  aria-label="Tìm kiếm khách thuê"
+                />
+              </div>
+
+              {uniqueProperties.length > 0 && (
+                <select
+                  className="form-control"
+                  style={{ height: 34, fontSize: "var(--text-xs)", minWidth: 160 }}
+                  value={propertyFilter}
+                  onChange={(e) => setPropertyFilter(e.target.value)}
+                >
+                  <option value="all">🏢 Tất cả nhà trọ</option>
+                  {uniqueProperties.map((p) => (
+                    <option key={p} value={p}>
+                      🏠 {p}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {/* Status Segment */}
+              <div style={{ display: "inline-flex", padding: 2, backgroundColor: "var(--color-bg-subtle)", borderRadius: 6, border: "1px solid var(--color-border)" }}>
+                <button
+                  type="button"
+                  onClick={() => setOccupancyFilter("all")}
+                  style={{
+                    padding: "3px 10px",
+                    borderRadius: 4,
+                    fontSize: "11px",
+                    border: "none",
+                    backgroundColor: occupancyFilter === "all" ? "var(--color-primary)" : "transparent",
+                    color: occupancyFilter === "all" ? "#fff" : "var(--color-fg-2)",
+                    fontWeight: occupancyFilter === "all" ? 600 : 400,
+                    cursor: "pointer",
+                  }}
+                >
+                  Tất cả ({tenants.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOccupancyFilter("active")}
+                  style={{
+                    padding: "3px 10px",
+                    borderRadius: 4,
+                    fontSize: "11px",
+                    border: "none",
+                    backgroundColor: occupancyFilter === "active" ? "var(--color-primary)" : "transparent",
+                    color: occupancyFilter === "active" ? "#fff" : "var(--color-fg-2)",
+                    fontWeight: occupancyFilter === "active" ? 600 : 400,
+                    cursor: "pointer",
+                  }}
+                >
+                  🟢 Đang ở ({activeTenantsCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOccupancyFilter("unassigned")}
+                  style={{
+                    padding: "3px 10px",
+                    borderRadius: 4,
+                    fontSize: "11px",
+                    border: "none",
+                    backgroundColor: occupancyFilter === "unassigned" ? "var(--color-primary)" : "transparent",
+                    color: occupancyFilter === "unassigned" ? "#fff" : "var(--color-fg-2)",
+                    fontWeight: occupancyFilter === "unassigned" ? 600 : 400,
+                    cursor: "pointer",
+                  }}
+                >
+                  ⚪ Chưa gán ({unassignedTenantsCount})
+                </button>
+              </div>
+            </div>
+
+            <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)" }}>
+              Hiển thị: <strong>{filtered.length}</strong> khách
+            </div>
+          </div>
         )}
 
         {/* Content */}
@@ -688,6 +825,7 @@ export default function TenantsPage() {
                 <thead>
                   <tr>
                     <th>Khách thuê</th>
+                    <th>Phòng / Nhà trọ</th>
                     <th>Thường trú / Khai báo tạm trú</th>
                     <th>Biển số xe</th>
                     <th>Liên hệ khẩn cấp</th>
@@ -727,6 +865,30 @@ export default function TenantsPage() {
                             </div>
                           </div>
                         </div>
+                      </td>
+
+                      <td>
+                        {(() => {
+                          const contract = getTenantContract(tenant);
+                          if (!contract) {
+                            return (
+                              <span className="badge neutral" style={{ fontSize: "11px" }}>
+                                ⚪ Chưa gán phòng
+                              </span>
+                            );
+                          }
+                          return (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                              <span className="badge ready" style={{ fontSize: "11px", display: "inline-flex", alignItems: "center", gap: 4, width: "fit-content" }}>
+                                <Door size={12} weight="bold" />
+                                Phòng {contract.roomNumber}
+                              </span>
+                              <span style={{ fontSize: "var(--text-xs)", color: "var(--color-fg-3)", display: "flex", alignItems: "center", gap: 3 }}>
+                                <Buildings size={11} /> {contract.propertyName}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       <td>
