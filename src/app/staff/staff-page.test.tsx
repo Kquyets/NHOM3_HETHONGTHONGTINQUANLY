@@ -40,17 +40,19 @@ describe("StaffPage Component and Add Staff Modal", () => {
     expect(markup).toContain("Thêm nhân viên");
   });
 
-  it("ensures modals in StaffPage are centered with flexbox overlay and do not use translate(-50%, -50%)", () => {
+  it("ensures modals in StaffPage do not use AI-looking emoji (✨, 💡) in tab labels or hint boxes", () => {
     const filePath = path.resolve(__dirname, "./page.tsx");
     const sourceCode = fs.readFileSync(filePath, "utf-8");
 
-    // Must not use transform: translate(-50%, -50%) which gets overridden by motion.div animate props
-    expect(sourceCode).not.toContain('transform: "translate(-50%, -50%)"');
-    expect(sourceCode).not.toContain("transform: 'translate(-50%, -50%)'");
+    // Must not use AI-looking sparkle emoji in tab label
+    expect(sourceCode).not.toContain("✨");
+    // Must not use lightbulb emoji in hint text
+    expect(sourceCode).not.toContain("💡");
+    // Must not have unused Sparkle import from phosphor icons
+    expect(sourceCode).not.toContain("Sparkle,");
 
-    // Must use centered flexbox layout for modal overlays
-    expect(sourceCode).toContain('alignItems: "center"');
-    expect(sourceCode).toContain('justifyContent: "center"');
-    expect(sourceCode).toContain('maxHeight: "90vh"');
+    // Must use proper icon components instead
+    expect(sourceCode).toContain("UserCirclePlus");
+    expect(sourceCode).toContain("ShieldCheck");
   });
 });

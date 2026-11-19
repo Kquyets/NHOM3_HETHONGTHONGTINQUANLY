@@ -15,7 +15,8 @@ import {
   CheckCircle,
   MagnifyingGlass,
   UserPlus,
-  Sparkle,
+  UserCirclePlus,
+  Link,
   Copy,
   Check,
   Eye,
@@ -794,9 +795,13 @@ export default function StaffPage() {
                           borderBottom: addMode === "create" ? "2px solid var(--color-primary)" : "2px solid transparent",
                           marginBottom: -1,
                           transition: "all 0.15s ease",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
                         }}
                       >
-                        ✨ Tạo tài khoản Quản lý mới
+                        <UserCirclePlus size={15} />
+                        Tạo tài khoản Quản lý mới
                       </button>
                       <button
                         type="button"
@@ -812,9 +817,13 @@ export default function StaffPage() {
                           borderBottom: addMode === "assign" ? "2px solid var(--color-primary)" : "2px solid transparent",
                           marginBottom: -1,
                           transition: "all 0.15s ease",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
                         }}
                       >
-                        🔗 Phân quyền tài khoản có sẵn
+                        <Link size={15} />
+                        Phân quyền tài khoản có sẵn
                       </button>
                     </div>
 
@@ -906,9 +915,13 @@ export default function StaffPage() {
                               color: "var(--color-fg-2)",
                               lineHeight: 1.5,
                               marginBottom: 16,
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: 6,
                             }}
                           >
-                            💡 Người quản lý sẽ dùng <strong>Số điện thoại</strong> và <strong>Mật khẩu</strong> trên để đăng nhập trực tiếp tại trang đăng nhập.
+                            <ShieldCheck size={14} style={{ marginTop: 1, flexShrink: 0 }} color="var(--color-primary)" />
+                            <span>Người quản lý sẽ dùng <strong>Số điện thoại</strong> và <strong>Mật khẩu</strong> trên để đăng nhập trực tiếp tại trang đăng nhập.</span>
                           </div>
                         </>
                       ) : (
