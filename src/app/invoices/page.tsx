@@ -33,6 +33,7 @@ import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import { exportTableToCsv } from "../../utils/export-csv";
 import { buildVietQrUrl, getBankInfo } from "../../utils/vietqr";
+import { money } from "../../utils/format";
 import type {
   InvoiceDetail,
   InvoiceItemType,
@@ -41,12 +42,6 @@ import type {
   PaymentMethod,
 } from "../../modules/invoices/invoice.service";
 import type { ContractRow } from "../../modules/contracts/contract.service";
-
-const money = new Intl.NumberFormat("vi-VN", {
-  style: "currency",
-  currency: "VND",
-  maximumFractionDigits: 0,
-});
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },

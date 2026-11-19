@@ -14,6 +14,7 @@ import {
 } from "../../lib/database/schema";
 import { AppError } from "../../errors/app-error";
 import { createNotification } from "../notifications/notification.service";
+import { formatCurrency } from "../../utils/format";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -527,7 +528,7 @@ async function notifyTenantInvoice(
         await createNotification({
           userId: t.userId,
           title: `Hóa đơn mới kỳ ${billingPeriod}`,
-          message: `Hóa đơn tiền phòng kỳ ${billingPeriod} đã được phát hành (${new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(totalAmount)}). Hạn nộp: ${dueDate || "Ngày 10"}.`,
+          message: `Hóa đơn tiền phòng kỳ ${billingPeriod} đã được phát hành (${formatCurrency(totalAmount)}). Hạn nộp: ${dueDate || "Ngày 10"}.`,
           type: "invoice",
           link: "/#invoices",
         });
@@ -559,7 +560,7 @@ async function notifyTenantPayment(invoiceId: string, amount: number) {
           await createNotification({
             userId: t.userId,
             title: `Xác nhận thanh toán hóa đơn`,
-            message: `Chủ nhà đã xác nhận thanh toán ${new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount)} cho hóa đơn kỳ ${inv.billingPeriodStart}.`,
+            message: `Chủ nhà đã xác nhận thanh toán ${formatCurrency(amount)} cho hóa đơn kỳ ${inv.billingPeriodStart}.`,
             type: "payment",
             link: "/#invoices",
           });

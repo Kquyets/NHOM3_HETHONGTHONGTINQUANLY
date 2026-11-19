@@ -22,15 +22,10 @@ import { FluentDatePicker } from "../../components/ui/fluent-date-picker";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import { exportTableToCsv } from "../../utils/export-csv";
+import { money } from "../../utils/format";
 import type { MeterReadingRow, UtilityRateRow, UtilityType } from "../../modules/meters/meter.service";
 import type { PropertyRow } from "../../modules/properties/property.service";
 import type { RoomRow } from "../../modules/rooms/room.service";
-
-const money = new Intl.NumberFormat("vi-VN", {
-  style: "currency",
-  currency: "VND",
-  maximumFractionDigits: 0,
-});
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },

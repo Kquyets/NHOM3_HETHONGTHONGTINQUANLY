@@ -28,6 +28,7 @@ import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import { exportTableToCsv } from "../../utils/export-csv";
 import { validateVietnamesePhone } from "../../utils/form-validation";
+import { formatPhoneNumber } from "../../utils/format";
 import type { TenantRow } from "../../modules/tenants/tenant.service";
 import type { ContractRow } from "../../modules/contracts/contract.service";
 
@@ -181,7 +182,7 @@ function TenantForm({
               type="tel"
               className="form-control"
               style={{ paddingLeft: 34 }}
-              placeholder="VD: 0901 234 567"
+              placeholder="VD: 0901.234.567"
               value={phone}
               onChange={(e) => {
                 setPhone(e.target.value);
@@ -302,7 +303,7 @@ function TenantForm({
               type="tel"
               className="form-control"
               style={{ paddingLeft: 34 }}
-              placeholder="VD: 0912 345 678"
+              placeholder="VD: 0912.345.678"
               value={emergencyContactPhone}
               onChange={(e) => setEmergencyContactPhone(e.target.value)}
             />
@@ -923,7 +924,7 @@ export default function TenantsPage() {
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginTop: 2 }}>
                               {tenant.phone ? (
                                 <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                                  <Phone size={11} /> {tenant.phone}
+                                  <Phone size={11} /> {formatPhoneNumber(tenant.phone)}
                                 </span>
                               ) : null}
                               {tenant.nationalId && (
@@ -1252,7 +1253,7 @@ export default function TenantsPage() {
                 </h3>
                 <p style={{ margin: "6px 0 0", fontSize: "var(--text-xs)", color: "var(--color-fg-2)", lineHeight: 1.5 }}>
                   Bạn có chắc muốn xóa khách thuê <strong>{deletingTenant.fullName}</strong>
-                  {deletingTenant.phone ? ` (${deletingTenant.phone})` : ""}? Hồ sơ thông tin và ảnh CCCD sẽ bị gỡ khỏi hệ thống.
+                  {deletingTenant.phone ? ` (${formatPhoneNumber(deletingTenant.phone)})` : ""}? Hồ sơ thông tin và ảnh CCCD sẽ bị gỡ khỏi hệ thống.
                 </p>
                 {(() => {
                   const contract = getTenantContract(deletingTenant);

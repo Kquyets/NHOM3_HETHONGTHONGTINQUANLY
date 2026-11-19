@@ -26,6 +26,7 @@ import {
 import { AppHeader } from "../../components/layout/app-header";
 import { useAuth } from "../../lib/auth-context";
 import { apiClient } from "../../lib/api-client";
+import { formatPhoneNumber } from "../../utils/format";
 
 type PropertyAssignment = {
   memberId: string;
@@ -515,7 +516,7 @@ export default function StaffPage() {
                             }}
                           >
                             <Phone size={13} />
-                            <span>{staff.phone}</span>
+                            <span>{formatPhoneNumber(staff.phone)}</span>
                           </div>
                         )}
                       </div>
@@ -732,7 +733,7 @@ export default function StaffPage() {
                       </div>
                       <div>
                         <span style={{ color: "var(--color-fg-3)" }}>Tài khoản đăng nhập (SĐT): </span>
-                        <strong style={{ color: "var(--color-primary)" }}>{createdAccountInfo.phone}</strong>
+                        <strong style={{ color: "var(--color-primary)" }}>{formatPhoneNumber(createdAccountInfo.phone)}</strong>
                       </div>
                       {createdAccountInfo.password && (
                         <div>
@@ -755,7 +756,7 @@ export default function StaffPage() {
                           className="btn-secondary"
                           style={{ display: "flex", alignItems: "center", gap: 6 }}
                           onClick={() => {
-                            const textToCopy = `HManagers - Thông tin tài khoản Quản lý nhà trọ:\n- Người quản lý: ${createdAccountInfo.fullName}\n- Tài khoản đăng nhập (SĐT): ${createdAccountInfo.phone}\n- Mật khẩu: ${createdAccountInfo.password}\n- Cơ sở: ${createdAccountInfo.properties.join(", ")}\nĐăng nhập tại trang web HManagers: ${window.location.origin}/login`;
+                            const textToCopy = `HManagers - Thông tin tài khoản Quản lý nhà trọ:\n- Người quản lý: ${createdAccountInfo.fullName}\n- Tài khoản đăng nhập (SĐT): ${formatPhoneNumber(createdAccountInfo.phone)}\n- Mật khẩu: ${createdAccountInfo.password}\n- Cơ sở: ${createdAccountInfo.properties.join(", ")}\nĐăng nhập tại trang web HManagers: ${window.location.origin}/login`;
                             navigator.clipboard.writeText(textToCopy);
                             setCopiedInfo(true);
                             setTimeout(() => setCopiedInfo(false), 2500);
@@ -855,7 +856,7 @@ export default function StaffPage() {
                                 id="staffPhone"
                                 type="tel"
                                 className="form-control"
-                                placeholder="VD: 0912 345 678"
+                                placeholder="VD: 0912.345.678"
                                 value={staffPhone}
                                 onChange={(e) => setStaffPhone(e.target.value)}
                                 required
@@ -933,7 +934,7 @@ export default function StaffPage() {
                             id="staff-account"
                             type="text"
                             className="form-control"
-                            placeholder="VD: 0912 345 678 hoặc quanly@gmail.com"
+                            placeholder="VD: 0912.345.678 hoặc quanly@gmail.com"
                             value={emailOrPhone}
                             onChange={(e) => setEmailOrPhone(e.target.value)}
                             required

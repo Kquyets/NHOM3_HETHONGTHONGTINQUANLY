@@ -29,6 +29,7 @@ import {
 
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
+import { formatPhoneNumber } from "../../utils/format";
 import type { ProfileData } from "../../modules/profile/profile.service";
 
 type TabKey = "info" | "password" | "notifications" | "permissions";
@@ -316,7 +317,7 @@ export default function ProfilePage() {
               </span>
               {profile?.phone && (
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                  <Phone size={13} /> {profile.phone}
+                  <Phone size={13} /> {formatPhoneNumber(profile.phone)}
                 </span>
               )}
               <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
@@ -538,7 +539,7 @@ export default function ProfilePage() {
                     id="infoPhone"
                     type="tel"
                     className="form-control"
-                    placeholder="Ví dụ: 0912345678"
+                    placeholder="Ví dụ: 0912.345.678"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                   />

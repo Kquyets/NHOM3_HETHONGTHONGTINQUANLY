@@ -19,13 +19,10 @@ import {
 } from "@phosphor-icons/react";
 
 import { apiClient } from "../../lib/api-client";
+import { money } from "../../utils/format";
 import type { DashboardSummary } from "../../modules/dashboard/dashboard.service";
 
-const money = new Intl.NumberFormat("vi-VN", {
-  style: "currency",
-  currency: "VND",
-  maximumFractionDigits: 0,
-});
+type DashboardSummaryWithRecent = DashboardSummary;
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },

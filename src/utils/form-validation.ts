@@ -6,8 +6,9 @@ export function validateVietnamesePhone(phone: string): string | null {
   const trimmed = phone.trim();
   if (!trimmed) return null; // optional if empty, but if provided must be valid
 
+  const normalized = trimmed.replace(/[\s.-]/g, "");
   const phoneRegex = /^(03|05|07|08|09)\d{8}$/;
-  if (!phoneRegex.test(trimmed)) {
+  if (!phoneRegex.test(normalized)) {
     return "Số điện thoại không hợp lệ (cần 10 chữ số, bắt đầu bằng 03, 05, 07, 08 hoặc 09).";
   }
   return null;

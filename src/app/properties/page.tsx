@@ -32,6 +32,7 @@ import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import { validatePositiveNumber } from "../../utils/form-validation";
 import { VIETNAMESE_BANKS } from "../../utils/vietqr";
+import { money } from "../../utils/format";
 import type { PropertyRow } from "../../modules/properties/property.service";
 import type { RoomRow } from "../../modules/rooms/room.service";
 import type { ContractRow } from "../../modules/contracts/contract.service";
@@ -39,12 +40,6 @@ import type { ContractRow } from "../../modules/contracts/contract.service";
 type PropertyWithRooms = PropertyRow & {
   rooms: RoomRow[];
 };
-
-const money = new Intl.NumberFormat("vi-VN", {
-  style: "currency",
-  currency: "VND",
-  maximumFractionDigits: 0,
-});
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },

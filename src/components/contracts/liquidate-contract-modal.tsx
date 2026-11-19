@@ -4,13 +4,8 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { X, CheckCircle, Warning, Coins, Wrench, Drop } from "@phosphor-icons/react";
 import { apiClient } from "../../lib/api-client";
+import { money } from "../../utils/format";
 import type { ContractRow } from "../../modules/contracts/contract.service";
-
-const money = new Intl.NumberFormat("vi-VN", {
-  style: "currency",
-  currency: "VND",
-  maximumFractionDigits: 0,
-});
 
 export function LiquidateContractModal({
   contract,

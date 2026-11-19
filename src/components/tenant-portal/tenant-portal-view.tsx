@@ -48,12 +48,7 @@ import type {
   MaintenanceRow,
   MaintenanceStatus,
 } from "../../modules/maintenance/maintenance.service";
-
-const money = new Intl.NumberFormat("vi-VN", {
-  style: "currency",
-  currency: "VND",
-  maximumFractionDigits: 0,
-});
+import { money, formatPhoneNumber } from "../../utils/format";
 
 const formatBillingPeriod = (period: string) => {
   const parts = period.split("-");
@@ -548,7 +543,7 @@ export function TenantPortalView() {
             Tài khoản chưa liên kết với phòng trọ
           </h2>
           <p className="text-muted" style={{ maxWidth: 460, margin: "0 auto var(--space-2)", fontSize: "var(--text-sm)", lineHeight: 1.6 }}>
-            Vui lòng cung cấp Số điện thoại (<strong>{tenant?.phone || user?.email || "của bạn"}</strong>) cho Chủ nhà / Quản lý để được thêm vào hợp đồng phòng trọ. Sau khi được thêm, bạn sẽ thấy thông tin phòng, chỉ số điện nước và hóa đơn hàng tháng tại đây.
+            Vui lòng cung cấp Số điện thoại (<strong>{tenant?.phone ? formatPhoneNumber(tenant.phone) : (user?.email || "của bạn")}</strong>) cho Chủ nhà / Quản lý để được thêm vào hợp đồng phòng trọ. Sau khi được thêm, bạn sẽ thấy thông tin phòng, chỉ số điện nước và hóa đơn hàng tháng tại đây.
           </p>
           <button
             type="button"
@@ -729,7 +724,7 @@ export function TenantPortalView() {
               </div>
               <div className="portal-info-row">
                 <span className="portal-info-label">Số điện thoại:</span>
-                <strong className="portal-info-value">{tenant?.phone || "Chưa cập nhật"}</strong>
+                <strong className="portal-info-value">{tenant?.phone ? formatPhoneNumber(tenant.phone) : "Chưa cập nhật"}</strong>
               </div>
               <div className="portal-info-row">
                 <span className="portal-info-label">Ngày sinh:</span>
@@ -751,7 +746,7 @@ export function TenantPortalView() {
                 <span className="portal-info-label">LH khẩn cấp:</span>
                 <span className="portal-info-value">
                   {tenant?.emergencyContactName
-                    ? `${tenant.emergencyContactName} (${tenant.emergencyContactPhone || ""})`
+                    ? `${tenant.emergencyContactName} (${tenant.emergencyContactPhone ? formatPhoneNumber(tenant.emergencyContactPhone) : ""})`
                     : "Chưa cập nhật"}
                 </span>
               </div>
@@ -1544,6 +1539,7 @@ export function TenantPortalView() {
                       id="pPhone"
                       type="tel"
                       required
+                      placeholder="VD: 0912.345.678"
                       disabled={submittingProfile}
                       className="input-field"
                       value={pPhone}
@@ -1737,7 +1733,7 @@ export function TenantPortalView() {
                         type="tel"
                         disabled={submittingProfile}
                         className="input-field"
-                        placeholder="VD: 0988776655"
+                        placeholder="VD: 0988.776.655"
                         value={pEmergencyPhone}
                         onChange={(e) => setPEmergencyPhone(e.target.value)}
                       />

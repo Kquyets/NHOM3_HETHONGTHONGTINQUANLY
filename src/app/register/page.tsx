@@ -279,7 +279,7 @@ export default function RegisterPage() {
                     id="phone"
                     type="tel"
                     className="form-control"
-                    placeholder="0912 345 678"
+                    placeholder="0912.345.678"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     autoComplete="tel"

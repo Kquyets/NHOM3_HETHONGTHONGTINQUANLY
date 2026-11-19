@@ -10,12 +10,7 @@ import {
   Image as ImageIcon,
 } from "@phosphor-icons/react";
 import type { ExploreListingItem } from "../../modules/explore/explore.types";
-
-const money = new Intl.NumberFormat("vi-VN", {
-  style: "currency",
-  currency: "VND",
-  maximumFractionDigits: 0,
-});
+import { money, formatPhoneNumber } from "../../utils/format";
 
 export function RoomCard({
   listing,
@@ -267,7 +262,7 @@ export function RoomCard({
               border: "none",
               borderRadius: 6,
             }}
-            title={`Gọi cho chủ nhà: ${listing.contactPhone}`}
+            title={`Gọi cho chủ nhà: ${formatPhoneNumber(listing.contactPhone)}`}
           >
             <Phone size={13} weight="fill" />
             <span>Gọi ngay</span>

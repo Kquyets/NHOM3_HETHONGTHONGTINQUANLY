@@ -71,7 +71,7 @@ describe("AI Service (Phase 6 AI Assistant)", () => {
     expect(result.toolsUsed).toContain("lookup_rooms");
     expect(result.reply).toContain("Phòng 101");
     expect(result.reply).toContain("Nguyễn Văn Tuấn");
-    expect(result.reply).toContain("0901234567");
+    expect(result.reply).toContain("0901.234.567");
   });
 
   it("handles vacant rooms query", async () => {

@@ -5,12 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Printer, X, FileText, Buildings } from "@phosphor-icons/react";
 import type { ContractRow } from "../../modules/contracts/contract.service";
 import { numberToVietnameseWords } from "../../utils/vietnamese-currency-words";
-
-const money = new Intl.NumberFormat("vi-VN", {
-  style: "currency",
-  currency: "VND",
-  maximumFractionDigits: 0,
-});
+import { money, formatPhoneNumber } from "../../utils/format";
 
 export type PrintableContractModalProps = {
   contract: ContractRow | null;
@@ -349,7 +344,7 @@ export function PrintableContractModal({
                       </div>
                       <div className="contract-row">
                         <span className="contract-label">Số điện thoại:</span>
-                        <span>{t.phone || "—"}</span>
+                        <span>{t.phone ? formatPhoneNumber(t.phone) : "—"}</span>
                       </div>
                       <div className="contract-row">
                         <span className="contract-label">Số CCCD/CMND:</span>

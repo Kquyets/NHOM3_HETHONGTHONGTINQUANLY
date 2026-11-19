@@ -368,7 +368,7 @@ export function RoomListingModal({
               <input
                 type="tel"
                 className="form-control"
-                placeholder="VD: 0982345678"
+                placeholder="VD: 0982.345.678"
                 value={contactPhone}
                 onChange={(e) => setContactPhone(e.target.value)}
                 required
@@ -380,7 +380,7 @@ export function RoomListingModal({
               <input
                 type="tel"
                 className="form-control"
-                placeholder="VD: 0982345678"
+                placeholder="VD: 0982.345.678"
                 value={contactZalo}
                 onChange={(e) => setContactZalo(e.target.value)}
               />

@@ -17,12 +17,7 @@ import {
 } from "@phosphor-icons/react";
 import type { ExploreListingItem } from "../../modules/explore/explore.types";
 import { POPULAR_AMENITIES } from "../../modules/explore/explore.types";
-
-const money = new Intl.NumberFormat("vi-VN", {
-  style: "currency",
-  currency: "VND",
-  maximumFractionDigits: 0,
-});
+import { money, formatCurrency, formatPhoneNumber } from "../../utils/format";
 
 export function RoomDetailModal({
   listing,
@@ -342,7 +337,7 @@ export function RoomDetailModal({
               <div style={{ fontSize: 12, color: "var(--color-fg-3)", marginBottom: 4 }}>Tiền điện</div>
               <div style={{ fontWeight: 600, fontSize: 14, color: "var(--color-fg-1)", display: "flex", alignItems: "center", gap: 4 }}>
                 <Lightning size={14} style={{ color: "#eab308" }} />
-                <span>{listing.electricityRate ? `${listing.electricityRate.toLocaleString("vi-VN")} đ/kWh` : "3.500 đ/kWh"}</span>
+                <span>{listing.electricityRate ? `${formatCurrency(listing.electricityRate)}/kWh` : "3.500đ/kWh"}</span>
               </div>
             </div>
 
@@ -357,7 +352,7 @@ export function RoomDetailModal({
               <div style={{ fontSize: 12, color: "var(--color-fg-3)", marginBottom: 4 }}>Tiền nước</div>
               <div style={{ fontWeight: 600, fontSize: 14, color: "var(--color-fg-1)", display: "flex", alignItems: "center", gap: 4 }}>
                 <Drop size={14} style={{ color: "#3b82f6" }} />
-                <span>{listing.waterRate ? `${listing.waterRate.toLocaleString("vi-VN")} đ/m³` : "25.000 đ/m³"}</span>
+                <span>{listing.waterRate ? `${formatCurrency(listing.waterRate)}/m³` : "25.000đ/m³"}</span>
               </div>
             </div>
           </div>
@@ -455,7 +450,7 @@ export function RoomDetailModal({
             <div>
               <div style={{ fontWeight: 600, fontSize: 14 }}>Chủ nhà / Quản lý</div>
               <div style={{ fontSize: 12, color: "var(--color-fg-3)" }}>
-                Số điện thoại: {listing.contactPhone}
+                Số điện thoại: {formatPhoneNumber(listing.contactPhone)}
               </div>
             </div>
           </div>
@@ -501,7 +496,7 @@ export function RoomDetailModal({
               }}
             >
               <Phone size={18} weight="fill" />
-              <span>Gọi ngay: {listing.contactPhone}</span>
+              <span>Gọi ngay: {formatPhoneNumber(listing.contactPhone)}</span>
             </a>
           </div>
         </div>

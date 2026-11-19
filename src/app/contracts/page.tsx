@@ -33,16 +33,11 @@ import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import { exportTableToCsv } from "../../utils/export-csv";
 import { validateDateRange, validatePositiveNumber } from "../../utils/form-validation";
+import { money, formatPhoneNumber } from "../../utils/format";
 import type { ContractRow, ContractStatus } from "../../modules/contracts/contract.service";
 import type { PropertyRow } from "../../modules/properties/property.service";
 import type { RoomRow } from "../../modules/rooms/room.service";
 import type { TenantRow } from "../../modules/tenants/tenant.service";
-
-const money = new Intl.NumberFormat("vi-VN", {
-  style: "currency",
-  currency: "VND",
-  maximumFractionDigits: 0,
-});
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -441,7 +436,7 @@ function CreateContractForm({
                       {t.fullName}
                     </div>
                     <div style={{ fontSize: 11, color: "var(--color-fg-3)" }}>
-                      {t.phone || "Chưa có SĐT"}
+                      {t.phone ? formatPhoneNumber(t.phone) : "Chưa có SĐT"}
                     </div>
                   </div>
                 </div>
@@ -588,7 +583,7 @@ function ManageOccupantsModal({
                       {t.fullName} {idx === 0 && <span className="badge ready" style={{ fontSize: 10, marginLeft: 6 }}>Người đứng tên chính</span>}
                     </div>
                     <div style={{ fontSize: 11.5, color: "var(--color-fg-3)" }}>
-                      {t.phone} {t.citizenId && `• CCCD: ${t.citizenId}`}
+                      {formatPhoneNumber(t.phone)} {t.citizenId && `• CCCD: ${t.citizenId}`}
                     </div>
                   </div>
 
@@ -626,7 +621,7 @@ function ManageOccupantsModal({
               <option value="">-- Chọn khách thuê từ danh bạ --</option>
               {availableTenants.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.fullName} ({t.phone})
+                  {t.fullName} ({formatPhoneNumber(t.phone)})
                 </option>
               ))}
             </select>
@@ -1014,7 +1009,7 @@ export default function ContractsPage() {
                                 )}
                               </div>
                               <div style={{ fontSize: 11.5, color: "var(--color-fg-3)", display: "flex", alignItems: "center", gap: 4 }}>
-                                <Phone size={12} /> {primaryTenant.phone}
+                                <Phone size={12} /> {formatPhoneNumber(primaryTenant.phone)}
                               </div>
                             </div>
                           ) : (

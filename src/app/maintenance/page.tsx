@@ -21,6 +21,7 @@ import {
 import { AppHeader } from "../../components/layout/app-header";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
+import { money, formatPhoneNumber } from "../../utils/format";
 import type {
   MaintenanceCategory,
   MaintenancePriority,
@@ -29,12 +30,6 @@ import type {
 } from "../../modules/maintenance/maintenance.service";
 import type { PropertyRow } from "../../modules/properties/property.service";
 import type { RoomRow } from "../../modules/rooms/room.service";
-
-const money = new Intl.NumberFormat("vi-VN", {
-  style: "currency",
-  currency: "VND",
-  maximumFractionDigits: 0,
-});
 
 const CATEGORY_CONFIG: Record<MaintenanceCategory, { label: string; Icon: React.ElementType; color: string }> = {
   electrical: { label: "Điện sinh hoạt", Icon: Lightning,   color: "#eab308" },
@@ -495,7 +490,7 @@ export default function MaintenancePage() {
                               </div>
                               {req.contractorName && (
                                 <div style={{ fontSize: "11px", color: "var(--color-fg-3)" }}>
-                                  Thợ: {req.contractorName} {req.contractorPhone ? `(${req.contractorPhone})` : ""}
+                                  Thợ: {req.contractorName} {req.contractorPhone ? `(${formatPhoneNumber(req.contractorPhone)})` : ""}
                                 </div>
                               )}
                             </div>
@@ -719,7 +714,7 @@ export default function MaintenancePage() {
                         type="tel"
                         className="form-control"
                         style={{ marginTop: 6 }}
-                        placeholder="VD: 0912345678"
+                        placeholder="VD: 0912.345.678"
                         value={resContractorPhone}
                         onChange={(e) => setResContractorPhone(e.target.value)}
                       />

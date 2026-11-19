@@ -1,4 +1,5 @@
 import { getGeminiApiKey } from "../../config/env";
+import { formatCurrency, formatPhoneNumber } from "../../utils/format";
 import { getTenantPortalData, type TenantMeterReading } from "../tenant-portal/tenant-portal.service";
 import { listMaintenanceRequests, type MaintenanceRow } from "../maintenance/maintenance.service";
 import {
@@ -36,9 +37,7 @@ export type ProcessAiQueryResult = {
 // ---------------------------------------------------------------------------
 // Currency formatting helper
 // ---------------------------------------------------------------------------
-function formatVND(amount: number): string {
-  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
-}
+const formatVND = formatCurrency;
 
 // ---------------------------------------------------------------------------
 // Natural Language Intent Engine (Local & Fallback)
@@ -105,7 +104,7 @@ export async function processWithLocalEngine(
     let reply = `📊 **Danh sách hóa đơn chưa thanh toán (${data.totalUnpaidInvoices} hóa đơn - Tổng nợ: ${formatVND(data.totalDebtAmount)}):**\n\n`;
     for (const inv of data.invoices) {
       reply += `- **Phòng ${inv.roomNumber}** (${inv.propertyName}):\n`;
-      reply += `  • Khách thuê: **${inv.tenantName || "Chưa cập nhật"}** ${inv.tenantPhone ? `(📞 ${inv.tenantPhone})` : ""}\n`;
+      reply += `  • Khách thuê: **${inv.tenantName || "Chưa cập nhật"}** ${inv.tenantPhone ? `(📞 ${formatPhoneNumber(inv.tenantPhone)})` : ""}\n`;
       reply += `  • Số tiền còn nợ: **${formatVND(inv.remainingDebt)}** (Tổng hóa đơn: ${formatVND(inv.totalAmount)})\n`;
       reply += `  • Hạn đóng: ${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("vi-VN") : "Chưa có hạn"}\n\n`;
     }
@@ -147,7 +146,7 @@ export async function processWithLocalEngine(
       }
 
       let reply = `📄 **Hợp đồng thuê Phòng ${contract.roomNumber} (${contract.propertyName}):**\n\n`;
-      reply += `- **Khách thuê chính**: **${contract.primaryTenant}** ${contract.tenantPhone ? `(📞 ${contract.tenantPhone})` : ""}\n`;
+      reply += `- **Khách thuê chính**: **${contract.primaryTenant}** ${contract.tenantPhone ? `(📞 ${formatPhoneNumber(contract.tenantPhone)})` : ""}\n`;
       if (contract.roommates.length > 0) {
         reply += `- **Người ở cùng**: ${contract.roommates.join(", ")}\n`;
       }
@@ -229,7 +228,7 @@ export async function processWithLocalEngine(
 
       if (room.isOccupied) {
         reply += `- **Người thuê chính**: **${room.tenantName || "Chưa gán tên"}**\n`;
-        if (room.tenantPhone) reply += `- **Số điện thoại**: ${room.tenantPhone}\n`;
+        if (room.tenantPhone) reply += `- **Số điện thoại**: ${formatPhoneNumber(room.tenantPhone)}\n`;
         if (room.contractEndDate) {
           const endDate = new Date(room.contractEndDate);
           const daysLeft = Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -316,7 +315,7 @@ export async function processWithLocalEngine(
     for (const req of data.requests) {
       reply += `- **Phòng ${req.roomNumber}** (${req.propertyName}): **${req.title}**\n`;
       reply += `  • Danh mục: ${req.category} | Mức độ: **${req.priority}**\n`;
-      reply += `  • Khách báo: ${req.tenantName || "Không xác định"} ${req.tenantPhone ? `(📞 ${req.tenantPhone})` : ""}\n`;
+      reply += `  • Khách báo: ${req.tenantName || "Không xác định"} ${req.tenantPhone ? `(📞 ${formatPhoneNumber(req.tenantPhone)})` : ""}\n`;
       reply += `  • Trạng thái: ${req.status === "pending" ? "⏳ Chờ tiếp nhận" : "⚙️ Đang xử lý"}\n\n`;
     }
     reply += `> 💡 Bạn có thể cập nhật tiến độ xử lý và chi phí tại trang **[Bảo trì](/maintenance)**.`;
@@ -335,7 +334,7 @@ export async function processWithLocalEngine(
 
     let reply = `👥 **Danh bạ khách thuê (${data.totalMatched} người):**\n\n`;
     for (const t of data.tenants.slice(0, 10)) {
-      reply += `- **${t.fullName}** ${t.phone ? `(📞 ${t.phone})` : ""} — Hiện ở: **Phòng ${t.currentRoom}**\n`;
+      reply += `- **${t.fullName}** ${t.phone ? `(📞 ${formatPhoneNumber(t.phone)})` : ""} — Hiện ở: **Phòng ${t.currentRoom}**\n`;
     }
     return {
       reply,
