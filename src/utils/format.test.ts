@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatCurrency, formatPhoneNumber, money } from "./format";
+import { formatCurrency, formatPhoneNumber, formatNumberWithDots, money } from "./format";
 
 describe("format utility", () => {
   describe("formatCurrency", () => {
@@ -32,6 +32,18 @@ describe("format utility", () => {
       expect(formatPhoneNumber(null)).toBe("");
       expect(formatPhoneNumber("")).toBe("");
       expect(formatPhoneNumber("123")).toBe("123");
+    });
+  });
+
+  describe("formatNumberWithDots", () => {
+    it("formats user numeric input with thousand dot separators", () => {
+      expect(formatNumberWithDots("3000000")).toBe("3.000.000");
+      expect(formatNumberWithDots("3000")).toBe("3.000");
+      expect(formatNumberWithDots(3000000)).toBe("3.000.000");
+      expect(formatNumberWithDots("3.000.000")).toBe("3.000.000");
+      expect(formatNumberWithDots("")).toBe("");
+      expect(formatNumberWithDots(null)).toBe("");
+      expect(formatNumberWithDots(undefined)).toBe("");
     });
   });
 });

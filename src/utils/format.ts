@@ -42,3 +42,17 @@ export function formatPhoneNumber(phone: string | null | undefined): string {
 
   return trimmed;
 }
+
+/**
+ * Formats user input as dot-separated thousands for numeric inputs.
+ * Examples:
+ * - "3000000" -> "3.000.000"
+ * - "3.000.000" -> "3.000.000"
+ * - "" -> ""
+ */
+export function formatNumberWithDots(val: string | number | null | undefined): string {
+  if (val === null || val === undefined) return "";
+  const digits = String(val).replace(/\D/g, "");
+  if (!digits) return "";
+  return new Intl.NumberFormat("vi-VN").format(Number(digits));
+}

@@ -32,7 +32,7 @@ import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import { exportTableToCsv } from "../../utils/export-csv";
 import { validateDateRange, validatePositiveNumber } from "../../utils/form-validation";
-import { money, formatPhoneNumber } from "../../utils/format";
+import { money, formatPhoneNumber, formatNumberWithDots } from "../../utils/format";
 import type { ContractRow, ContractStatus } from "../../modules/contracts/contract.service";
 import type { PropertyRow } from "../../modules/properties/property.service";
 import type { RoomRow } from "../../modules/rooms/room.service";
@@ -137,8 +137,8 @@ function CreateContractForm({
         setPropertyRooms(res.rooms);
         if (res.rooms.length > 0) {
           setRoomId(res.rooms[0].id);
-          setMonthlyRent(String(res.rooms[0].monthlyRent || ""));
-          setDeposit(String(res.rooms[0].monthlyRent || ""));
+          setMonthlyRent(formatNumberWithDots(res.rooms[0].monthlyRent || ""));
+          setDeposit(formatNumberWithDots(res.rooms[0].monthlyRent || ""));
         } else {
           setRoomId("");
         }
@@ -156,8 +156,8 @@ function CreateContractForm({
     setRoomId(rId);
     const found = propertyRooms.find((r) => r.id === rId);
     if (found) {
-      setMonthlyRent(String(found.monthlyRent));
-      if (!deposit) setDeposit(String(found.monthlyRent));
+      setMonthlyRent(formatNumberWithDots(found.monthlyRent));
+      if (!deposit) setDeposit(formatNumberWithDots(found.monthlyRent));
     }
   };
 
@@ -315,7 +315,7 @@ function CreateContractForm({
               style={{ paddingLeft: 30 }}
               placeholder="VD: 3.000.000đ"
               value={monthlyRent}
-              onChange={(e) => setMonthlyRent(e.target.value)}
+              onChange={(e) => setMonthlyRent(formatNumberWithDots(e.target.value))}
               required
             />
           </div>
@@ -336,7 +336,7 @@ function CreateContractForm({
               style={{ paddingLeft: 30 }}
               placeholder="VD: 3.000.000đ"
               value={deposit}
-              onChange={(e) => setDeposit(e.target.value)}
+              onChange={(e) => setDeposit(formatNumberWithDots(e.target.value))}
               required
             />
           </div>
