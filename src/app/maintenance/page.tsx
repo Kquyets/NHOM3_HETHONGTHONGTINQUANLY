@@ -671,7 +671,7 @@ export default function MaintenancePage() {
                         step="10000"
                         className="form-control"
                         style={{ marginTop: 6 }}
-                        placeholder="VD: 250000"
+                        placeholder="VD: 250.000đ"
                         value={resCost}
                         onChange={(e) => setResCost(e.target.value)}
                       />

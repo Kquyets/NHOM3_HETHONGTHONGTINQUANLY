@@ -61,7 +61,9 @@ describe("form-validation", () => {
     it("validates positive numbers correctly", () => {
       expect(validatePositiveNumber(100)).toBeNull();
       expect(validatePositiveNumber("2500000", "Giá phòng")).toBeNull();
-      expect(validatePositiveNumber("25.5", "Diện tích")).toBeNull();
+      expect(validatePositiveNumber("3.000.000", "Tiền thuê")).toBeNull();
+      expect(validatePositiveNumber("3.000.000đ", "Tiền cọc")).toBeNull();
+      expect(validatePositiveNumber("25,5", "Diện tích")).toBeNull();
     });
 
     it("rejects zero, negative numbers, or non-numeric strings", () => {

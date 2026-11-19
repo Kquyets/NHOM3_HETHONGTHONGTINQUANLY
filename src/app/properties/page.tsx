@@ -721,7 +721,7 @@ export default function PropertiesPage() {
                       id="room-rent"
                       type="number"
                       className="form-control"
-                      placeholder="VD: 2500000"
+                      placeholder="VD: 2.500.000đ"
                       min="0"
                       step="10000"
                       value={roomRent}

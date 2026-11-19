@@ -46,7 +46,16 @@ export function validatePositiveNumber(
   value: string | number,
   fieldName = "Giá trị",
 ): string | null {
-  const num = typeof value === "number" ? value : Number(String(value).trim());
+  if (typeof value === "number") {
+    if (isNaN(value)) return `${fieldName} phải là một số hợp lệ.`;
+    if (value <= 0) return `${fieldName} phải lớn hơn 0.`;
+    return null;
+  }
+  const raw = String(value).trim();
+  if (!raw) return `${fieldName} không được để trống.`;
+  // Clean currency units and thousand separators (e.g. "3.000.000đ" -> "3000000")
+  const cleaned = raw.replace(/[đ₫\s]/gi, "").replace(/\./g, "").replace(/,/g, ".");
+  const num = Number(cleaned);
   if (isNaN(num)) {
     return `${fieldName} phải là một số hợp lệ.`;
   }

@@ -16,7 +16,6 @@ import {
   ArrowCounterClockwise,
   Buildings,
   Door,
-  CurrencyDollar,
   Printer,
   Users,
   UserPlus,
@@ -188,12 +187,14 @@ function CreateContractForm({
       return;
     }
     setFormError(null);
+    const cleanRent = monthlyRent.replace(/[^0-9]/g, "");
+    const cleanDeposit = deposit.replace(/[^0-9]/g, "");
     onSubmit({
       roomId,
       startDate,
       endDate,
-      monthlyRentSnapshot: monthlyRent,
-      depositSnapshot: deposit,
+      monthlyRentSnapshot: cleanRent || monthlyRent,
+      depositSnapshot: cleanDeposit || deposit,
       paymentCycleMonths,
       handoverInventory,
       tenantIds: selectedTenantIds,
@@ -303,17 +304,16 @@ function CreateContractForm({
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label htmlFor="c-rent">Tiền thuê / tháng (VND) *</label>
           <div style={{ position: "relative" }}>
-            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-fg-3)", display: "flex", pointerEvents: "none" }}>
-              <CurrencyDollar size={15} />
+            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-fg-3)", fontWeight: 700, fontSize: 13, pointerEvents: "none", userSelect: "none" }}>
+              đ
             </span>
             <input
               id="c-rent"
-              type="number"
+              type="text"
+              inputMode="numeric"
               className="form-control"
-              style={{ paddingLeft: 34 }}
-              placeholder="VD: 3000000"
-              min="0"
-              step="50000"
+              style={{ paddingLeft: 30 }}
+              placeholder="VD: 3.000.000đ"
               value={monthlyRent}
               onChange={(e) => setMonthlyRent(e.target.value)}
               required
@@ -325,17 +325,16 @@ function CreateContractForm({
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label htmlFor="c-deposit">Tiền đặt cọc (VND) *</label>
           <div style={{ position: "relative" }}>
-            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-fg-3)", display: "flex", pointerEvents: "none" }}>
-              <CurrencyDollar size={15} />
+            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-fg-3)", fontWeight: 700, fontSize: 13, pointerEvents: "none", userSelect: "none" }}>
+              đ
             </span>
             <input
               id="c-deposit"
-              type="number"
+              type="text"
+              inputMode="numeric"
               className="form-control"
-              style={{ paddingLeft: 34 }}
-              placeholder="VD: 3000000"
-              min="0"
-              step="50000"
+              style={{ paddingLeft: 30 }}
+              placeholder="VD: 3.000.000đ"
               value={deposit}
               onChange={(e) => setDeposit(e.target.value)}
               required

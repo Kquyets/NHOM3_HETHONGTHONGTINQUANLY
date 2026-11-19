@@ -650,7 +650,7 @@ export default function InvoicesPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)" }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="pay-amt">Số tiền thanh toán (VND) *</label>
-                    <input id="pay-amt" type="number" min="1000" className="form-control" placeholder="VD: 3500000" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} required autoFocus />
+                    <input id="pay-amt" type="number" min="1000" className="form-control" placeholder="VD: 3.500.000đ" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} required autoFocus />
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="pay-meth">Phương thức *</label>
