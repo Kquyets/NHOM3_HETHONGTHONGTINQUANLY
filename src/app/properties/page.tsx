@@ -423,7 +423,7 @@ export default function PropertiesPage() {
                   <option value="all">🏢 Tất cả nhà trọ ({properties.reduce((s, p) => s + p.rooms.length, 0)} phòng)</option>
                   {properties.map((p) => (
                     <option key={p.id} value={p.id}>
-                      🏠 {p.name} ({p.rooms.length} phòng)
+                      {p.name} ({p.rooms.length} phòng)
                     </option>
                   ))}
                 </select>

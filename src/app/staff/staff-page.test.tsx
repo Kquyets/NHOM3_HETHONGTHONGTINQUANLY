@@ -51,6 +51,9 @@ describe("StaffPage Component and Add Staff Modal", () => {
     // Must not have unused Sparkle import from phosphor icons
     expect(sourceCode).not.toContain("Sparkle,");
 
+    // Must not use house emoji
+    expect(sourceCode).not.toContain("🏠");
+
     // Must use proper icon components instead
     expect(sourceCode).toContain("UserCirclePlus");
     expect(sourceCode).toContain("ShieldCheck");

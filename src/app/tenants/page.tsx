@@ -742,7 +742,7 @@ export default function TenantsPage() {
                   <option value="all">🏢 Tất cả nhà trọ</option>
                   {uniqueProperties.map((p) => (
                     <option key={p} value={p}>
-                      🏠 {p}
+                      {p}
                     </option>
                   ))}
                 </select>

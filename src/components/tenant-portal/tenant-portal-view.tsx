@@ -493,7 +493,7 @@ export function TenantPortalView() {
                 >
                   {stays.map((s) => (
                     <option key={s.roomId} value={s.roomId}>
-                      🏠 {s.propertyName} - Phòng {s.roomNumber} {s.contractStatus === "active" ? "(Đang hiệu lực)" : "(Đã kết thúc)"}
+                      {s.propertyName} - Phòng {s.roomNumber} {s.contractStatus === "active" ? "(Đang hiệu lực)" : "(Đã kết thúc)"}
                     </option>
                   ))}
                 </select>

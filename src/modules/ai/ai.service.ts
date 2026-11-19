@@ -222,7 +222,7 @@ export async function processWithLocalEngine(
         };
       }
 
-      let reply = `🏠 **Thông tin chi tiết Phòng ${room.roomNumber} (${room.propertyName}):**\n\n`;
+      let reply = `**Thông tin chi tiết Phòng ${room.roomNumber} (${room.propertyName}):**\n\n`;
       reply += `- **Trạng thái**: ${room.status === "maintenance" ? "⚠️ Đang bảo trì" : room.isOccupied ? "🟢 Đang có người thuê" : "⚪ Đang trống (Sẵn sàng cho thuê)"}\n`;
       reply += `- **Giá thuê tháng**: ${formatVND(room.monthlyRent)}\n`;
       reply += `- **Diện tích**: ${room.areaM2 ? `${room.areaM2} m²` : "Chưa ghi nhận"}\n`;

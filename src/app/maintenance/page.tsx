@@ -565,8 +565,8 @@ export default function MaintenancePage() {
               style={{
                 position: "fixed",
                 inset: 0,
-                background: "rgba(0,0,0,0.6)",
-                backdropFilter: "blur(4px)",
+                background: "rgba(0,0,0,0.55)",
+                backdropFilter: "blur(6px)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -579,96 +579,172 @@ export default function MaintenancePage() {
               onClick={() => setResolvingRequest(null)}
             >
               <motion.div
-                className="card"
-                style={{ maxWidth: 460, width: "100%" }}
-                initial={{ scale: 0.95 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.95 }}
+                style={{
+                  width: "100%",
+                  maxWidth: 500,
+                  backgroundColor: "var(--color-bg-panel, #ffffff)",
+                  borderRadius: 16,
+                  boxShadow: "0 24px 48px rgba(0,0,0,0.18)",
+                  border: "1px solid var(--color-border)",
+                  overflow: "hidden",
+                }}
+                initial={{ scale: 0.95, y: 12 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 12 }}
+                transition={{ duration: 0.2 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <h2 style={{ fontSize: "var(--text-base)", fontWeight: 700, marginBottom: 6 }}>
-                  Xác nhận hoàn thành xử lý sự cố
-                </h2>
-                <p className="text-muted" style={{ fontSize: "var(--text-xs)", marginBottom: "var(--space-2)" }}>
-                  Sự cố: <strong>{resolvingRequest.title}</strong> (Phòng {resolvingRequest.roomNumber})
-                </p>
-
-                <div className="form-group" style={{ marginBottom: "var(--space-2)" }}>
-                  <label htmlFor="res-note">Ghi chú giải quyết (sẽ hiển thị cho khách thuê)</label>
-                  <textarea
-                    id="res-note"
-                    className="form-control"
-                    rows={3}
-                    placeholder="VD: Đã thay phao bồn nước mới, đã kiểm tra hoạt động ổn định..."
-                    value={resNotes}
-                    onChange={(e) => setResNotes(e.target.value)}
-                    autoFocus
-                  />
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label htmlFor="res-cost">Chi phí sửa chữa (VND)</label>
-                    <input
-                      id="res-cost"
-                      type="number"
-                      min="0"
-                      step="10000"
-                      className="form-control"
-                      placeholder="VD: 250000"
-                      value={resCost}
-                      onChange={(e) => setResCost(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label htmlFor="res-payer">Bên chi trả chi phí</label>
-                    <select
-                      id="res-payer"
-                      className="form-control"
-                      value={resPayer}
-                      onChange={(e) => setResPayer(e.target.value)}
+                {/* Header */}
+                <div
+                  style={{
+                    padding: "18px 22px 16px",
+                    borderBottom: "1px solid var(--color-border)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        background: "rgba(16, 185, 129, 0.12)",
+                        color: "#10b981",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
                     >
-                      <option value="owner">Chủ trọ chịu (Chi phí vận hành)</option>
-                      <option value="tenant">Khách thuê tự chịu</option>
-                      <option value="deposit_deduction">Khấu trừ vào tiền cọc</option>
-                    </select>
+                      <Check size={20} weight="bold" />
+                    </div>
+                    <div>
+                      <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, lineHeight: 1.3 }}>
+                        Xác nhận hoàn thành xử lý sự cố
+                      </h2>
+                      <p style={{ fontSize: 12, color: "var(--color-fg-3)", margin: 0, marginTop: 2 }}>
+                        {resolvingRequest.title} · Phòng {resolvingRequest.roomNumber}
+                      </p>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setResolvingRequest(null)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "var(--color-fg-3)",
+                      padding: 4,
+                      display: "flex",
+                      borderRadius: 6,
+                    }}
+                    aria-label="Đóng"
+                  >
+                    <X size={18} />
+                  </button>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+                {/* Body */}
+                <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label htmlFor="res-cname">Tên thợ / Nhà thầu</label>
-                    <input
-                      id="res-cname"
-                      type="text"
+                    <label htmlFor="res-note" style={{ fontWeight: 600, fontSize: 13 }}>
+                      Ghi chú giải quyết
+                      <span style={{ fontWeight: 400, color: "var(--color-fg-3)", marginLeft: 4 }}>(sẽ hiển thị cho khách thuê)</span>
+                    </label>
+                    <textarea
+                      id="res-note"
                       className="form-control"
-                      placeholder="VD: Thợ điện Hùng"
-                      value={resContractorName}
-                      onChange={(e) => setResContractorName(e.target.value)}
+                      rows={3}
+                      style={{ marginTop: 6, resize: "vertical" }}
+                      placeholder="VD: Đã thay phao bồn nước mới, đã kiểm tra hoạt động ổn định..."
+                      value={resNotes}
+                      onChange={(e) => setResNotes(e.target.value)}
+                      autoFocus
                     />
                   </div>
 
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label htmlFor="res-cphone">Số điện thoại thợ</label>
-                    <input
-                      id="res-cphone"
-                      type="tel"
-                      className="form-control"
-                      placeholder="VD: 0912345678"
-                      value={resContractorPhone}
-                      onChange={(e) => setResContractorPhone(e.target.value)}
-                    />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label htmlFor="res-cost" style={{ fontWeight: 600, fontSize: 13 }}>Chi phí sửa chữa (VNĐ)</label>
+                      <input
+                        id="res-cost"
+                        type="number"
+                        min="0"
+                        step="10000"
+                        className="form-control"
+                        style={{ marginTop: 6 }}
+                        placeholder="VD: 250000"
+                        value={resCost}
+                        onChange={(e) => setResCost(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label htmlFor="res-payer" style={{ fontWeight: 600, fontSize: 13 }}>Bên chi trả chi phí</label>
+                      <select
+                        id="res-payer"
+                        className="form-control"
+                        style={{ marginTop: 6 }}
+                        value={resPayer}
+                        onChange={(e) => setResPayer(e.target.value)}
+                      >
+                        <option value="owner">Chủ trọ chịu (Vận hành)</option>
+                        <option value="tenant">Khách thuê tự chịu</option>
+                        <option value="deposit_deduction">Khấu trừ tiền cọc</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label htmlFor="res-cname" style={{ fontWeight: 600, fontSize: 13 }}>Tên thợ / Nhà thầu</label>
+                      <input
+                        id="res-cname"
+                        type="text"
+                        className="form-control"
+                        style={{ marginTop: 6 }}
+                        placeholder="VD: Thợ điện Hùng"
+                        value={resContractorName}
+                        onChange={(e) => setResContractorName(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label htmlFor="res-cphone" style={{ fontWeight: 600, fontSize: 13 }}>Số điện thoại thợ</label>
+                      <input
+                        id="res-cphone"
+                        type="tel"
+                        className="form-control"
+                        style={{ marginTop: 6 }}
+                        placeholder="VD: 0912345678"
+                        value={resContractorPhone}
+                        onChange={(e) => setResContractorPhone(e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                {/* Footer */}
+                <div
+                  style={{
+                    padding: "14px 22px",
+                    borderTop: "1px solid var(--color-border)",
+                    display: "flex",
+                    gap: 10,
+                    justifyContent: "flex-end",
+                    background: "var(--color-bg-subtle, rgba(0,0,0,0.02))",
+                  }}
+                >
                   <button type="button" className="btn-ghost" onClick={() => setResolvingRequest(null)}>
-                    Đóng
+                    Hủy
                   </button>
                   <button
                     type="button"
                     className="btn-primary"
+                    style={{ display: "flex", alignItems: "center", gap: 6 }}
                     disabled={submittingResolve}
                     onClick={async () => {
                       setSubmittingResolve(true);
@@ -682,7 +758,14 @@ export default function MaintenancePage() {
                       setSubmittingResolve(false);
                     }}
                   >
-                    {submittingResolve ? "Đang lưu..." : "Xác nhận đã sửa xong"}
+                    {submittingResolve ? (
+                      "Đang lưu..."
+                    ) : (
+                      <>
+                        <Check size={15} weight="bold" />
+                        Xác nhận đã sửa xong
+                      </>
+                    )}
                   </button>
                 </div>
               </motion.div>

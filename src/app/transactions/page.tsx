@@ -311,7 +311,7 @@ export default function TransactionsPage() {
               <option value="all">🏢 Tất cả nhà trọ</option>
               {properties.map((p) => (
                 <option key={p.id} value={p.id}>
-                  🏠 {p.name}
+                  {p.name}
                 </option>
               ))}
             </select>

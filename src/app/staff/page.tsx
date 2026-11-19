@@ -555,7 +555,7 @@ export default function StaffPage() {
                               fontWeight: 500,
                             }}
                           >
-                            <span>🏠 {a.propertyName}</span>
+                            <span>{a.propertyName}</span>
                             <button
                               type="button"
                               onClick={() => void handleRemoveAssignment(a.propertyId, a.memberId, a.propertyName)}
@@ -989,7 +989,7 @@ export default function StaffPage() {
                                       }
                                     }}
                                   />
-                                  <span>🏠 {p.name}</span>
+                                  <span>{p.name}</span>
                                 </label>
                               );
                             })}
@@ -1116,7 +1116,7 @@ export default function StaffPage() {
                         .filter((p) => !assigningStaff.assignments.some((a) => a.propertyId === p.id))
                         .map((p) => (
                           <option key={p.id} value={p.id}>
-                            🏠 {p.name}
+                            {p.name}
                           </option>
                         ))}
                     </select>
