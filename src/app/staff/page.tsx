@@ -615,37 +615,47 @@ export default function StaffPage() {
         {/* Modal: Add New Staff Member */}
         <AnimatePresence>
           {showAddModal && (
-            <>
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 9999,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "16px",
+              }}
+            >
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                onClick={() => setShowAddModal(false)}
+                onClick={() => {
+                  setShowAddModal(false);
+                  setCreatedAccountInfo(null);
+                }}
                 style={{
-                  position: "fixed",
+                  position: "absolute",
                   inset: 0,
                   backgroundColor: "rgba(0, 0, 0, 0.45)",
                   backdropFilter: "blur(4px)",
-                  zIndex: 9998,
                 }}
               />
               <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 15 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                onClick={(e) => e.stopPropagation()}
                 style={{
-                  position: "fixed",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  width: "92%",
+                  position: "relative",
+                  width: "100%",
                   maxWidth: 520,
                   maxHeight: "90vh",
                   backgroundColor: "var(--color-bg-panel, #ffffff)",
                   borderRadius: 14,
                   boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
                   border: "1px solid var(--color-border)",
-                  zIndex: 9999,
+                  zIndex: 1,
                   overflowY: "auto",
                 }}
               >
@@ -1003,43 +1013,50 @@ export default function StaffPage() {
                   </>
                 )}
               </motion.div>
-            </>
+            </div>
           )}
         </AnimatePresence>
 
         {/* Modal: Quick Assign Property to Existing Staff */}
         <AnimatePresence>
           {assigningStaff && (
-            <>
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 9999,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "16px",
+              }}
+            >
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setAssigningStaff(null)}
                 style={{
-                  position: "fixed",
+                  position: "absolute",
                   inset: 0,
                   backgroundColor: "rgba(0, 0, 0, 0.45)",
                   backdropFilter: "blur(4px)",
-                  zIndex: 9998,
                 }}
               />
               <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 15 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                onClick={(e) => e.stopPropagation()}
                 style={{
-                  position: "fixed",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  width: "90%",
+                  position: "relative",
+                  width: "100%",
                   maxWidth: 420,
                   backgroundColor: "var(--color-bg-panel, #ffffff)",
                   borderRadius: 14,
                   boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
                   border: "1px solid var(--color-border)",
-                  zIndex: 9999,
+                  zIndex: 1,
                   overflow: "hidden",
                 }}
               >
@@ -1111,7 +1128,7 @@ export default function StaffPage() {
                   </div>
                 </form>
               </motion.div>
-            </>
+            </div>
           )}
         </AnimatePresence>
       </main>
