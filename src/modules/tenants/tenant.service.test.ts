@@ -133,6 +133,15 @@ describe("getTenant", () => {
       code: "FORBIDDEN",
     });
   });
+
+  it("throws FORBIDDEN when tenant belongs to another owner's property", async () => {
+    mockDb.select.mockReturnValueOnce(
+      chain([{ ...mockTenant, propertyOwnerId: "other-owner", memberUserId: null }]),
+    );
+    await expect(getTenant(OWNER.userId, OWNER.role, TENANT_ID)).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------

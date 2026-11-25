@@ -83,6 +83,8 @@ const mockReading = {
   roomNumber: "101",
   propertyId: "prop-1",
   propertyName: "Nhà trọ A",
+  propertyOwnerId: OWNER.userId,
+  memberUserId: MANAGER.userId,
   utilityType: "electricity" as const,
   billingPeriod: "2025-02-01",
   previousValue: "100.000",
@@ -150,6 +152,15 @@ describe("getMeterReading", () => {
       code: "NOT_FOUND",
     });
   });
+
+  it("throws FORBIDDEN when reading belongs to another owner's property", async () => {
+    mockDb.select.mockReturnValueOnce(
+      chain([{ ...mockReading, propertyOwnerId: "other-owner", memberUserId: null }]),
+    );
+    await expect(getMeterReading(OWNER.userId, OWNER.role, READING_ID)).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -157,6 +168,9 @@ describe("getMeterReading", () => {
 // ---------------------------------------------------------------------------
 describe("createMeterReading", () => {
   it("creates meter reading with valid inputs", async () => {
+    mockDb.select
+      .mockReturnValueOnce(chain([{ id: "prop-1" }])) // assertPropertyAccess
+      .mockReturnValueOnce(chain([{ id: "room-1" }])); // verify room belongs to property
     mockDb.insert.mockReturnValueOnce(chain([mockReading]));
     const result = await createMeterReading(OWNER.userId, OWNER.role, {
       roomId: "room-1",
@@ -169,6 +183,22 @@ describe("createMeterReading", () => {
       unitPriceSnapshot: 3500,
     });
     expect(result.id).toBe(READING_ID);
+  });
+
+  it("throws FORBIDDEN when creating reading for unauthorized property", async () => {
+    mockDb.select.mockReturnValueOnce(chain([])); // assertPropertyAccess fails
+    await expect(
+      createMeterReading(OWNER.userId, OWNER.role, {
+        roomId: "room-1",
+        propertyId: "other-prop",
+        utilityType: "electricity",
+        billingPeriod: "2025-02-01",
+        previousValue: 100,
+        currentValue: 150,
+        utilityRateId: RATE_ID,
+        unitPriceSnapshot: 3500,
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("throws VALIDATION_ERROR when currentValue < previousValue", async () => {
@@ -222,7 +252,9 @@ describe("createMeterReading", () => {
 // ---------------------------------------------------------------------------
 describe("batchRecordMeterReadings", () => {
   it("records readings in batch successfully", async () => {
-    mockDb.select.mockReturnValueOnce(chain([mockRate])); // listUtilityRates
+    mockDb.select
+      .mockReturnValueOnce(chain([{ id: "prop-1" }])) // assertPropertyAccess
+      .mockReturnValueOnce(chain([mockRate])); // listUtilityRates
     mockDb.insert.mockReturnValue(chain([mockReading]));
 
     const result = await batchRecordMeterReadings(OWNER.userId, OWNER.role, {
@@ -242,7 +274,9 @@ describe("batchRecordMeterReadings", () => {
   });
 
   it("skips records where currentValue < previousValue", async () => {
-    mockDb.select.mockReturnValueOnce(chain([mockRate]));
+    mockDb.select
+      .mockReturnValueOnce(chain([{ id: "prop-1" }])) // assertPropertyAccess
+      .mockReturnValueOnce(chain([mockRate]));
 
     const result = await batchRecordMeterReadings(OWNER.userId, OWNER.role, {
       propertyId: "prop-1",
@@ -283,13 +317,16 @@ describe("deleteMeterReading", () => {
 // ---------------------------------------------------------------------------
 describe("utilityRates", () => {
   it("lists utility rates for staff", async () => {
-    mockDb.select.mockReturnValueOnce(chain([mockRate]));
+    mockDb.select
+      .mockReturnValueOnce(chain([{ id: "prop-1" }])) // assertPropertyAccess
+      .mockReturnValueOnce(chain([mockRate]));
     const result = await listUtilityRates(OWNER.userId, OWNER.role, "prop-1");
     expect(result).toHaveLength(1);
     expect(result[0].unitPrice).toBe(3500);
   });
 
   it("creates utility rate with valid unit price", async () => {
+    mockDb.select.mockReturnValueOnce(chain([{ id: "prop-1" }])); // assertPropertyAccess
     mockDb.insert.mockReturnValueOnce(chain([mockRate]));
     const result = await createUtilityRate(OWNER.userId, OWNER.role, {
       propertyId: "prop-1",

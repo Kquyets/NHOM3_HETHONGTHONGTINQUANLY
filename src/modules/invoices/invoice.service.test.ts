@@ -70,6 +70,7 @@ vi.mock("drizzle-orm", () => ({
   and: vi.fn((...args) => ({ type: "and", args })),
   desc: vi.fn((col) => ({ type: "desc", col })),
   asc: vi.fn((col) => ({ type: "asc", col })),
+  inArray: vi.fn().mockReturnValue({ type: "inArray" }),
 }));
 
 type MockQueryBuilder = {
@@ -151,6 +152,20 @@ describe("listInvoices", () => {
     expect(result).toHaveLength(1);
   });
 
+  it("deduplicates invoices across multiple tenants and computes paidAmount", async () => {
+    mockDb.select
+      .mockReturnValueOnce(
+        chain([
+          { ...mockInvoice, tenantName: "Người A" },
+          { ...mockInvoice, tenantName: "Người B" },
+        ]),
+      )
+      .mockReturnValueOnce(chain([{ invoiceId: INVOICE_ID, amount: 1500000 }]));
+    const result = await listInvoices(OWNER.userId, OWNER.role);
+    expect(result).toHaveLength(1);
+    expect(result[0].paidAmount).toBe(1500000);
+  });
+
   it("throws FORBIDDEN for tenant role", async () => {
     await expect(listInvoices(TENANT_USER.userId, TENANT_USER.role)).rejects.toMatchObject({
       code: "FORBIDDEN",
@@ -186,6 +201,7 @@ describe("getInvoice", () => {
 // ---------------------------------------------------------------------------
 describe("createInvoice", () => {
   it("creates invoice and items", async () => {
+    mockDb.select.mockReturnValueOnce(chain([{ id: CONTRACT_ID }])); // assertContractAccess
     mockDb.insert
       .mockReturnValueOnce(chain([mockInvoice])) // invoice
       .mockReturnValueOnce(chain([]));           // items
@@ -199,6 +215,18 @@ describe("createInvoice", () => {
       ],
     });
     expect(result.id).toBe(INVOICE_ID);
+  });
+
+  it("throws FORBIDDEN when creating invoice for unauthorized contract", async () => {
+    mockDb.select.mockReturnValueOnce(chain([])); // assertContractAccess fails
+    await expect(
+      createInvoice(OWNER.userId, OWNER.role, {
+        contractId: "other-contract",
+        billingPeriodStart: "2025-02-01",
+        totalAmount: 1000000,
+        items: [],
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("throws VALIDATION_ERROR when billingPeriodStart is not 1st of month", async () => {
@@ -280,6 +308,26 @@ describe("addPayment", () => {
       }),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
   });
+
+  it("throws BUSINESS_RULE_ERROR when adding payment to a cancelled invoice", async () => {
+    mockDb.select
+      .mockReturnValueOnce(chain([{ ...mockInvoice, status: "cancelled" }]))
+      .mockReturnValueOnce(chain([]))
+      .mockReturnValueOnce(chain([]));
+    await expect(
+      addPayment(OWNER.userId, OWNER.role, INVOICE_ID, { amount: 100000, method: "cash" }),
+    ).rejects.toMatchObject({ code: "BUSINESS_RULE_ERROR" });
+  });
+
+  it("throws VALIDATION_ERROR when payment exceeds remaining invoice balance", async () => {
+    mockDb.select
+      .mockReturnValueOnce(chain([mockInvoice]))
+      .mockReturnValueOnce(chain([]))
+      .mockReturnValueOnce(chain([{ id: "p-prev", invoiceId: INVOICE_ID, amount: 3000000, paidAt: new Date(), method: "cash", reference: null, note: null, createdAt: new Date() }]));
+    await expect(
+      addPayment(OWNER.userId, OWNER.role, INVOICE_ID, { amount: 600000, method: "cash" }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -287,6 +335,8 @@ describe("addPayment", () => {
 // ---------------------------------------------------------------------------
 describe("batchGenerateInvoices", () => {
   it("batches invoices for active contracts", async () => {
+    // 0. assertPropertyAccess
+    mockDb.select.mockReturnValueOnce(chain([{ id: "prop-1" }]));
     // 1. activeContracts
     mockDb.select.mockReturnValueOnce(
       chain([
@@ -326,6 +376,7 @@ describe("batchGenerateInvoices", () => {
   });
 
   it("skips when invoice already exists", async () => {
+    mockDb.select.mockReturnValueOnce(chain([{ id: "prop-1" }])); // assertPropertyAccess
     mockDb.select.mockReturnValueOnce(
       chain([
         {

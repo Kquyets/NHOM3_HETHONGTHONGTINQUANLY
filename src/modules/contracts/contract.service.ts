@@ -78,6 +78,44 @@ function assertStaff(role: string): void {
   }
 }
 
+async function assertRoomAccess(userId: string, role: string, roomId: string): Promise<void> {
+  assertStaff(role);
+  const db = getDatabase();
+
+  if (role === "owner") {
+    const [row] = await db
+      .select({ roomId: rooms.id })
+      .from(rooms)
+      .innerJoin(properties, eq(properties.id, rooms.propertyId))
+      .where(and(eq(rooms.id, roomId), eq(properties.ownerId, userId)))
+      .limit(1);
+
+    if (!row) {
+      throw new AppError("FORBIDDEN", "Phòng không tồn tại hoặc bạn không có quyền thao tác.", []);
+    }
+    return;
+  }
+
+  const [row] = await db
+    .select({ roomId: rooms.id })
+    .from(rooms)
+    .innerJoin(properties, eq(properties.id, rooms.propertyId))
+    .innerJoin(
+      propertyMembers,
+      and(
+        eq(propertyMembers.propertyId, properties.id),
+        eq(propertyMembers.userId, userId),
+        eq(propertyMembers.status, "active"),
+      ),
+    )
+    .where(eq(rooms.id, roomId))
+    .limit(1);
+
+  if (!row) {
+    throw new AppError("FORBIDDEN", "Phòng không tồn tại hoặc bạn không được phân quyền.", []);
+  }
+}
+
 const SELECT_COLUMNS = {
   id: contracts.id,
   roomId: contracts.roomId,
@@ -304,6 +342,8 @@ export async function createContract(
     ]);
   }
 
+  await assertRoomAccess(userId, role, input.roomId);
+
   const db = getDatabase();
   const [row] = await db
     .insert(contracts)
@@ -451,7 +491,26 @@ export async function updateContractStatus(
   // Verify exists
   const existing = await getContract(userId, role, contractId);
 
+  if (existing.status === "ended" || existing.status === "cancelled") {
+    throw new AppError(
+      "BUSINESS_RULE_ERROR",
+      "Không thể thay đổi trạng thái hợp đồng đã kết thúc hoặc đã hủy.",
+      [],
+    );
+  }
+
   const db = getDatabase();
+
+  if (status === "active" && existing.status !== "active") {
+    const [activeConflict] = await db
+      .select({ id: contracts.id })
+      .from(contracts)
+      .where(and(eq(contracts.roomId, existing.roomId), eq(contracts.status, "active")))
+      .limit(1);
+    if (activeConflict && activeConflict.id !== contractId) {
+      throw new AppError("CONFLICT", "Phòng này đã có một hợp đồng khác đang hiệu lực.", []);
+    }
+  }
   const [row] = await db
     .update(contracts)
     .set({ status, updatedAt: new Date() })
@@ -508,6 +567,9 @@ export async function liquidateContract(
   assertStaff(role);
 
   const existing = await getContract(userId, role, contractId);
+  if (existing.status !== "active") {
+    throw new AppError("BUSINESS_RULE_ERROR", "Chỉ có thể thanh lý hợp đồng đang ở trạng thái hiệu lực.", []);
+  }
   const damage = Math.max(0, input.damageDeduction || 0);
   const utility = Math.max(0, input.utilityDeduction || 0);
   const refundAmount = Math.max(0, existing.depositSnapshot - damage - utility);

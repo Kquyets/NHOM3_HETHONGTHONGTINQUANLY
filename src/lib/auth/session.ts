@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { AppError } from "../../errors/app-error";
 import { getDatabase } from "../database/client";
@@ -17,7 +17,6 @@ export async function requireAuthenticatedUser(request: Request): Promise<Authen
   }
 
   let identity: AccessIdentity | null = null;
-  let email = "";
 
   try {
     const secret = getAuthSecret();
@@ -30,28 +29,23 @@ export async function requireAuthenticatedUser(request: Request): Promise<Authen
     try {
       const payload = verifyJwtToken(match[1]);
       identity = { userId: payload.sub, role: payload.role };
-      email = "";
     } catch {
       throw new AppError("UNAUTHORIZED", "Authentication required.");
     }
   }
 
-  try {
-    const [user] = await getDatabase()
-      .select({ id: users.id, email: users.email, role: users.role, status: users.status })
-      .from(users)
-      .where(eq(users.id, identity.userId))
-      .limit(1);
+  const [user] = await getDatabase()
+    .select({ id: users.id, email: users.email, role: users.role, status: users.status })
+    .from(users)
+    .where(eq(users.id, identity.userId))
+    .limit(1);
 
-    if (user) {
-      if (user.status !== "active") {
-        throw new AppError("UNAUTHORIZED", "User account is suspended.");
-      }
-      return { userId: user.id, email: user.email, role: user.role };
-    }
-  } catch (err) {
-    if (err instanceof AppError) throw err;
+  if (!user) {
+    throw new AppError("UNAUTHORIZED", "User account no longer exists.");
+  }
+  if (user.status !== "active") {
+    throw new AppError("UNAUTHORIZED", "User account is suspended.");
   }
 
-  return { userId: identity.userId, email, role: identity.role };
+  return { userId: user.id, email: user.email, role: user.role };
 }

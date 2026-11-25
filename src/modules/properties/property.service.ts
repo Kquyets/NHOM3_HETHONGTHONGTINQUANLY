@@ -346,6 +346,14 @@ export async function addPropertyMember(
     );
   }
 
+  if (targetUser.role !== "manager") {
+    throw new AppError(
+      "BUSINESS_RULE_ERROR",
+      "Chỉ có thể gán tài khoản có vai trò Quản lý (Manager) vào danh sách nhân viên tòa nhà.",
+      [{ field: "emailOrPhone", message: "Vai trò tài khoản phải là Quản lý (manager)." }],
+    );
+  }
+
   // Check if already an active member
   const [existing] = await db
     .select({ id: propertyMembers.id, status: propertyMembers.status })
@@ -502,6 +510,13 @@ export async function createAndAssignStaffMember(
   const initialPassword = input.password?.trim() || "12345678";
 
   if (existingUser) {
+    if (existingUser.role !== "manager") {
+      throw new AppError(
+        "BUSINESS_RULE_ERROR",
+        "Số điện thoại hoặc email này đã thuộc tài khoản Chủ nhà hoặc Khách thuê, không thể gán làm nhân viên.",
+        [],
+      );
+    }
     targetUserId = existingUser.id;
     targetUserEmail = existingUser.email;
     targetUserFullName = existingUser.fullName;

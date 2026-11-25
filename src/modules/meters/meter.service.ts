@@ -77,6 +77,43 @@ function assertStaff(role: string): void {
   }
 }
 
+async function assertPropertyAccess(
+  userId: string,
+  role: string,
+  propertyId: string,
+): Promise<void> {
+  assertStaff(role);
+  const db = getDatabase();
+
+  if (role === "owner") {
+    const [prop] = await db
+      .select({ id: properties.id })
+      .from(properties)
+      .where(and(eq(properties.id, propertyId), eq(properties.ownerId, userId)))
+      .limit(1);
+    if (!prop) {
+      throw new AppError("FORBIDDEN", "Bạn không có quyền thao tác với tòa nhà này.", []);
+    }
+    return;
+  }
+
+  const [member] = await db
+    .select({ id: propertyMembers.id })
+    .from(propertyMembers)
+    .where(
+      and(
+        eq(propertyMembers.propertyId, propertyId),
+        eq(propertyMembers.userId, userId),
+        eq(propertyMembers.status, "active"),
+      ),
+    )
+    .limit(1);
+
+  if (!member) {
+    throw new AppError("FORBIDDEN", "Bạn không có quyền quản lý tòa nhà này.", []);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Service: Meter Readings
 // ---------------------------------------------------------------------------
@@ -155,6 +192,8 @@ export async function getMeterReading(
       roomNumber: rooms.roomNumber,
       propertyId: meterReadings.propertyId,
       propertyName: properties.name,
+      propertyOwnerId: properties.ownerId,
+      memberUserId: propertyMembers.userId,
       utilityType: meterReadings.utilityType,
       billingPeriod: meterReadings.billingPeriod,
       previousValue: meterReadings.previousValue,
@@ -166,11 +205,38 @@ export async function getMeterReading(
     .from(meterReadings)
     .innerJoin(rooms, eq(rooms.id, meterReadings.roomId))
     .innerJoin(properties, eq(properties.id, meterReadings.propertyId))
+    .leftJoin(
+      propertyMembers,
+      and(
+        eq(propertyMembers.propertyId, properties.id),
+        eq(propertyMembers.userId, userId),
+        eq(propertyMembers.status, "active"),
+      ),
+    )
     .where(eq(meterReadings.id, readingId))
     .limit(1);
 
   if (!row) throw new AppError("NOT_FOUND", "Không tìm thấy chỉ số điện nước.", []);
-  return row;
+
+  const hasAccess = role === "owner" ? row.propertyOwnerId === userId : row.memberUserId === userId;
+  if (!hasAccess) {
+    throw new AppError("FORBIDDEN", "Bạn không có quyền truy cập chỉ số điện nước này.", []);
+  }
+
+  return {
+    id: row.id,
+    roomId: row.roomId,
+    roomNumber: row.roomNumber,
+    propertyId: row.propertyId,
+    propertyName: row.propertyName,
+    utilityType: row.utilityType,
+    billingPeriod: row.billingPeriod,
+    previousValue: row.previousValue,
+    currentValue: row.currentValue,
+    utilityRateId: row.utilityRateId,
+    unitPriceSnapshot: row.unitPriceSnapshot,
+    createdAt: row.createdAt,
+  };
 }
 
 export async function createMeterReading(
@@ -180,13 +246,13 @@ export async function createMeterReading(
 ): Promise<MeterReadingRow> {
   assertStaff(role);
 
-  if (input.previousValue < 0) {
+  if (!Number.isFinite(input.previousValue) || input.previousValue < 0) {
     throw new AppError("VALIDATION_ERROR", "Chỉ số cũ không được âm.", [
       { field: "previousValue", message: "Chỉ số cũ phải lớn hơn hoặc bằng 0." },
     ]);
   }
 
-  if (input.currentValue < input.previousValue) {
+  if (!Number.isFinite(input.currentValue) || input.currentValue < input.previousValue) {
     throw new AppError("VALIDATION_ERROR", "Chỉ số mới không được nhỏ hơn chỉ số cũ.", [
       { field: "currentValue", message: "Chỉ số mới phải lớn hơn hoặc bằng chỉ số cũ." },
     ]);
@@ -200,7 +266,19 @@ export async function createMeterReading(
     ]);
   }
 
+  await assertPropertyAccess(userId, role, input.propertyId);
+
   const db = getDatabase();
+  const [room] = await db
+    .select({ id: rooms.id })
+    .from(rooms)
+    .where(and(eq(rooms.id, input.roomId), eq(rooms.propertyId, input.propertyId)))
+    .limit(1);
+
+  if (!room) {
+    throw new AppError("NOT_FOUND", "Phòng không tồn tại trong tòa nhà đã chọn.", []);
+  }
+
   const [row] = await db
     .insert(meterReadings)
     .values({
@@ -238,6 +316,13 @@ export async function batchRecordMeterReadings(
   assertStaff(role);
   if (!input.items || input.items.length === 0) return { count: 0 };
 
+  const parts = input.billingPeriod.split("-");
+  if (parts.length !== 3 || parts[2] !== "01") {
+    throw new AppError("VALIDATION_ERROR", "Kỳ tính tiền phải là ngày đầu tiên của tháng (YYYY-MM-01).", [
+      { field: "billingPeriod", message: "Kỳ hóa đơn phải bắt đầu từ ngày 01 của tháng." },
+    ]);
+  }
+
   const db = getDatabase();
 
   const rates = await listUtilityRates(userId, role, input.propertyId);
@@ -246,33 +331,32 @@ export async function batchRecordMeterReadings(
 
   let recordedCount = 0;
   for (const item of input.items) {
-    if (item.currentValue < item.previousValue) continue;
+    if (item.previousValue < 0 || item.currentValue < item.previousValue) continue;
     let rate = item.utilityType === "electricity" ? elecRate : waterRate;
 
     if (!rate) {
-      try {
-        const defaultPrice = item.unitPriceSnapshot || (item.utilityType === "electricity" ? 3800 : 25000);
-        const [newRate] = await db
-          .insert(utilityRates)
-          .values({
-            propertyId: input.propertyId,
-            utilityType: item.utilityType,
-            unitPrice: defaultPrice,
-            effectiveFrom: `${input.billingPeriod.slice(0, 7)}-01`,
-          })
-          .returning();
-        if (newRate) {
-          rate = newRate as unknown as typeof rate;
-          if (item.utilityType === "electricity") elecRate = rate;
-          else waterRate = rate;
-        }
-      } catch {
-        // Fallback in mock environments
+      const defaultPrice = item.unitPriceSnapshot || (item.utilityType === "electricity" ? 3800 : 25000);
+      const [newRate] = await db
+        .insert(utilityRates)
+        .values({
+          propertyId: input.propertyId,
+          utilityType: item.utilityType,
+          unitPrice: defaultPrice,
+          effectiveFrom: `${input.billingPeriod.slice(0, 7)}-01`,
+        })
+        .returning();
+      if (newRate) {
+        rate = newRate as unknown as typeof rate;
+        if (item.utilityType === "electricity") elecRate = rate;
+        else waterRate = rate;
       }
     }
 
-    const rateId = rate?.id || item.roomId;
-    const price = item.unitPriceSnapshot || rate?.unitPrice || (item.utilityType === "electricity" ? 3800 : 25000);
+    if (!rate?.id) {
+      throw new AppError("BUSINESS_RULE_ERROR", "Chưa có biểu giá hợp lệ để lưu chỉ số cho tòa nhà này.", []);
+    }
+
+    const price = item.unitPriceSnapshot || rate.unitPrice || (item.utilityType === "electricity" ? 3800 : 25000);
 
     await db
       .insert(meterReadings)
@@ -283,7 +367,7 @@ export async function batchRecordMeterReadings(
         billingPeriod: input.billingPeriod,
         previousValue: String(item.previousValue),
         currentValue: String(item.currentValue),
-        utilityRateId: rateId,
+        utilityRateId: rate.id,
         unitPriceSnapshot: price,
       });
     recordedCount++;
@@ -319,25 +403,53 @@ export async function listUtilityRates(
   assertStaff(role);
   const db = getDatabase();
 
-  const query = db
-    .select({
-      id: utilityRates.id,
-      propertyId: utilityRates.propertyId,
-      utilityType: utilityRates.utilityType,
-      unitPrice: utilityRates.unitPrice,
-      effectiveFrom: utilityRates.effectiveFrom,
-      effectiveTo: utilityRates.effectiveTo,
-      createdAt: utilityRates.createdAt,
-    })
-    .from(utilityRates);
+  if (propertyId) {
+    await assertPropertyAccess(userId, role, propertyId);
+  }
+
+  const rateCols = {
+    id: utilityRates.id,
+    propertyId: utilityRates.propertyId,
+    utilityType: utilityRates.utilityType,
+    unitPrice: utilityRates.unitPrice,
+    effectiveFrom: utilityRates.effectiveFrom,
+    effectiveTo: utilityRates.effectiveTo,
+    createdAt: utilityRates.createdAt,
+  };
+
+  if (role === "owner") {
+    const conditions = [eq(properties.ownerId, userId)];
+    if (propertyId) {
+      conditions.push(eq(utilityRates.propertyId, propertyId));
+    }
+    return db
+      .select(rateCols)
+      .from(utilityRates)
+      .innerJoin(properties, eq(properties.id, utilityRates.propertyId))
+      .where(and(...conditions))
+      .orderBy(desc(utilityRates.effectiveFrom));
+  }
+
+  const mgrQuery = db
+    .select(rateCols)
+    .from(utilityRates)
+    .innerJoin(properties, eq(properties.id, utilityRates.propertyId))
+    .innerJoin(
+      propertyMembers,
+      and(
+        eq(propertyMembers.propertyId, properties.id),
+        eq(propertyMembers.userId, userId),
+        eq(propertyMembers.status, "active"),
+      ),
+    );
 
   if (propertyId) {
-    return query
+    return mgrQuery
       .where(eq(utilityRates.propertyId, propertyId))
       .orderBy(desc(utilityRates.effectiveFrom));
   }
 
-  return query.orderBy(desc(utilityRates.effectiveFrom));
+  return mgrQuery.orderBy(desc(utilityRates.effectiveFrom));
 }
 
 export async function createUtilityRate(
@@ -352,6 +464,8 @@ export async function createUtilityRate(
       { field: "unitPrice", message: "Đơn giá không được âm." },
     ]);
   }
+
+  await assertPropertyAccess(userId, role, input.propertyId);
 
   const db = getDatabase();
   const [row] = await db

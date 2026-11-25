@@ -130,14 +130,63 @@ export async function getTenant(
 ): Promise<TenantRow> {
   assertStaff(role);
   const db = getDatabase();
-  const [row] = await db
-    .select(SELECT_COLUMNS)
+  const rows = await db
+    .select({
+      ...SELECT_COLUMNS,
+      propertyOwnerId: properties.ownerId,
+      memberUserId: propertyMembers.userId,
+      contractStatus: contracts.status,
+    })
     .from(tenants)
+    .leftJoin(contractTenants, eq(contractTenants.tenantId, tenants.id))
+    .leftJoin(contracts, eq(contracts.id, contractTenants.contractId))
+    .leftJoin(rooms, eq(rooms.id, contracts.roomId))
+    .leftJoin(properties, eq(properties.id, rooms.propertyId))
+    .leftJoin(
+      propertyMembers,
+      and(
+        eq(propertyMembers.propertyId, properties.id),
+        eq(propertyMembers.userId, userId),
+        eq(propertyMembers.status, "active"),
+      ),
+    )
     .where(eq(tenants.id, tenantId))
-    .limit(1);
+    .limit(50);
 
-  if (!row) throw new AppError("NOT_FOUND", "Không tìm thấy khách thuê.", []);
-  return row;
+  if (rows.length === 0) {
+    throw new AppError("NOT_FOUND", "Không tìm thấy khách thuê.", []);
+  }
+
+  // Enforce tenant property scoping whenever the tenant is attached to at least one property contract.
+  const linkedRows = rows.filter(
+    (r) => r.propertyOwnerId !== undefined && r.propertyOwnerId !== null,
+  );
+  if (linkedRows.length > 0) {
+    const hasAccess = linkedRows.some((r) =>
+      role === "owner" ? r.propertyOwnerId === userId : r.memberUserId === userId,
+    );
+    if (!hasAccess) {
+      throw new AppError("FORBIDDEN", "Bạn không có quyền truy cập hồ sơ khách thuê này.", []);
+    }
+  }
+
+  const first = rows[0];
+  return {
+    id: first.id,
+    userId: first.userId,
+    fullName: first.fullName,
+    phone: first.phone,
+    nationalId: first.nationalId,
+    birthDate: first.birthDate,
+    hometown: first.hometown,
+    vehicleNumber: first.vehicleNumber,
+    emergencyContactName: first.emergencyContactName,
+    emergencyContactPhone: first.emergencyContactPhone,
+    idCardFrontUrl: first.idCardFrontUrl,
+    idCardBackUrl: first.idCardBackUrl,
+    createdAt: first.createdAt,
+    updatedAt: first.updatedAt,
+  };
 }
 
 /**

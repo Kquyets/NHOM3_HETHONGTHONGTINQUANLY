@@ -1,10 +1,29 @@
 import { scryptSync } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+
+const mockLimit = vi.fn();
+const mockDb = {
+  select: vi.fn(() => ({
+    from: vi.fn(() => ({
+      where: vi.fn(() => ({
+        limit: mockLimit,
+      })),
+    })),
+  })),
+};
+
+vi.mock("../database/client", () => ({
+  getDatabase: () => mockDb,
+}));
 
 import { hashPassword, verifyPassword } from "./password";
 import { hashRefreshToken, issueAccessToken, newRefreshToken, verifyAccessToken } from "./tokens";
 import { signAccessToken } from "./jwt";
 import { requireAuthenticatedUser } from "./session";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("password credentials", () => {
   it("verifies only the password used to create a salted hash", async () => {
@@ -63,8 +82,11 @@ describe("bearer tokens", () => {
     });
   });
 
-  it("authenticates requests with jwt.ts signed access token", async () => {
+  it("authenticates requests with jwt.ts signed access token when user is active", async () => {
     process.env.JWT_SECRET = "0123456789abcdef0123456789abcdef";
+    mockLimit.mockResolvedValueOnce([
+      { id: user.id, email: "owner@example.com", role: user.role, status: "active" },
+    ]);
     const token = signAccessToken({
       sub: user.id,
       role: user.role,
@@ -75,6 +97,32 @@ describe("bearer tokens", () => {
       }),
     );
     expect(authUser.userId).toBe(user.id);
+    expect(authUser.email).toBe("owner@example.com");
     expect(authUser.role).toBe(user.role);
+  });
+
+  it("rejects valid token when user account is suspended or missing", async () => {
+    process.env.JWT_SECRET = "0123456789abcdef0123456789abcdef";
+    const token = signAccessToken({ sub: user.id, role: user.role });
+
+    mockLimit.mockResolvedValueOnce([]);
+    await expect(
+      requireAuthenticatedUser(
+        new Request("http://localhost/api/rooms/room-1", {
+          headers: { authorization: `Bearer ${token}` },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+
+    mockLimit.mockResolvedValueOnce([
+      { id: user.id, email: "owner@example.com", role: user.role, status: "disabled" },
+    ]);
+    await expect(
+      requireAuthenticatedUser(
+        new Request("http://localhost/api/rooms/room-1", {
+          headers: { authorization: `Bearer ${token}` },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
 });

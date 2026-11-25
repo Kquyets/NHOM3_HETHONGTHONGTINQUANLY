@@ -218,6 +218,18 @@ describe("createContract", () => {
       }),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
   });
+
+  it("throws FORBIDDEN when creating contract on unauthorized room", async () => {
+    mockDb.select.mockReturnValueOnce(chain([]));
+    await expect(
+      createContract("other-owner", "owner", {
+        roomId: "other-room",
+        startDate: "2025-01-01",
+        monthlyRentSnapshot: 1000000,
+        depositSnapshot: 0,
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -249,6 +261,23 @@ describe("updateContractStatus", () => {
     await expect(
       updateContractStatus(OWNER.userId, OWNER.role, CONTRACT_ID, "ended"),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("throws BUSINESS_RULE_ERROR when mutating an already ended contract", async () => {
+    mockDb.select.mockReturnValue(chain([{ ...mockContract, status: "ended" }]));
+    await expect(
+      updateContractStatus(OWNER.userId, OWNER.role, CONTRACT_ID, "active"),
+    ).rejects.toMatchObject({ code: "BUSINESS_RULE_ERROR" });
+  });
+
+  it("throws CONFLICT when activating a contract on a room with another active contract", async () => {
+    mockDb.select
+      .mockReturnValueOnce(chain([{ ...mockContract, status: "draft" }])) // getContract
+      .mockReturnValueOnce(chain([])) // linkedTenants
+      .mockReturnValueOnce(chain([{ id: "another-active-contract" }])); // conflict check
+    await expect(
+      updateContractStatus(OWNER.userId, OWNER.role, CONTRACT_ID, "active"),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
   });
 });
 

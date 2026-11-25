@@ -56,11 +56,19 @@ function hashToken(raw: string): string {
 // Service
 // ---------------------------------------------------------------------------
 
+const EMAIL_FORMAT_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 /**
  * Register a new owner, manager, or tenant account.
  */
 export async function register(input: RegisterInput): Promise<{ user: UserPublic; tokens: AuthTokens }> {
   const email = normalizeEmail(input.email);
+
+  if (!EMAIL_FORMAT_REGEX.test(email)) {
+    throw new AppError("VALIDATION_ERROR", "Email format is invalid.", [
+      { field: "email", message: "Email không đúng định dạng." },
+    ]);
+  }
 
   if (input.password.length < 8) {
     throw new AppError("VALIDATION_ERROR", "Password must be at least 8 characters.", [

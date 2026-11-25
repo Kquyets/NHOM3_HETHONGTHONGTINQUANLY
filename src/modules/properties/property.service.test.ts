@@ -227,6 +227,16 @@ describe("property members management", () => {
     expect(result.email).toBe("mgr@test.com");
   });
 
+  it("rejects adding non-manager user as property member with BUSINESS_RULE_ERROR", async () => {
+    mockDb.select
+      .mockReturnValueOnce(chain([mockProperty]))
+      .mockReturnValueOnce(chain([{ id: "u-tenant", email: "t@test.com", fullName: "Khách", phone: "099", role: "tenant" }]));
+
+    await expect(
+      addPropertyMember(OWNER.userId, OWNER.role, PROP_ID, "t@test.com"),
+    ).rejects.toMatchObject({ code: "BUSINESS_RULE_ERROR" });
+  });
+
   it("removes a property member", async () => {
     mockDb.select.mockReturnValueOnce(chain([mockProperty])); // assertAccess
     mockDb.update.mockReturnValue(chain([]));

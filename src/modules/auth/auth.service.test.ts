@@ -133,6 +133,12 @@ describe("auth.service", () => {
         register({ email: "new@test.com", password: "123", role: "owner" }),
       ).rejects.toThrow(expect.objectContaining({ code: "VALIDATION_ERROR" }));
     });
+
+    it("throws VALIDATION_ERROR if email format is invalid", async () => {
+      await expect(
+        register({ email: "not-an-email", password: "password123", role: "owner" }),
+      ).rejects.toThrow(expect.objectContaining({ code: "VALIDATION_ERROR" }));
+    });
   });
 
   // -------------------------------------------------------------------------
