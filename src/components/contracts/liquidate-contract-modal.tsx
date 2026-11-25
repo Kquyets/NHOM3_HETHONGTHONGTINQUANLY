@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { X, CheckCircle, Warning, Coins, Wrench, Drop } from "@phosphor-icons/react";
 import { apiClient } from "../../lib/api-client";
 import { money } from "../../utils/format";
+import { ConfirmDialog } from "../ui/confirm-dialog";
 import type { ContractRow } from "../../modules/contracts/contract.service";
 
 export function LiquidateContractModal({
@@ -22,26 +23,27 @@ export function LiquidateContractModal({
   const [liquidationNotes, setLiquidationNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !showConfirm) onClose();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  }, [onClose, showConfirm]);
 
   const damageNum = Math.max(0, parseInt(damageDeduction, 10) || 0);
   const utilityNum = Math.max(0, parseInt(utilityDeduction, 10) || 0);
   const totalDeduction = damageNum + utilityNum;
   const refundAmount = Math.max(0, initialDeposit - totalDeduction);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm(`Xác nhận thanh lý hợp đồng Phòng ${contract.roomNumber} và hoàn trả ${money.format(refundAmount)} cho khách thuê?`)) {
-      return;
-    }
+    setShowConfirm(true);
+  };
 
+  const executeLiquidation = async () => {
     try {
       setSubmitting(true);
       setError(null);
@@ -55,9 +57,11 @@ export function LiquidateContractModal({
         }),
       });
       await onLiquidated();
+      setShowConfirm(false);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Thanh lý hợp đồng thất bại.");
+      setShowConfirm(false);
     } finally {
       setSubmitting(false);
     }
@@ -258,6 +262,16 @@ export function LiquidateContractModal({
           </div>
         </form>
       </motion.div>
+      <ConfirmDialog
+        open={showConfirm}
+        title="Xác nhận thanh lý hợp đồng"
+        message={`Xác nhận thanh lý hợp đồng Phòng ${contract.roomNumber} và hoàn trả ${money.format(refundAmount)} tiền cọc cho khách thuê?`}
+        confirmLabel="Xác nhận thanh lý"
+        variant="primary"
+        loading={submitting}
+        onConfirm={() => void executeLiquidation()}
+        onCancel={() => setShowConfirm(false)}
+      />
     </div>
   );
 }

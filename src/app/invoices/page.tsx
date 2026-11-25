@@ -29,6 +29,7 @@ import {
 
 import { AppHeader } from "../../components/layout/app-header";
 import { PrintableInvoiceModal } from "../../components/invoices/printable-invoice-modal";
+import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import { exportTableToCsv } from "../../utils/export-csv";
@@ -105,6 +106,8 @@ export default function InvoicesPage() {
 
   // Selected invoice for detail modal
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDetail | null>(null);
+  const [confirmDeleteInv, setConfirmDeleteInv] = useState<InvoiceRow | null>(null);
+  const [deletingInv, setDeletingInv] = useState(false);
 
   // Property & Month selection (LOZIDO-style)
   const [properties, setProperties] = useState<Array<{ id: string; name: string }>>([]);
@@ -306,13 +309,22 @@ export default function InvoicesPage() {
     }
   };
 
-  const handleDeleteInvoice = async (invoice: InvoiceRow) => {
-    if (!window.confirm("Bạn có chắc muốn xóa hóa đơn nháp này?")) return;
+  const handleDeleteInvoice = (invoice: InvoiceRow) => {
+    setConfirmDeleteInv(invoice);
+  };
+
+  const executeDeleteInvoice = async () => {
+    if (!confirmDeleteInv) return;
     try {
-      await apiClient(`/api/invoices/${invoice.id}`, { method: "DELETE" });
+      setDeletingInv(true);
+      await apiClient(`/api/invoices/${confirmDeleteInv.id}`, { method: "DELETE" });
+      setConfirmDeleteInv(null);
       await loadInvoices();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không thể xóa hóa đơn.");
+      setConfirmDeleteInv(null);
+    } finally {
+      setDeletingInv(false);
     }
   };
 
@@ -1483,6 +1495,15 @@ export default function InvoicesPage() {
 
         {/* Printable Invoice Modal (A4/PDF) */}
         <PrintableInvoiceModal invoice={printInvoice} onClose={() => setPrintInvoice(null)} />
+        <ConfirmDialog
+          open={Boolean(confirmDeleteInv)}
+          title="Xóa hóa đơn nháp"
+          message={`Bạn có chắc muốn xóa hóa đơn nháp Phòng ${confirmDeleteInv?.roomNumber ?? ""} (${confirmDeleteInv?.billingPeriodStart ?? ""})?`}
+          confirmLabel="Xóa hóa đơn"
+          loading={deletingInv}
+          onConfirm={() => void executeDeleteInvoice()}
+          onCancel={() => setConfirmDeleteInv(null)}
+        />
       </main>
     </div>
   );

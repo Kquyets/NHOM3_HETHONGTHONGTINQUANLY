@@ -19,6 +19,7 @@ import {
 
 import { AppHeader } from "../../components/layout/app-header";
 import { FluentDatePicker } from "../../components/ui/fluent-date-picker";
+import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import { exportTableToCsv } from "../../utils/export-csv";
@@ -320,13 +321,25 @@ export default function MetersPage() {
     }
   };
 
-  const handleDeleteReading = async (reading: MeterReadingRow) => {
-    if (!window.confirm("Bạn có chắc muốn xóa bản ghi chỉ số này?")) return;
+  const [confirmDeleteReading, setConfirmDeleteReading] = useState<MeterReadingRow | null>(null);
+  const [deletingReading, setDeletingReading] = useState(false);
+
+  const handleDeleteReading = (reading: MeterReadingRow) => {
+    setConfirmDeleteReading(reading);
+  };
+
+  const executeDeleteReading = async () => {
+    if (!confirmDeleteReading) return;
     try {
-      await apiClient(`/api/meters/${reading.id}`, { method: "DELETE" });
+      setDeletingReading(true);
+      await apiClient(`/api/meters/${confirmDeleteReading.id}`, { method: "DELETE" });
+      setConfirmDeleteReading(null);
       await loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không thể xóa bản ghi chỉ số.");
+      setConfirmDeleteReading(null);
+    } finally {
+      setDeletingReading(false);
     }
   };
 
@@ -1122,6 +1135,15 @@ export default function MetersPage() {
           )}
         </AnimatePresence>
       </main>
+      <ConfirmDialog
+        open={Boolean(confirmDeleteReading)}
+        title="Xóa bản ghi chỉ số"
+        message={`Bạn có chắc muốn xóa bản ghi chỉ số Phòng ${confirmDeleteReading?.roomNumber ?? ""} (${confirmDeleteReading?.billingPeriod ?? ""})?`}
+        confirmLabel="Xóa chỉ số"
+        loading={deletingReading}
+        onConfirm={() => void executeDeleteReading()}
+        onCancel={() => setConfirmDeleteReading(null)}
+      />
     </div>
   );
 }

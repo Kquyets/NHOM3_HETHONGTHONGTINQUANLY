@@ -28,6 +28,7 @@ import {
 import { AppHeader } from "../../components/layout/app-header";
 import { PrintableContractModal } from "../../components/contracts/printable-contract-modal";
 import { LiquidateContractModal } from "../../components/contracts/liquidate-contract-modal";
+import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import { exportTableToCsv } from "../../utils/export-csv";
@@ -485,6 +486,8 @@ function ManageOccupantsModal({
   const [selectedTenantId, setSelectedTenantId] = useState("");
   const [submittingAdd, setSubmittingAdd] = useState(false);
   const [submittingRemoveId, setSubmittingRemoveId] = useState<string | null>(null);
+  const [occError, setOccError] = useState<string | null>(null);
+  const [confirmRemoveTenant, setConfirmRemoveTenant] = useState<{ id: string; name: string } | null>(null);
 
   const assignedTenantIds = contract.tenants?.map((t) => t.id) || [];
   const availableTenants = allTenants.filter((t) => !assignedTenantIds.includes(t.id));
@@ -493,6 +496,7 @@ function ManageOccupantsModal({
     if (!selectedTenantId) return;
     try {
       setSubmittingAdd(true);
+      setOccError(null);
       await apiClient(`/api/contracts/${contract.id}/tenants`, {
         method: "POST",
         body: JSON.stringify({ tenantId: selectedTenantId }),
@@ -500,22 +504,30 @@ function ManageOccupantsModal({
       setSelectedTenantId("");
       await onRefresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Thêm người thuê thất bại.");
+      setOccError(err instanceof Error ? err.message : "Thêm người thuê thất bại.");
     } finally {
       setSubmittingAdd(false);
     }
   };
 
-  const handleRemoveTenant = async (tenantId: string, tenantName: string) => {
-    if (!window.confirm(`Xác nhận xóa khách thuê "${tenantName}" khỏi hợp đồng phòng này?`)) return;
+  const handleRemoveTenant = (tenantId: string, tenantName: string) => {
+    setConfirmRemoveTenant({ id: tenantId, name: tenantName });
+  };
+
+  const executeRemoveTenant = async () => {
+    if (!confirmRemoveTenant) return;
+    const { id: tenantId } = confirmRemoveTenant;
     try {
       setSubmittingRemoveId(tenantId);
+      setOccError(null);
       await apiClient(`/api/contracts/${contract.id}/tenants?tenantId=${tenantId}`, {
         method: "DELETE",
       });
+      setConfirmRemoveTenant(null);
       await onRefresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Xóa người thuê thất bại.");
+      setOccError(err instanceof Error ? err.message : "Xóa người thuê thất bại.");
+      setConfirmRemoveTenant(null);
     } finally {
       setSubmittingRemoveId(null);
     }
@@ -555,6 +567,12 @@ function ManageOccupantsModal({
             <X size={16} />
           </button>
         </div>
+
+        {occError && (
+          <div className="alert-error" role="alert" style={{ marginBottom: 12 }}>
+            {occError}
+          </div>
+        )}
 
         {/* Existing Occupants List */}
         <div style={{ marginBottom: 18 }}>
@@ -642,6 +660,15 @@ function ManageOccupantsModal({
           </button>
         </div>
       </motion.div>
+      <ConfirmDialog
+        open={Boolean(confirmRemoveTenant)}
+        title="Xóa khách thuê khỏi hợp đồng"
+        message={`Xác nhận xóa khách thuê "${confirmRemoveTenant?.name ?? ""}" khỏi hợp đồng phòng này?`}
+        confirmLabel="Xóa khỏi phòng"
+        loading={Boolean(submittingRemoveId)}
+        onConfirm={() => void executeRemoveTenant()}
+        onCancel={() => setConfirmRemoveTenant(null)}
+      />
     </div>
   );
 }
@@ -671,6 +698,14 @@ export default function ContractsPage() {
 
   // Liquidate contract modal state
   const [liquidatingContract, setLiquidatingContract] = useState<ContractRow | null>(null);
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    variant?: "danger" | "primary";
+    action: () => Promise<void>;
+  } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -732,33 +767,47 @@ export default function ContractsPage() {
     }
   };
 
-  const handleUpdateStatus = async (contract: ContractRow, status: ContractStatus) => {
+  const handleUpdateStatus = (contract: ContractRow, status: ContractStatus) => {
     const labels: Record<ContractStatus, string> = {
       draft: "chuyển sang nháp",
       active: "kích hoạt",
       ended: "kết thúc",
       cancelled: "hủy",
     };
-    if (!window.confirm(`Bạn có chắc muốn ${labels[status]} hợp đồng này?`)) return;
-    try {
-      await apiClient(`/api/contracts/${contract.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-      });
-      await loadInitialData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể cập nhật trạng thái.");
-    }
+    setConfirmState({
+      title: "Cập nhật trạng thái hợp đồng",
+      message: `Bạn có chắc muốn ${labels[status]} hợp đồng Phòng ${contract.roomNumber} (${contract.propertyName})?`,
+      confirmLabel: status === "active" ? "Kích hoạt hợp đồng" : "Xác nhận",
+      variant: status === "active" ? "primary" : "danger",
+      action: async () => {
+        try {
+          await apiClient(`/api/contracts/${contract.id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ status }),
+          });
+          await loadInitialData();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Không thể cập nhật trạng thái.");
+        }
+      },
+    });
   };
 
-  const handleDelete = async (contract: ContractRow) => {
-    if (!window.confirm(`Xóa hợp đồng Phòng ${contract.roomNumber} (${contract.propertyName})?`)) return;
-    try {
-      await apiClient(`/api/contracts/${contract.id}`, { method: "DELETE" });
-      await loadInitialData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể xóa hợp đồng.");
-    }
+  const handleDelete = (contract: ContractRow) => {
+    setConfirmState({
+      title: "Xóa hợp đồng",
+      message: `Xóa hợp đồng Phòng ${contract.roomNumber} (${contract.propertyName})?`,
+      confirmLabel: "Xóa hợp đồng",
+      variant: "danger",
+      action: async () => {
+        try {
+          await apiClient(`/api/contracts/${contract.id}`, { method: "DELETE" });
+          await loadInitialData();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Không thể xóa hợp đồng.");
+        }
+      },
+    });
   };
 
   const exportCSV = () => {
@@ -1185,6 +1234,26 @@ export default function ContractsPage() {
           onLiquidated={loadInitialData}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(confirmState)}
+        title={confirmState?.title ?? "Xác nhận"}
+        message={confirmState?.message ?? ""}
+        confirmLabel={confirmState?.confirmLabel ?? "Xác nhận"}
+        variant={confirmState?.variant ?? "danger"}
+        loading={confirmLoading}
+        onConfirm={async () => {
+          if (!confirmState) return;
+          setConfirmLoading(true);
+          try {
+            await confirmState.action();
+          } finally {
+            setConfirmLoading(false);
+            setConfirmState(null);
+          }
+        }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 }

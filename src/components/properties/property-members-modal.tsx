@@ -14,6 +14,7 @@ import {
   CheckCircle,
 } from "@phosphor-icons/react";
 import { apiClient } from "../../lib/api-client";
+import { ConfirmDialog } from "../ui/confirm-dialog";
 import type { PropertyRow, PropertyMemberRow } from "../../modules/properties/property.service";
 
 export type PropertyMembersModalProps = {
@@ -27,6 +28,7 @@ export function PropertyMembersModal({ property, onClose }: PropertyMembersModal
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [submittingAdd, setSubmittingAdd] = useState(false);
   const [submittingRemoveId, setSubmittingRemoveId] = useState<string | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -71,11 +73,13 @@ export function PropertyMembersModal({ property, onClose }: PropertyMembersModal
     }
   };
 
-  const handleRemoveMember = async (memberId: string, memberName: string) => {
-    if (!window.confirm(`Bạn có chắc muốn gỡ quyền quản lý của "${memberName}" khỏi nhà trọ này?`)) {
-      return;
-    }
+  const handleRemoveMember = (memberId: string, memberName: string) => {
+    setConfirmRemove({ id: memberId, name: memberName });
+  };
 
+  const executeRemoveMember = async () => {
+    if (!confirmRemove) return;
+    const { id: memberId } = confirmRemove;
     try {
       setSubmittingRemoveId(memberId);
       setError(null);
@@ -84,9 +88,11 @@ export function PropertyMembersModal({ property, onClose }: PropertyMembersModal
         method: "DELETE",
       });
       setSuccess("Đã gỡ quyền quản lý thành công.");
+      setConfirmRemove(null);
       await loadMembers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gỡ quyền quản lý thất bại.");
+      setConfirmRemove(null);
     } finally {
       setSubmittingRemoveId(null);
     }
@@ -365,6 +371,15 @@ export function PropertyMembersModal({ property, onClose }: PropertyMembersModal
           </button>
         </div>
       </motion.div>
+      <ConfirmDialog
+        open={Boolean(confirmRemove)}
+        title="Gỡ quyền quản lý"
+        message={`Bạn có chắc muốn gỡ quyền quản lý của "${confirmRemove?.name ?? ""}" khỏi nhà trọ này?`}
+        confirmLabel="Gỡ quyền"
+        loading={Boolean(submittingRemoveId)}
+        onConfirm={() => void executeRemoveMember()}
+        onCancel={() => setConfirmRemove(null)}
+      />
     </div>
   );
 }

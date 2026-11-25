@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Users,
@@ -1155,9 +1156,12 @@ export default function TenantsPage() {
                   Mặt trước CCCD:
                 </div>
                 {viewingIdCardsTenant.idCardFrontUrl ? (
-                  <img
+                  <Image
+                    unoptimized
                     src={viewingIdCardsTenant.idCardFrontUrl}
                     alt="CCCD mặt trước"
+                    width={400}
+                    height={200}
                     style={{ width: "100%", height: 200, objectFit: "cover", borderRadius: 8, border: "1px solid var(--color-border)" }}
                   />
                 ) : (
@@ -1172,9 +1176,12 @@ export default function TenantsPage() {
                   Mặt sau CCCD:
                 </div>
                 {viewingIdCardsTenant.idCardBackUrl ? (
-                  <img
+                  <Image
+                    unoptimized
                     src={viewingIdCardsTenant.idCardBackUrl}
                     alt="CCCD mặt sau"
+                    width={400}
+                    height={200}
                     style={{ width: "100%", height: 200, objectFit: "cover", borderRadius: 8, border: "1px solid var(--color-border)" }}
                   />
                 ) : (

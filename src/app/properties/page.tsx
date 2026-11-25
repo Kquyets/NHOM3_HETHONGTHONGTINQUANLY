@@ -27,6 +27,7 @@ import { AppHeader } from "../../components/layout/app-header";
 import { PropertyMembersModal } from "../../components/properties/property-members-modal";
 import { RoomListingModal } from "../../components/properties/room-listing-modal";
 import { RoomEditModal, COMMON_FURNITURE_ITEMS } from "../../components/properties/room-edit-modal";
+import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import { validatePositiveNumber } from "../../utils/form-validation";
@@ -135,6 +136,13 @@ export default function PropertiesPage() {
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [activePropertyId, setActivePropertyId] = useState<string>("all");
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    action: () => Promise<void>;
+  } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const loadProperties = useCallback(async () => {
     try {
@@ -306,24 +314,36 @@ export default function PropertiesPage() {
     }
   };
 
-  const handleDeleteRoom = async (propertyId: string, roomId: string, roomNum: string) => {
-    if (!window.confirm(`Bạn có chắc muốn xóa phòng ${roomNum}?`)) return;
-    try {
-      await apiClient(`/api/properties/${propertyId}/rooms/${roomId}`, { method: "DELETE" });
-      await loadProperties();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể xóa phòng.");
-    }
+  const handleDeleteRoom = (propertyId: string, roomId: string, roomNum: string) => {
+    setConfirmState({
+      title: "Xóa phòng trọ",
+      message: `Bạn có chắc muốn xóa phòng ${roomNum}? Hành động này không thể hoàn tác.`,
+      confirmLabel: "Xóa phòng",
+      action: async () => {
+        try {
+          await apiClient(`/api/properties/${propertyId}/rooms/${roomId}`, { method: "DELETE" });
+          await loadProperties();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Không thể xóa phòng.");
+        }
+      },
+    });
   };
 
-  const handleDeleteProperty = async (propertyId: string, name: string) => {
-    if (!window.confirm(`Bạn có chắc muốn xóa nhà trọ "${name}" và toàn bộ phòng thuộc nhà này?`)) return;
-    try {
-      await apiClient(`/api/properties/${propertyId}`, { method: "DELETE" });
-      await loadProperties();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể xóa nhà trọ.");
-    }
+  const handleDeleteProperty = (propertyId: string, name: string) => {
+    setConfirmState({
+      title: "Xóa nhà trọ",
+      message: `Bạn có chắc muốn xóa nhà trọ "${name}" và toàn bộ phòng thuộc nhà này?`,
+      confirmLabel: "Xóa nhà trọ",
+      action: async () => {
+        try {
+          await apiClient(`/api/properties/${propertyId}`, { method: "DELETE" });
+          await loadProperties();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Không thể xóa nhà trọ.");
+        }
+      },
+    });
   };
 
   if (authLoading || (!user && loading)) {
@@ -1504,6 +1524,25 @@ export default function PropertiesPage() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(confirmState)}
+        title={confirmState?.title ?? "Xác nhận"}
+        message={confirmState?.message ?? ""}
+        confirmLabel={confirmState?.confirmLabel ?? "Xác nhận"}
+        loading={confirmLoading}
+        onConfirm={async () => {
+          if (!confirmState) return;
+          setConfirmLoading(true);
+          try {
+            await confirmState.action();
+          } finally {
+            setConfirmLoading(false);
+            setConfirmState(null);
+          }
+        }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 }

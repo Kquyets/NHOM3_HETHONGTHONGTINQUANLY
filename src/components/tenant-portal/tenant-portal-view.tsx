@@ -36,6 +36,7 @@ import { buildVietQrUrl, formatBankDisplayName } from "../../utils/vietqr";
 import { PrintableInvoiceModal } from "../invoices/printable-invoice-modal";
 import { PrintableContractModal } from "../contracts/printable-contract-modal";
 import { PrintableCt01Modal } from "./printable-ct01-modal";
+import { ConfirmDialog } from "../ui/confirm-dialog";
 import type { InvoiceDetail, InvoiceStatus } from "../../modules/invoices/invoice.service";
 import type { TenantPortalData, TenantProfile } from "../../modules/tenant-portal/tenant-portal.service";
 import type { ContractRow } from "../../modules/contracts/contract.service";
@@ -125,6 +126,7 @@ export function TenantPortalView() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [notifyingPayment, setNotifyingPayment] = useState(false);
   const [paymentSuccessToast, setPaymentSuccessToast] = useState<string | null>(null);
+  const [confirmCancelMntId, setConfirmCancelMntId] = useState<string | null>(null);
 
   // Printable modals
   const [printInvoice, setPrintInvoice] = useState<InvoiceDetail | null>(null);
@@ -302,17 +304,24 @@ export function TenantPortalView() {
     }
   };
 
-  const handleCancelMaintenance = async (requestId: string) => {
-    if (!window.confirm("Bạn có chắc muốn hủy yêu cầu sửa chữa này không?")) return;
+  const handleCancelMaintenance = (requestId: string) => {
+    setConfirmCancelMntId(requestId);
+  };
+
+  const executeCancelMaintenance = async () => {
+    if (!confirmCancelMntId) return;
+    const requestId = confirmCancelMntId;
     try {
       setCancellingMntId(requestId);
       await apiClient(`/api/maintenance/${requestId}`, {
         method: "DELETE",
       });
+      setConfirmCancelMntId(null);
       await loadMaintenance();
       setPaymentSuccessToast("Đã hủy yêu cầu sửa chữa thành công.");
       setTimeout(() => setPaymentSuccessToast(null), 4000);
     } catch (err) {
+      setConfirmCancelMntId(null);
       setPaymentSuccessToast(err instanceof Error ? err.message : "Không thể hủy yêu cầu.");
       setTimeout(() => setPaymentSuccessToast(null), 4000);
     } finally {
@@ -1984,6 +1993,16 @@ export function TenantPortalView() {
         tenant={tenant}
         stay={stay}
         onClose={() => setShowCt01Modal(false)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(confirmCancelMntId)}
+        title="Hủy yêu cầu sửa chữa"
+        message="Bạn có chắc muốn hủy yêu cầu sửa chữa này không?"
+        confirmLabel="Hủy yêu cầu"
+        loading={Boolean(cancellingMntId)}
+        onConfirm={() => void executeCancelMaintenance()}
+        onCancel={() => setConfirmCancelMntId(null)}
       />
     </main>
   );
