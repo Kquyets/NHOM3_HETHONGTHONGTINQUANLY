@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { AppError } from "../../../../errors/app-error";
 import { getAuthContext } from "../../../../lib/auth/with-auth";
 import {
   cancelTenantMaintenanceRequest,
@@ -15,14 +16,18 @@ export async function PATCH(
   try {
     const ctx = getAuthContext(request);
     const { requestId } = await params;
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+
+    if (!body || typeof body !== "object") {
+      return errorResponse(new AppError("VALIDATION_ERROR", "Request body must be JSON."));
+    }
 
     if (ctx.role === "tenant") {
       if (body.status === "cancelled") {
         const result = await cancelTenantMaintenanceRequest(ctx.userId, requestId);
         return successResponse(result);
       }
-      return errorResponse(new Error("Khách thuê chỉ có thể hủy yêu cầu của mình."));
+      return errorResponse(new AppError("FORBIDDEN", "Khách thuê chỉ có thể hủy yêu cầu của mình."));
     }
 
     const updated = await updateMaintenanceStatus(ctx.userId, ctx.role, requestId, {

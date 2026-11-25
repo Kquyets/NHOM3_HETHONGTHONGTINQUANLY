@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { AppError } from "../../../errors/app-error";
 import { getAuthContext } from "../../../lib/auth/with-auth";
 import {
   createMeterReading,
@@ -29,9 +30,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
-      return errorResponse(
-        Object.assign(new Error("Request body must be JSON."), { code: "VALIDATION_ERROR" }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "Request body must be JSON."));
     }
 
     // Support batch reading entry (e.g. from bulk property table)
@@ -43,9 +42,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       };
       if (!propertyId || !billingPeriod) {
         return errorResponse(
-          Object.assign(new Error("propertyId and billingPeriod are required for batch recording."), {
-            code: "VALIDATION_ERROR",
-          }),
+          new AppError("VALIDATION_ERROR", "propertyId and billingPeriod are required for batch recording."),
         );
       }
       const result = await batchRecordMeterReadings(ctx.userId, ctx.role, {
@@ -73,11 +70,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       (utilityType !== "electricity" && utilityType !== "water") ||
       typeof billingPeriod !== "string"
     ) {
-      return errorResponse(
-        Object.assign(new Error("Missing or invalid required fields."), {
-          code: "VALIDATION_ERROR",
-        }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "Missing or invalid required fields."));
     }
 
     const reading = await createMeterReading(ctx.userId, ctx.role, {

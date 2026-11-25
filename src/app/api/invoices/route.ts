@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { AppError } from "../../../errors/app-error";
 import { getAuthContext } from "../../../lib/auth/with-auth";
 import {
   createInvoice,
@@ -25,9 +26,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
-      return errorResponse(
-        Object.assign(new Error("Request body must be JSON."), { code: "VALIDATION_ERROR" }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "Request body must be JSON."));
     }
 
     const { contractId, billingPeriodStart, issueDate, dueDate, totalAmount, items } =
@@ -35,13 +34,10 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     if (
       typeof contractId !== "string" ||
+      !contractId.trim() ||
       typeof billingPeriodStart !== "string"
     ) {
-      return errorResponse(
-        Object.assign(new Error("Missing contractId or billingPeriodStart."), {
-          code: "VALIDATION_ERROR",
-        }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "Missing contractId or billingPeriodStart."));
     }
 
     const invoice = await createInvoice(ctx.userId, ctx.role, {

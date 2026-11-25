@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { AppError } from "../../../errors/app-error";
 import { getAuthContext } from "../../../lib/auth/with-auth";
 import { createTenant, listTenants } from "../../../modules/tenants/tenant.service";
 import { errorResponse, successResponse } from "../../../utils/api-response";
@@ -21,9 +22,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
-      return errorResponse(
-        Object.assign(new Error("Request body must be JSON."), { code: "VALIDATION_ERROR" }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "Request body must be JSON."));
     }
 
     const {
@@ -41,9 +40,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     } = body as Record<string, unknown>;
 
     if (typeof fullName !== "string" || !fullName.trim()) {
-      return errorResponse(
-        Object.assign(new Error("fullName is required."), { code: "VALIDATION_ERROR" }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "fullName is required."));
     }
 
     const tenant = await createTenant(ctx.userId, ctx.role, {

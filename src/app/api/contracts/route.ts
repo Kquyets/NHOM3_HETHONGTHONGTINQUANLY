@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { AppError } from "../../../errors/app-error";
 import { getAuthContext } from "../../../lib/auth/with-auth";
 import { createContract, listContracts } from "../../../modules/contracts/contract.service";
 import { errorResponse, successResponse } from "../../../utils/api-response";
@@ -21,18 +22,14 @@ export async function POST(request: NextRequest): Promise<Response> {
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
-      return errorResponse(
-        Object.assign(new Error("Request body must be JSON."), { code: "VALIDATION_ERROR" }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "Request body must be JSON."));
     }
 
     const { roomId, startDate, endDate, monthlyRentSnapshot, depositSnapshot, paymentCycleMonths, handoverInventory } =
       body as Record<string, unknown>;
 
-    if (typeof roomId !== "string") {
-      return errorResponse(
-        Object.assign(new Error("roomId is required."), { code: "VALIDATION_ERROR" }),
-      );
+    if (typeof roomId !== "string" || !roomId.trim()) {
+      return errorResponse(new AppError("VALIDATION_ERROR", "roomId is required."));
     }
 
     const contract = await createContract(ctx.userId, ctx.role, {

@@ -11,7 +11,7 @@ export const propertyPatchSchema = propertyInputSchema.partial()
 export const roomInputSchema = z.strictObject({
   roomNumber: z.string().trim().min(1).max(30),
   monthlyRent: z.number().int().min(0).max(2_000_000_000),
-  areaM2: z.number().positive().max(100_000).optional(),
+  areaM2: z.number().positive().max(100_000).optional().nullable(),
   status: z.enum(["ready", "maintenance"]).optional(),
   isPublicListed: z.boolean().optional(),
   listingTitle: z.string().trim().max(200).optional().nullable(),

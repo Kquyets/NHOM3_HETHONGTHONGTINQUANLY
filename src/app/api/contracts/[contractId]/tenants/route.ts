@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { AppError } from "../../../../../errors/app-error";
 import { getAuthContext } from "../../../../../lib/auth/with-auth";
 import {
   addTenantToContract,
@@ -15,10 +16,8 @@ export async function POST(request: NextRequest, { params }: Params): Promise<Re
     const { contractId } = await params;
     const body = await request.json().catch(() => null);
 
-    if (!body || typeof body.tenantId !== "string") {
-      return errorResponse(
-        Object.assign(new Error("tenantId is required."), { code: "VALIDATION_ERROR" }),
-      );
+    if (!body || typeof body.tenantId !== "string" || !body.tenantId.trim()) {
+      return errorResponse(new AppError("VALIDATION_ERROR", "tenantId is required."));
     }
 
     const contract = await addTenantToContract(
@@ -43,11 +42,7 @@ export async function DELETE(request: NextRequest, { params }: Params): Promise<
     const tenantId = searchParams.get("tenantId");
 
     if (!tenantId) {
-      return errorResponse(
-        Object.assign(new Error("tenantId query parameter is required."), {
-          code: "VALIDATION_ERROR",
-        }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "tenantId query parameter is required."));
     }
 
     const contract = await removeTenantFromContract(

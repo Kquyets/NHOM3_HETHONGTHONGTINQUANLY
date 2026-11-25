@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { AppError } from "../../../../../errors/app-error";
 import { getAuthContext } from "../../../../../lib/auth/with-auth";
 import {
   addPropertyMember,
@@ -29,9 +30,7 @@ export async function POST(request: NextRequest, { params }: Params): Promise<Re
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body.emailOrPhone !== "string" || !body.emailOrPhone.trim()) {
-      return errorResponse(
-        Object.assign(new Error("emailOrPhone is required."), { code: "VALIDATION_ERROR" }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "emailOrPhone is required."));
     }
 
     const member = await addPropertyMember(
@@ -56,11 +55,7 @@ export async function DELETE(request: NextRequest, { params }: Params): Promise<
     const memberId = searchParams.get("memberId");
 
     if (!memberId) {
-      return errorResponse(
-        Object.assign(new Error("memberId query parameter is required."), {
-          code: "VALIDATION_ERROR",
-        }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "memberId query parameter is required."));
     }
 
     await removePropertyMember(ctx.userId, ctx.role, propertyId, memberId);

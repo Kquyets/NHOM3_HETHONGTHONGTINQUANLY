@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { AppError } from "../../../../../errors/app-error";
 import { getAuthContext } from "../../../../../lib/auth/with-auth";
 import {
   addPayment,
@@ -16,28 +17,19 @@ export async function POST(request: NextRequest, { params }: Params): Promise<Re
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
-      return errorResponse(
-        Object.assign(new Error("Request body must be JSON."), { code: "VALIDATION_ERROR" }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "Request body must be JSON."));
     }
 
     const { amount, method, reference, note } = body as Record<string, unknown>;
 
-    if (typeof amount !== "number" || amount <= 0) {
-      return errorResponse(
-        Object.assign(new Error("amount must be a positive number."), {
-          code: "VALIDATION_ERROR",
-        }),
-      );
+    if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
+      return errorResponse(new AppError("VALIDATION_ERROR", "amount must be a positive number."));
     }
 
     const VALID_METHODS: PaymentMethod[] = ["cash", "bank_transfer", "other"];
     if (typeof method !== "string" || !VALID_METHODS.includes(method as PaymentMethod)) {
       return errorResponse(
-        Object.assign(
-          new Error(`method must be one of: ${VALID_METHODS.join(", ")}.`),
-          { code: "VALIDATION_ERROR" },
-        ),
+        new AppError("VALIDATION_ERROR", `method must be one of: ${VALID_METHODS.join(", ")}.`),
       );
     }
 

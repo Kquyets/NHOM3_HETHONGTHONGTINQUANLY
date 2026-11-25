@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { AppError } from "../../../errors/app-error";
 import { getAuthContext } from "../../../lib/auth/with-auth";
 import {
   listAllStaffForOwner,
@@ -26,9 +27,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
-      return errorResponse(
-        Object.assign(new Error("Dữ liệu gửi lên không hợp lệ."), { code: "VALIDATION_ERROR" }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "Dữ liệu gửi lên không hợp lệ."));
     }
 
     const propertyIds: string[] = Array.isArray(body.propertyIds)
@@ -39,9 +38,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     if (propertyIds.length === 0) {
       return errorResponse(
-        Object.assign(new Error("Vui lòng chọn ít nhất một nhà trọ phân công."), {
-          code: "VALIDATION_ERROR",
-        }),
+        new AppError("VALIDATION_ERROR", "Vui lòng chọn ít nhất một nhà trọ phân công."),
       );
     }
 
@@ -50,9 +47,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       const phone = typeof body.phone === "string" ? body.phone.trim() : "";
       if (!phone) {
         return errorResponse(
-          Object.assign(new Error("Số điện thoại là bắt buộc để tạo tài khoản nhân viên."), {
-            code: "VALIDATION_ERROR",
-          }),
+          new AppError("VALIDATION_ERROR", "Số điện thoại là bắt buộc để tạo tài khoản nhân viên."),
         );
       }
 
@@ -69,9 +64,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     // Assign existing user by emailOrPhone
     if (typeof body.emailOrPhone !== "string" || !body.emailOrPhone.trim()) {
-      return errorResponse(
-        Object.assign(new Error("emailOrPhone is required."), { code: "VALIDATION_ERROR" }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "emailOrPhone is required."));
     }
 
     const emailOrPhone = body.emailOrPhone.trim();
@@ -97,9 +90,7 @@ export async function DELETE(request: NextRequest): Promise<Response> {
 
     if (!propertyId || !memberId) {
       return errorResponse(
-        Object.assign(new Error("propertyId and memberId query parameters are required."), {
-          code: "VALIDATION_ERROR",
-        }),
+        new AppError("VALIDATION_ERROR", "propertyId and memberId query parameters are required."),
       );
     }
 

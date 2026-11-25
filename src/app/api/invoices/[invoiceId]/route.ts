@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { AppError } from "../../../../errors/app-error";
 import { getAuthContext } from "../../../../lib/auth/with-auth";
 import {
   deleteInvoice,
@@ -30,9 +31,7 @@ export async function PATCH(request: NextRequest, { params }: Params): Promise<R
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
-      return errorResponse(
-        Object.assign(new Error("Request body must be JSON."), { code: "VALIDATION_ERROR" }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "Request body must be JSON."));
     }
 
     const { status } = body as Record<string, unknown>;
@@ -46,10 +45,7 @@ export async function PATCH(request: NextRequest, { params }: Params): Promise<R
 
     if (typeof status !== "string" || !VALID_STATUSES.includes(status as InvoiceStatus)) {
       return errorResponse(
-        Object.assign(
-          new Error(`status must be one of: ${VALID_STATUSES.join(", ")}.`),
-          { code: "VALIDATION_ERROR" },
-        ),
+        new AppError("VALIDATION_ERROR", `status must be one of: ${VALID_STATUSES.join(", ")}.`),
       );
     }
 

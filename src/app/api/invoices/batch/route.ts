@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { AppError } from "../../../../errors/app-error";
 import { getAuthContext } from "../../../../lib/auth/with-auth";
 import {
   batchGenerateInvoices,
@@ -13,9 +14,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
-      return errorResponse(
-        Object.assign(new Error("Request body must be JSON."), { code: "VALIDATION_ERROR" }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "Request body must be JSON."));
     }
 
     const {
@@ -27,12 +26,8 @@ export async function POST(request: NextRequest): Promise<Response> {
       parkingPerVehicle,
     } = body as Record<string, unknown>;
 
-    if (typeof propertyId !== "string" || typeof billingPeriodStart !== "string") {
-      return errorResponse(
-        Object.assign(new Error("Missing propertyId or billingPeriodStart."), {
-          code: "VALIDATION_ERROR",
-        }),
-      );
+    if (typeof propertyId !== "string" || !propertyId.trim() || typeof billingPeriodStart !== "string") {
+      return errorResponse(new AppError("VALIDATION_ERROR", "Missing propertyId or billingPeriodStart."));
     }
 
     const input: BatchGenerateInvoicesInput = {

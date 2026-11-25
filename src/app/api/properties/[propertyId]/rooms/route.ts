@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { AppError } from "../../../../../errors/app-error";
 import { getAuthContext } from "../../../../../lib/auth/with-auth";
 import { createRoom, listRooms } from "../../../../../modules/rooms/room.service";
 import { errorResponse, successResponse } from "../../../../../utils/api-response";
@@ -25,22 +26,33 @@ export async function POST(request: NextRequest, { params }: Params): Promise<Re
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
-      return errorResponse(Object.assign(new Error("Request body must be JSON."), { code: "VALIDATION_ERROR" }));
+      return errorResponse(new AppError("VALIDATION_ERROR", "Request body must be JSON."));
     }
 
-    const { roomNumber, monthlyRent, areaM2 } = body as Record<string, unknown>;
+    const { roomNumber, monthlyRent, areaM2, floor, maxOccupants, furnitureList } = body as Record<
+      string,
+      unknown
+    >;
 
-    if (typeof roomNumber !== "string") {
-      return errorResponse(Object.assign(new Error("roomNumber is required."), { code: "VALIDATION_ERROR" }));
+    if (typeof roomNumber !== "string" || !roomNumber.trim()) {
+      return errorResponse(new AppError("VALIDATION_ERROR", "roomNumber is required."));
     }
-    if (typeof monthlyRent !== "number") {
-      return errorResponse(Object.assign(new Error("monthlyRent is required and must be a number."), { code: "VALIDATION_ERROR" }));
+    if (typeof monthlyRent !== "number" || !Number.isFinite(monthlyRent)) {
+      return errorResponse(
+        new AppError("VALIDATION_ERROR", "monthlyRent is required and must be a number."),
+      );
     }
 
     const room = await createRoom(ctx.userId, ctx.role, propertyId, {
       roomNumber,
       monthlyRent,
-      areaM2: typeof areaM2 === "number" ? areaM2 : null,
+      areaM2: typeof areaM2 === "number" && Number.isFinite(areaM2) ? areaM2 : null,
+      floor: typeof floor === "number" && Number.isFinite(floor) ? floor : null,
+      maxOccupants:
+        typeof maxOccupants === "number" && Number.isFinite(maxOccupants) ? maxOccupants : null,
+      furnitureList: Array.isArray(furnitureList)
+        ? furnitureList.filter((item): item is string => typeof item === "string")
+        : null,
     });
 
     return successResponse({ room }, { status: 201 });

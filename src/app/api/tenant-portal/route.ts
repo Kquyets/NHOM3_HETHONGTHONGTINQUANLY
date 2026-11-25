@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { AppError } from "../../../errors/app-error";
 import { getAuthContext } from "../../../lib/auth/with-auth";
 import {
   getTenantPortalData,
@@ -25,7 +26,10 @@ export async function GET(request: NextRequest): Promise<Response> {
 export async function PUT(request: NextRequest): Promise<Response> {
   try {
     const ctx = getAuthContext(request);
-    const body = await request.json().catch(() => ({}));
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return errorResponse(new AppError("VALIDATION_ERROR", "Request body must be JSON."));
+    }
 
     const updatedProfile = await updateTenantProfileSelf(ctx.userId, body);
     return successResponse({ tenant: updatedProfile });
@@ -42,17 +46,13 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     if (body.action === "notify-payment" || body.invoiceId) {
       if (!body.invoiceId || typeof body.invoiceId !== "string") {
-        return errorResponse(
-          Object.assign(new Error("invoiceId is required."), { code: "VALIDATION_ERROR" }),
-        );
+        return errorResponse(new AppError("VALIDATION_ERROR", "invoiceId is required."));
       }
       const result = await notifyLandlordPayment(ctx.userId, body.invoiceId, body.note);
       return successResponse(result);
     }
 
-    return errorResponse(
-      Object.assign(new Error("Invalid action."), { code: "VALIDATION_ERROR" }),
-    );
+    return errorResponse(new AppError("VALIDATION_ERROR", "Invalid action."));
   } catch (error) {
     return errorResponse(error);
   }

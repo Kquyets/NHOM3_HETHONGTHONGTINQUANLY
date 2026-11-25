@@ -9,9 +9,11 @@ describe("property and room request validation", () => {
     expect(roomPatchSchema.safeParse({}).success).toBe(false);
   });
 
-  it("accepts only positive optional room areas and trims property names", () => {
+  it("accepts only positive optional or null room areas and trims property names", () => {
     expect(propertyInputSchema.parse({ name: "  An Bình  " })).toEqual({ name: "An Bình" });
     expect(roomInputSchema.safeParse({ roomNumber: "A1", monthlyRent: 3000000, areaM2: 0 }).success).toBe(false);
+    expect(roomInputSchema.safeParse({ roomNumber: "A1", monthlyRent: 3000000, areaM2: null }).success).toBe(true);
+    expect(roomPatchSchema.safeParse({ areaM2: null }).success).toBe(true);
   });
 });
 

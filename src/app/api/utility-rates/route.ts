@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { AppError } from "../../../errors/app-error";
 import { getAuthContext } from "../../../lib/auth/with-auth";
 import {
   createUtilityRate,
@@ -27,9 +28,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
-      return errorResponse(
-        Object.assign(new Error("Request body must be JSON."), { code: "VALIDATION_ERROR" }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "Request body must be JSON."));
     }
 
     const { propertyId, utilityType, unitPrice, effectiveFrom, effectiveTo } =
@@ -40,11 +39,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       (utilityType !== "electricity" && utilityType !== "water") ||
       typeof effectiveFrom !== "string"
     ) {
-      return errorResponse(
-        Object.assign(new Error("Missing or invalid required fields."), {
-          code: "VALIDATION_ERROR",
-        }),
-      );
+      return errorResponse(new AppError("VALIDATION_ERROR", "Missing or invalid required fields."));
     }
 
     const rate = await createUtilityRate(ctx.userId, ctx.role, {
