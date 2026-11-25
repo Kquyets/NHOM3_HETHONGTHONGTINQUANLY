@@ -106,7 +106,7 @@ Nhà trọ → Phòng → Khách thuê → Hợp đồng → Điện/Nước →
 | Frontend          | Next.js          | Giao diện người dùng, Server-Side Rendering               |
 | Backend / API     | Next.js API      | REST API, business logic, xử lý nghiệp vụ                |
 | Database chính    | PostgreSQL       | Dữ liệu nghiệp vụ có tính quan hệ                        |
-| Database phụ      | MongoDB Atlas    | AI conversation log, notification log, dữ liệu linh hoạt |
+| Database phụ (dự kiến) | MongoDB Atlas | AI conversation log, notification log (chưa tích hợp trong bản hiện tại) |
 | ORM               | Drizzle ORM      | Kết nối PostgreSQL và định nghĩa schema                |
 | Auth              | JWT + bcryptjs   | Access token, refresh token rotation, xác thực phân quyền |
 | Container         | Docker           | Đóng gói ứng dụng, chuẩn hóa môi trường                  |
@@ -232,9 +232,12 @@ Status   : 200 | 201 | 400 | 401 | 403 | 404 | 500
 | Contract    | `/api/contracts/[id]/tenants`           | POST, DELETE                 | Thêm / xóa người ở trong phòng thuộc hợp đồng              | Hoàn thành    |
 | Meter       | `/api/meters`, `/[readingId]`           | GET, POST, PATCH, DELETE     | Ghi nhận chỉ số điện/nước hàng tháng, tính lượng tiêu thụ  | Hoàn thành    |
 | Utility Rate| `/api/utility-rates`                    | GET, POST                    | Thiết lập đơn giá điện/nước theo từng nhà trọ              | Hoàn thành    |
-| Invoice     | `/api/invoices`, `/[invoiceId]`         | GET, POST, PATCH, DELETE     | Lập hóa đơn tổng hợp, tính tiền phòng + dịch vụ, hủy hđ    | Hoàn thành    |
+| Invoice     | `/api/invoices`, `/[invoiceId]`, `/batch` | GET, POST, PATCH, DELETE   | Lập hóa đơn đơn lẻ / hàng loạt, tính tiền phòng + dịch vụ, hủy hđ | Hoàn thành |
 | Payment     | `/api/invoices/[id]/payments`, `/payments`| GET, POST                  | Ghi nhận thanh toán hóa đơn, tra cứu lịch sử giao dịch     | Hoàn thành    |
+| Transactions| `/api/transactions`                     | GET                          | Tra cứu giao dịch thu/chi và thống kê dòng tiền            | Hoàn thành    |
 | Dashboard   | `/api/dashboard`, `/dashboard/overview` | GET                          | Thống kê KPI, tỷ lệ lấp đầy, doanh thu xu hướng 6 tháng    | Hoàn thành    |
+| Staff       | `/api/staff`                            | GET, POST, DELETE            | Quản lý, tạo tài khoản và phân quyền nhân sự theo nhà trọ  | Hoàn thành    |
+| Explore     | `/api/explore`, `/api/explore/[id]`     | GET                          | Tìm kiếm & xem chi tiết phòng trọ công khai (`/explore`)   | Hoàn thành    |
 | Tenant Portal| `/api/tenant-portal`                   | GET                          | Cổng tra cứu dành riêng cho khách thuê (hóa đơn, VietQR)   | Hoàn thành    |
 | Maintenance | `/api/maintenance`, `/[requestId]`      | GET, POST, PATCH, DELETE     | Tiếp nhận và xử lý yêu cầu sửa chữa phòng                  | Hoàn thành    |
 | AI Agent    | `/api/ai/chat`                          | POST                         | Trợ lý AI hỏi đáp dữ liệu vận hành bằng tiếng Việt         | Hoàn thành    |
@@ -552,7 +555,7 @@ Một module chỉ được xem là **hoàn thành** khi đủ tất cả điề
 - **VS Code** (khuyến nghị): mở dự án TypeScript/Next.js. Có thể dùng editor khác; không cần cài extension để chạy ứng dụng.
 - **GitHub**: tài khoản cần thiết để clone/push và tạo Pull Request.
 
-Không cần cài PostgreSQL riêng nếu dùng Docker. MongoDB, dịch vụ AI, thanh toán và thông báo chưa được cấu hình trong bản hiện tại.
+Không cần cài PostgreSQL riêng nếu dùng Docker. MongoDB Atlas và các cổng thanh toán bên thứ ba (MoMo/VNPAY) chưa được tích hợp trong bản hiện tại; PostgreSQL, xác thực JWT, VietQR, thông báo in-app và AI Agent (Gemini kèm Natural Language Intent Engine local) đã được cấu hình sẵn.
 
 ### Cài đặt và chạy local
 
@@ -584,9 +587,17 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=nhom3
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/nhom3
+
+# Bắt buộc cho Authentication JWT (mỗi secret tối thiểu 32 ký tự)
+JWT_SECRET=super-secret-jwt-key-minimum-32-chars-long-12345
+JWT_REFRESH_SECRET=super-secret-refresh-jwt-key-min-32-chars-long-12345
+AUTH_SECRET=super-secret-auth-key-minimum-32-chars-long-12345
+
+# Tùy chọn: bỏ trống sẽ tự fallback sang engine xử lý ngôn ngữ tự nhiên local
+GEMINI_API_KEY=
 ```
 
-Giữ user, password và tên database nhất quán giữa `DATABASE_URL` và các biến `POSTGRES_*`. Không dùng thông tin mẫu này cho môi trường dùng chung hoặc production.
+Giữ user, password và tên database nhất quán giữa `DATABASE_URL` và các biến `POSTGRES_*`. Không dùng thông tin mẫu và các secret mẫu này cho môi trường dùng chung hoặc production.
 
 4. Khởi động PostgreSQL 17 bằng Docker Compose:
 
@@ -608,7 +619,7 @@ docker compose --env-file .env.local ps
 npm run db:migrate
 ```
 
-Lệnh này sẽ tự động nạp `drizzle/0000_core_schema.sql` vào database local được cấu hình trong `.env.local` và lưu lịch sử vào bảng `schema_migrations`.
+Lệnh này sẽ tự động nạp lần lượt toàn bộ các file SQL trong thư mục `drizzle/` (`0000_core_schema.sql` đến `0007_tenant_created_by.sql`) vào database local được cấu hình trong `.env.local` và lưu lịch sử vào bảng `public.schema_migrations`.
 
 6. Nạp dữ liệu mẫu cho demo (Seeding - tuỳ chọn):
 
@@ -653,22 +664,31 @@ npm test
 npm run build
 ```
 
-Các lệnh trên chạy lint, kiểm tra TypeScript, test và production build. Toàn bộ các module nghiệp vụ, API, xác thực và AI Agent đã được triển khai hoàn chỉnh và vượt qua toàn bộ 271 bài kiểm tra tự động. Xem chi tiết endpoint tại mục [API Contract](#7-api-contract).
+Các lệnh trên chạy lint, kiểm tra TypeScript, test và production build. Toàn bộ các module nghiệp vụ, API, xác thực và AI Agent đã được triển khai hoàn chỉnh và vượt qua toàn bộ 351 bài kiểm tra tự động (48 file test). Xem chi tiết endpoint tại mục [API Contract](#7-api-contract).
 
 ---
 
 ## 16. Environment Variables
 
-Sao chép `.env.example` thành `.env.local` và điền cấu hình PostgreSQL local theo mục [Cách chạy project](#15-cách-chạy-project). Không commit `.env.local`.
+Sao chép `.env.example` thành `.env.local` và điền đầy đủ cấu hình theo mục [Cách chạy project](#15-cách-chạy-project). Không commit `.env.local`.
 
 ```env
+# PostgreSQL
 POSTGRES_USER=
 POSTGRES_PASSWORD=
 POSTGRES_DB=
 DATABASE_URL=
+
+# Authentication JWT (bắt buộc tối thiểu 32 ký tự)
+JWT_SECRET=
+JWT_REFRESH_SECRET=
+AUTH_SECRET=
+
+# AI Assistant (tùy chọn - dùng Google Gemini nếu cấu hình, ngược lại dùng engine local)
+GEMINI_API_KEY=
 ```
 
-Các biến xác thực, MongoDB, AI và thanh toán sẽ được bổ sung khi triển khai các phần tương ứng.
+Các biến cho MongoDB Atlas, Email/Telegram hoặc cổng thanh toán trực tuyến sẽ được bổ sung khi triển khai các phần mở rộng tương ứng.
 
 ---
 
