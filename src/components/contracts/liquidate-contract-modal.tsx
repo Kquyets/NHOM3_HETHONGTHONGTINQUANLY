@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { X, CheckCircle, Warning, Coins, Wrench, Drop } from "@phosphor-icons/react";
 import { apiClient } from "../../lib/api-client";
@@ -22,6 +22,14 @@ export function LiquidateContractModal({
   const [liquidationNotes, setLiquidationNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   const damageNum = Math.max(0, parseInt(damageDeduction, 10) || 0);
   const utilityNum = Math.max(0, parseInt(utilityDeduction, 10) || 0);
@@ -58,6 +66,9 @@ export function LiquidateContractModal({
   return (
     <div
       className="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Thanh lý hợp đồng và hoàn cọc"
       style={{
         position: "fixed",
         inset: 0,

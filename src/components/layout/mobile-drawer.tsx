@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
@@ -7,7 +8,6 @@ import {
   X,
   House,
   Buildings,
-  Door,
   Users,
   FileText,
   Receipt,
@@ -21,6 +21,7 @@ import {
   Moon,
   Sun,
   User,
+  type IconProps,
 } from "@phosphor-icons/react";
 import { useAuth } from "../../lib/auth-context";
 import { useTheme } from "../../lib/theme-context";
@@ -33,7 +34,7 @@ export type MobileDrawerProps = {
 export type MenuItem = {
   href: string;
   label: string;
-  Icon: React.ComponentType<any>;
+  Icon: React.ComponentType<IconProps>;
   match: (p: string) => boolean;
   isAi?: boolean;
   ownerOnly?: boolean;
@@ -61,6 +62,13 @@ export const TENANT_MENU_ITEMS: MenuItem[] = [
 
 export const DRAWER_MENU_ITEMS = OWNER_MANAGER_MENU_ITEMS;
 
+export const GUEST_MENU_ITEMS: MenuItem[] = [
+  { href: "/", label: "Trang chủ", Icon: House, match: (p: string) => p === "/" },
+  { href: "/explore", label: "Khám phá phòng trọ", Icon: Buildings, match: (p: string) => p.startsWith("/explore") },
+  { href: "/login", label: "Đăng nhập", Icon: User, match: (p: string) => p.startsWith("/login") },
+  { href: "/register", label: "Đăng ký", Icon: ShieldCheck, match: (p: string) => p.startsWith("/register") },
+];
+
 export function getDrawerMenuItems(role?: string): MenuItem[] {
   if (role === "tenant") return TENANT_MENU_ITEMS;
   if (role === "manager") return OWNER_MANAGER_MENU_ITEMS.filter((item) => !item.ownerOnly);
@@ -71,6 +79,17 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  const menuItems = user ? getDrawerMenuItems(user.role) : GUEST_MENU_ITEMS;
 
   return (
     <AnimatePresence>
@@ -94,6 +113,9 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
 
           {/* Drawer Panel */}
           <motion.aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu điều hướng"
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
@@ -207,7 +229,7 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
             {/* Menu List */}
             <nav style={{ flex: 1, overflowY: "auto", padding: "12px 8px" }}>
               <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-                {getDrawerMenuItems(user?.role).map((item) => {
+                {menuItems.map((item) => {
                   const isActive = item.match(pathname);
                   const Icon = item.Icon;
                   return (

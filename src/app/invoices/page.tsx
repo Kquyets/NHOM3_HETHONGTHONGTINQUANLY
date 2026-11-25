@@ -498,7 +498,7 @@ export default function InvoicesPage() {
           {showCreate && (
             <SlidePanel title="Tạo hóa đơn thu tiền" onClose={() => setShowCreate(false)}>
               <form onSubmit={handleCreateInvoice}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+                <div className="form-grid-3" style={{ marginBottom: "var(--space-2)" }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="inv-contract">Chọn Hợp đồng / Phòng thuê *</label>
                     <select
@@ -555,7 +555,7 @@ export default function InvoicesPage() {
                     </button>
                   </div>
                   {cItems.map((item, idx) => (
-                    <div key={idx} style={{ display: "grid", gridTemplateColumns: "140px 1fr 80px 120px 120px 30px", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                    <div key={idx} className="invoice-item-row-grid">
                       <select
                         className="form-control"
                         value={item.itemType}
@@ -647,7 +647,7 @@ export default function InvoicesPage() {
           {payInvoiceId && (
             <SlidePanel title="Ghi nhận thanh toán" onClose={() => setPayInvoiceId(null)}>
               <form onSubmit={handleRecordPayment}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)" }}>
+                <div className="form-grid-3">
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="pay-amt">Số tiền thanh toán (VND) *</label>
                     <input id="pay-amt" type="number" min="1000" className="form-control" placeholder="VD: 3.500.000đ" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} required autoFocus />
@@ -685,7 +685,7 @@ export default function InvoicesPage() {
                   Hệ thống sẽ quét tất cả các hợp đồng còn hiệu lực, tự động đối chiếu số điện mới nhất và cộng định mức dịch vụ để lập hóa đơn một lần cho toàn bộ phòng trong nhà trọ.
                 </p>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+                <div className="form-grid-3" style={{ marginBottom: "var(--space-2)" }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="b-prop">Chọn nhà trọ *</label>
                     <select
@@ -725,7 +725,7 @@ export default function InvoicesPage() {
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+                <div className="form-grid-3" style={{ marginBottom: "var(--space-2)" }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="b-water">Tiền nước sinh hoạt (VND/người/tháng)</label>
                     <input
@@ -1008,7 +1008,7 @@ export default function InvoicesPage() {
                                 style={{ padding: "4px 8px", fontSize: "var(--text-xs)", display: "flex", alignItems: "center", gap: 4 }}
                                 onClick={() => {
                                   setPayInvoiceId(inv.id);
-                                  setPayAmount(String(inv.totalAmount));
+                                  setPayAmount(String(due));
                                 }}
                               >
                                 <CreditCard size={12} /> Thu tiền

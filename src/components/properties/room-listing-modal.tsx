@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import {
   X,
@@ -57,6 +57,14 @@ export function RoomListingModal({
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   const availableDistricts = VIETNAM_CITIES[city] || VIETNAM_CITIES["Hà Nội"];
 
@@ -133,6 +141,9 @@ export function RoomListingModal({
     >
       <motion.div
         className="modal-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Đăng tin phòng ${room.roomNumber}`}
         initial={{ opacity: 0, scale: 0.95, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 16 }}
@@ -251,7 +262,7 @@ export function RoomListingModal({
           </div>
 
           {/* City & District */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="form-grid-2" style={{ gap: 12 }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label style={{ fontSize: 13, fontWeight: 600 }}>Tỉnh / Thành phố *</label>
               <select
@@ -362,7 +373,7 @@ export function RoomListingModal({
           </div>
 
           {/* Contact Info */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="form-grid-2" style={{ gap: 12 }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label style={{ fontSize: 13, fontWeight: 600 }}>Số điện thoại liên hệ *</label>
               <input

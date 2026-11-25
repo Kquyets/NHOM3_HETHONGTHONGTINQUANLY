@@ -150,7 +150,7 @@ function TenantForm({
       <h3 style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--color-primary)", marginBottom: "var(--space-2)" }}>
         1. Thông tin cá nhân cơ bản
       </h3>
-      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr", gap: "var(--space-2)" }}>
+      <div className="form-grid-4">
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label htmlFor="tenant-name">Họ và tên *</label>
           <div style={{ position: "relative" }}>
@@ -1149,7 +1149,7 @@ export default function TenantsPage() {
               </button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div className="form-grid-2">
               <div>
                 <div style={{ fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--color-fg-2)", marginBottom: 8 }}>
                   Mặt trước CCCD:

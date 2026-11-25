@@ -22,8 +22,6 @@ import { apiClient } from "../../lib/api-client";
 import { money } from "../../utils/format";
 import type { DashboardSummary } from "../../modules/dashboard/dashboard.service";
 
-type DashboardSummaryWithRecent = DashboardSummary;
-
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
   visible: (i = 0) => ({

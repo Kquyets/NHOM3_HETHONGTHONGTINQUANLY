@@ -6,8 +6,6 @@ import {
   CalendarBlank,
   CaretUp,
   CaretDown,
-  CaretLeft,
-  CaretRight,
 } from "@phosphor-icons/react";
 
 export interface FluentDatePickerProps {

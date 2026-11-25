@@ -7,7 +7,6 @@ import {
   Users,
   Plus,
   X,
-  Trash,
   Buildings,
   Phone,
   EnvelopeSimple,
@@ -831,7 +830,7 @@ export default function StaffPage() {
                     <form onSubmit={handleAddStaff} style={{ padding: "20px" }}>
                       {addMode === "create" ? (
                         <>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+                          <div className="form-grid-2" style={{ gap: 12, marginBottom: 14 }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
                               <label htmlFor="staffFullName" style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>
                                 Họ và tên quản lý *
@@ -864,7 +863,7 @@ export default function StaffPage() {
                             </div>
                           </div>
 
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+                          <div className="form-grid-2" style={{ gap: 12, marginBottom: 14 }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
                               <label htmlFor="staffEmail" style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>
                                 Gmail / Email <span style={{ fontWeight: 400, color: "var(--color-fg-3)" }}>(tùy chọn)</span>

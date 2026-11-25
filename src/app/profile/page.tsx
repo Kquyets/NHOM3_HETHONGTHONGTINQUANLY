@@ -27,6 +27,7 @@ import {
   CheckFat,
 } from "@phosphor-icons/react";
 
+import { AppHeader } from "../../components/layout/app-header";
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
 import { formatPhoneNumber } from "../../utils/format";
@@ -61,12 +62,47 @@ export default function ProfilePage() {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
-  // Notifications preference toggles
+  // Notifications preference toggles (persisted in localStorage)
   const [notifInvoice, setNotifInvoice] = useState(true);
   const [notifMaintenance, setNotifMaintenance] = useState(true);
   const [notifPayment, setNotifPayment] = useState(true);
   const [notifSystem, setNotifSystem] = useState(true);
+  const [notifPrefsReady, setNotifPrefsReady] = useState(false);
   const [notifSavedToast, setNotifSavedToast] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("hm_notif_prefs");
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<Record<string, boolean>>;
+        if (typeof parsed.invoice === "boolean") setNotifInvoice(parsed.invoice);
+        if (typeof parsed.maintenance === "boolean") setNotifMaintenance(parsed.maintenance);
+        if (typeof parsed.payment === "boolean") setNotifPayment(parsed.payment);
+        if (typeof parsed.system === "boolean") setNotifSystem(parsed.system);
+      }
+    } catch {
+      // Ignore storage errors
+    } finally {
+      setNotifPrefsReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!notifPrefsReady) return;
+    try {
+      window.localStorage.setItem(
+        "hm_notif_prefs",
+        JSON.stringify({
+          invoice: notifInvoice,
+          maintenance: notifMaintenance,
+          payment: notifPayment,
+          system: notifSystem,
+        }),
+      );
+    } catch {
+      // Ignore storage errors
+    }
+  }, [notifPrefsReady, notifInvoice, notifMaintenance, notifPayment, notifSystem]);
 
   // Password strength logic
   const hasMinLength = newPassword.length >= 8;
@@ -188,22 +224,28 @@ export default function ProfilePage() {
 
   if (authLoading || (loading && !profile)) {
     return (
-      <main className="main-container" style={{ maxWidth: 1040, margin: "0 auto", padding: "var(--space-3) var(--space-2)" }}>
-        <div style={{ display: "grid", gap: "var(--space-3)" }}>
-          <div className="skeleton" style={{ height: 140, borderRadius: "var(--radius-lg)" }} />
-          <div className="card skeleton" style={{ height: 380, borderRadius: "var(--radius-lg)" }} />
-        </div>
-      </main>
+      <div className="app-shell">
+        <AppHeader />
+        <main className="main-container" style={{ maxWidth: 1040, margin: "0 auto", padding: "var(--space-3) var(--space-2)" }}>
+          <div style={{ display: "grid", gap: "var(--space-3)" }}>
+            <div className="skeleton" style={{ height: 140, borderRadius: "var(--radius-lg)" }} />
+            <div className="card skeleton" style={{ height: 380, borderRadius: "var(--radius-lg)" }} />
+          </div>
+        </main>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <main className="main-container" style={{ maxWidth: 1040, margin: "0 auto", padding: "var(--space-3) var(--space-2)" }}>
-        <div className="alert-error" role="alert">
-          {error}
-        </div>
-      </main>
+      <div className="app-shell">
+        <AppHeader />
+        <main className="main-container" style={{ maxWidth: 1040, margin: "0 auto", padding: "var(--space-3) var(--space-2)" }}>
+          <div className="alert-error" role="alert">
+            {error}
+          </div>
+        </main>
+      </div>
     );
   }
 
@@ -235,7 +277,9 @@ export default function ProfilePage() {
   const RoleBadgeIcon = roleBadgeStyle.icon;
 
   return (
-    <main className="main-container" style={{ maxWidth: 1040, margin: "0 auto", padding: "var(--space-3) var(--space-2)" }}>
+    <div className="app-shell">
+      <AppHeader />
+      <main className="main-container" style={{ maxWidth: 1040, margin: "0 auto", padding: "var(--space-3) var(--space-2)" }}>
       {/* ── Page Header ── */}
       <div style={{ marginBottom: "var(--space-3)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "var(--text-xs)", color: "var(--color-fg-3)", marginBottom: 4 }}>
@@ -1166,6 +1210,7 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
-    </main>
+      </main>
+    </div>
   );
 }

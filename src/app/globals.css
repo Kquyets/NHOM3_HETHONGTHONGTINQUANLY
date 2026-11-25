@@ -34,12 +34,18 @@
 
   /* Typography Colors */
   --color-fg:            #f8fafc;   /* clean crisp text */
+  --color-fg-1:          #f8fafc;
   --color-fg-2:          #cbd5e1;   /* secondary text */
   --color-fg-3:          #94a3b8;   /* muted text */
+
+  /* Semantic Panel & Subtle Aliases (Dark Theme) */
+  --color-bg-panel:      rgba(16, 13, 28, 0.96);
+  --color-bg-subtle:     rgba(32, 26, 54, 0.65);
 
   /* Borders & Dividers */
   --color-border:        rgba(210, 195, 246, 0.16);
   --color-border-soft:   rgba(210, 195, 246, 0.08);
+  --color-border-subtle: rgba(210, 195, 246, 0.12);
   --color-ring:          rgba(210, 195, 246, 0.45);
 
   /* Status Tokens (Refined with pastel glass harmony) */
@@ -167,8 +173,13 @@
 
   /* Typography: Slate Dark Text for High Contrast (Nền Sáng Chữ Tối) */
   --color-fg:            #0f172a;   /* slate-900: Chữ tối */
+  --color-fg-1:          #0f172a;
   --color-fg-2:          #334155;   /* slate-700: Chữ phụ tối */
   --color-fg-3:          #64748b;   /* slate-500: Placeholder / muted */
+
+  /* Semantic Panel & Subtle Aliases (Light Theme) */
+  --color-bg-panel:      rgba(255, 255, 255, 0.96);
+  --color-bg-subtle:     rgba(244, 240, 255, 0.78);
 
   /* Textbox & Input Tokens: Nền Sáng Chữ Tối */
   --color-input-bg:           rgba(255, 255, 255, 0.95);  /* Nền trắng sáng */
@@ -207,6 +218,7 @@
   /* Borders & Dividers */
   --color-border:        rgba(167, 139, 250, 0.24);
   --color-border-soft:   rgba(167, 139, 250, 0.14);
+  --color-border-subtle: rgba(167, 139, 250, 0.22);
   --color-ring:          rgba(124, 58, 237, 0.3);
 
   /* Status Tokens */
@@ -2764,5 +2776,83 @@ table.data-table tbody tr:last-child td {
   background: rgba(124, 58, 237, 0.18);
   color: #7c3aed;
 }
+
+/* --------------------------------------------------------------------------
+   Responsive Form & Workspace Grids + Reduced Motion
+   -------------------------------------------------------------------------- */
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2, 16px);
+}
+
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2, 16px);
+}
+
+.form-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2, 16px);
+}
+
+.ai-workspace-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+  align-items: stretch;
+  height: calc(100vh - 210px);
+  min-height: 560px;
+}
+
+.invoice-item-row-grid {
+  display: grid;
+  grid-template-columns: 140px 1fr 80px 120px 120px 30px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+@media (max-width: 1024px) {
+  .form-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .ai-workspace-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .form-grid-3,
+  .form-grid-4 {
+    grid-template-columns: 1fr;
+  }
+  .invoice-item-row-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 
 

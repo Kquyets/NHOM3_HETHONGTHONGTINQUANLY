@@ -8,13 +8,7 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Wallet,
-  Receipt,
-  Wrench,
-  Buildings,
-  Door,
   MagnifyingGlass,
-  Funnel,
-  CheckCircle,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";

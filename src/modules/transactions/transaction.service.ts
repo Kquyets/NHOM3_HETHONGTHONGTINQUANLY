@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { getDatabase } from "../../lib/database/client";
 import {
   contracts,

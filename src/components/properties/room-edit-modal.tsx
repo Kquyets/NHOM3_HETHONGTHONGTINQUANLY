@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import {
   X,
@@ -64,6 +64,14 @@ export function RoomEditModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   const toggleFurniture = (item: string) => {
     setFurniture((prev) =>
       prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item],
@@ -92,13 +100,19 @@ export function RoomEditModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const parsedRent = parseInt(monthlyRent, 10);
+    if (!roomNumber.trim() || !Number.isFinite(parsedRent) || parsedRent < 0) {
+      setError("Vui lòng nhập số phòng và giá thuê hợp lệ.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
     try {
       const payload = {
         roomNumber: roomNumber.trim(),
-        monthlyRent: parseInt(monthlyRent, 10),
+        monthlyRent: parsedRent,
         areaM2: areaM2 ? parseFloat(areaM2) : null,
         floor: floor ? parseInt(floor, 10) : 1,
         maxOccupants: maxOccupants ? parseInt(maxOccupants, 10) : 2,
@@ -125,6 +139,9 @@ export function RoomEditModal({
   return (
     <div
       className="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Cập nhật thông tin phòng ${room.roomNumber}`}
       style={{
         position: "fixed",
         inset: 0,
@@ -207,7 +224,7 @@ export function RoomEditModal({
           )}
 
           {/* Basic Info: Number, Floor, Rent, Area */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
+          <div className="form-grid-4" style={{ gap: 12 }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label style={{ fontSize: 13, fontWeight: 600 }}>Số phòng *</label>
               <input
@@ -260,7 +277,7 @@ export function RoomEditModal({
           </div>
 
           {/* Occupants & Status */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+          <div className="form-grid-3" style={{ gap: 12 }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label style={{ fontSize: 13, fontWeight: 600 }}>Số người tối đa</label>
               <input

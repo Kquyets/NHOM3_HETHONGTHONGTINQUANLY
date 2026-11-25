@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Printer, X, FileText, IdentificationCard } from "@phosphor-icons/react";
+import { Printer, X, IdentificationCard } from "@phosphor-icons/react";
 import type { TenantProfile, TenantStay } from "../../modules/tenant-portal/tenant-portal.service";
 
 export type PrintableCt01ModalProps = {

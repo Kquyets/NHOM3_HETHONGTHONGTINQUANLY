@@ -250,9 +250,11 @@ export default function AiAssistantPage() {
   ]);
 
   useEffect(() => {
-    if (messages.length === 1 && messages[0].id === "init") {
-      setMessages([getInitialMessage(isTenant, user?.fullName ?? undefined)]);
-    }
+    setMessages((prev) =>
+      prev.length === 1 && prev[0].id === "init"
+        ? [getInitialMessage(isTenant, user?.fullName ?? undefined)]
+        : prev,
+    );
   }, [isTenant, user?.fullName]);
 
   const [inputMessage, setInputMessage] = useState("");
@@ -412,16 +414,7 @@ export default function AiAssistantPage() {
         </div>
 
         {/* Two-column layout */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "320px 1fr",
-            gap: 20,
-            alignItems: "stretch",
-            height: "calc(100vh - 210px)",
-            minHeight: 560,
-          }}
-        >
+        <div className="ai-workspace-grid">
           {/* Left Column: Quick Query Templates */}
           <div
             style={{

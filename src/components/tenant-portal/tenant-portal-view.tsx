@@ -13,10 +13,8 @@ import {
   Printer,
   Clock,
   CheckCircle,
-  CreditCard,
   WarningCircle,
   Wrench,
-  CalendarBlank,
   Copy,
   Check,
   DownloadSimple,
@@ -27,7 +25,6 @@ import {
   FileText,
   IdentificationCard,
   PencilSimple,
-  Image as ImageIcon,
   MagnifyingGlass,
   Trash,
   UploadSimple,
@@ -35,7 +32,7 @@ import {
 
 import { apiClient } from "../../lib/api-client";
 import { useAuth } from "../../lib/auth-context";
-import { buildVietQrUrl, getBankInfo, formatBankDisplayName } from "../../utils/vietqr";
+import { buildVietQrUrl, formatBankDisplayName } from "../../utils/vietqr";
 import { PrintableInvoiceModal } from "../invoices/printable-invoice-modal";
 import { PrintableContractModal } from "../contracts/printable-contract-modal";
 import { PrintableCt01Modal } from "./printable-ct01-modal";
@@ -1258,7 +1255,6 @@ export function TenantPortalView() {
                       template: "compact2",
                     })
                   : null;
-                const bankInfo = qrInvoice.bankCode ? getBankInfo(qrInvoice.bankCode) : undefined;
 
                 if (!qrUrl) {
                   return (

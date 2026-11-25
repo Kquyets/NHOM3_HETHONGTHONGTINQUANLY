@@ -975,7 +975,7 @@ export default function MetersPage() {
           {showAddReading && (
             <SlidePanel title="Ghi chỉ số mới" onClose={() => setShowAddReading(false)}>
               <form onSubmit={handleCreateReading}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)" }}>
+                <div className="form-grid-3">
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="r-prop">Chọn Nhà trọ *</label>
                     <select
@@ -1072,7 +1072,7 @@ export default function MetersPage() {
           {showAddRate && (
             <SlidePanel title="Thêm đơn giá mới" onClose={() => setShowAddRate(false)}>
               <form onSubmit={handleCreateRate}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)" }}>
+                <div className="form-grid-3">
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="rate-prop">Chọn Nhà trọ *</label>
                     <select

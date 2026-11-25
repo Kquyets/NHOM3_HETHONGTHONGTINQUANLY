@@ -31,7 +31,9 @@ describe("Transaction Service", () => {
   });
 
   it("calculates income and expenses correctly and computes net cashflow", async () => {
-    vi.mocked(propertyService.listProperties).mockResolvedValueOnce(mockProperties as any);
+    vi.mocked(propertyService.listProperties).mockResolvedValueOnce(
+      mockProperties as unknown as Awaited<ReturnType<typeof propertyService.listProperties>>,
+    );
 
     const mockIncomeRows = [
       {
@@ -65,23 +67,20 @@ describe("Transaction Service", () => {
       },
     ];
 
-    const chain = (resolved: any) => {
-      const obj: any = {
-        select: vi.fn().mockReturnThis(),
-        from: vi.fn().mockReturnThis(),
-        innerJoin: vi.fn().mockReturnThis(),
-        leftJoin: vi.fn().mockReturnThis(),
-        where: vi.fn().mockResolvedValue(resolved),
-      };
-      return obj;
-    };
+    const chain = (resolved: unknown[]) => ({
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      innerJoin: vi.fn().mockReturnThis(),
+      leftJoin: vi.fn().mockReturnThis(),
+      where: vi.fn().mockResolvedValue(resolved),
+    });
 
-    const mockDb: any = {
+    const mockDb = {
       select: vi
         .fn()
         .mockReturnValueOnce(chain(mockIncomeRows))
         .mockReturnValueOnce(chain(mockExpenseRows)),
-    };
+    } as unknown as ReturnType<typeof dbClient.getDatabase>;
 
     vi.mocked(dbClient.getDatabase).mockReturnValue(mockDb);
 
@@ -99,7 +98,9 @@ describe("Transaction Service", () => {
   });
 
   it("filters transactions by type (income only)", async () => {
-    vi.mocked(propertyService.listProperties).mockResolvedValueOnce(mockProperties as any);
+    vi.mocked(propertyService.listProperties).mockResolvedValueOnce(
+      mockProperties as unknown as Awaited<ReturnType<typeof propertyService.listProperties>>,
+    );
 
     const mockIncomeRows = [
       {
@@ -133,7 +134,7 @@ describe("Transaction Service", () => {
       },
     ];
 
-    const chain = (resolved: any) => ({
+    const chain = (resolved: unknown[]) => ({
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
       innerJoin: vi.fn().mockReturnThis(),
@@ -141,12 +142,12 @@ describe("Transaction Service", () => {
       where: vi.fn().mockResolvedValue(resolved),
     });
 
-    const mockDb: any = {
+    const mockDb = {
       select: vi
         .fn()
         .mockReturnValueOnce(chain(mockIncomeRows))
         .mockReturnValueOnce(chain(mockExpenseRows)),
-    };
+    } as unknown as ReturnType<typeof dbClient.getDatabase>;
 
     vi.mocked(dbClient.getDatabase).mockReturnValue(mockDb);
 

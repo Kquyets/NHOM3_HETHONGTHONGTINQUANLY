@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   getDrawerMenuItems,
-  OWNER_MANAGER_MENU_ITEMS,
+  GUEST_MENU_ITEMS,
   TENANT_MENU_ITEMS,
 } from "./mobile-drawer";
 
@@ -55,5 +55,12 @@ describe("MobileDrawer role-based menu items", () => {
 
     // Managers cannot manage other staff members
     expect(labels).not.toContain("Nhân viên");
+  });
+
+  it("provides public navigation items only for unauthenticated visitors", () => {
+    const labels = GUEST_MENU_ITEMS.map((i) => i.label);
+    expect(labels).toEqual(["Trang chủ", "Khám phá phòng trọ", "Đăng nhập", "Đăng ký"]);
+    expect(labels).not.toContain("Dashboard");
+    expect(labels).not.toContain("Hoá đơn");
   });
 });

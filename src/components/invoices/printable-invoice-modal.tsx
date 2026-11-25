@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Printer, X } from "@phosphor-icons/react";
 import type { InvoiceDetail, InvoiceRow } from "../../modules/invoices/invoice.service";
@@ -13,6 +14,15 @@ export type PrintableInvoiceModalProps = {
 };
 
 export function PrintableInvoiceModal({ invoice, onClose }: PrintableInvoiceModalProps) {
+  useEffect(() => {
+    if (!invoice) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [invoice, onClose]);
+
   if (!invoice) return null;
 
   const handlePrint = () => {
@@ -63,7 +73,7 @@ export function PrintableInvoiceModal({ invoice, onClose }: PrintableInvoiceModa
 
   return (
     <AnimatePresence>
-      <div className="printable-modal-overlay">
+      <div className="printable-modal-overlay" role="dialog" aria-modal="true" aria-label="Chi tiết phiếu thu">
         <style dangerouslySetInnerHTML={{ __html: `
           .printable-modal-overlay {
             position: fixed;

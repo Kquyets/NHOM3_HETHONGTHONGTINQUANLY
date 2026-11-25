@@ -1,5 +1,4 @@
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_PATTERN = /^\+?[0-9\s.-]{9,15}$/;
 
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
   "Invalid email or password.": "Số điện thoại / Gmail hoặc mật khẩu không chính xác.",

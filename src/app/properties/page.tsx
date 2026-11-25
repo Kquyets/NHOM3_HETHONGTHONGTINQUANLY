@@ -21,7 +21,6 @@ import {
   SquaresFour,
   ListDashes,
   User,
-  MagnifyingGlass,
 } from "@phosphor-icons/react";
 
 import { AppHeader } from "../../components/layout/app-header";
@@ -136,8 +135,6 @@ export default function PropertiesPage() {
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [activePropertyId, setActivePropertyId] = useState<string>("all");
-  const [roomSearch, setRoomSearch] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const loadProperties = useCallback(async () => {
     try {
@@ -552,7 +549,7 @@ export default function PropertiesPage() {
                   <span style={{ fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--color-primary)", display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                     <CreditCard size={14} /> Tài khoản nhận tiền (Tự động sinh mã VietQR trên hóa đơn)
                   </span>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)" }}>
+                  <div className="form-grid-3">
                     <div className="form-group" style={{ marginBottom: 0 }}>
                       <label htmlFor="prop-bank-code">Ngân hàng</label>
                       <select
@@ -628,7 +625,7 @@ export default function PropertiesPage() {
                 <p className="text-muted" style={{ fontSize: "var(--text-xs)", marginBottom: "var(--space-2)" }}>
                   Tài khoản ngân hàng dùng để tự động tạo mã VietQR chuẩn NAPAS 247 khi xuất hóa đơn thu tiền cho khách thuê.
                 </p>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)" }}>
+                <div className="form-grid-3">
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="edit-bank-code">Ngân hàng</label>
                     <select
@@ -695,7 +692,7 @@ export default function PropertiesPage() {
               onClose={() => setSelectedPropId(null)}
             >
               <form onSubmit={handleCreateRoom}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-2)" }}>
+                <div className="form-grid-3">
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label htmlFor="room-num">Số phòng *</label>
                     <div style={{ position: "relative" }}>
@@ -1201,6 +1198,15 @@ export default function PropertiesPage() {
                                     <button
                                       type="button"
                                       className="btn-ghost"
+                                      style={{ padding: "3px 6px", fontSize: "11px", color: room.isPublicListed ? "var(--color-success)" : "var(--color-fg-3)" }}
+                                      onClick={() => setEditingListingRoom({ room, property: prop })}
+                                      title={room.isPublicListed ? "Đang đăng tin Sàn Nhà Tốt (bấm để sửa)" : "Đăng tin lên Sàn Nhà Tốt"}
+                                    >
+                                      <Megaphone size={12} weight={room.isPublicListed ? "fill" : "regular"} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn-ghost"
                                       style={{ padding: "3px 6px", fontSize: "11px" }}
                                       onClick={() => void handleToggleRoomStatus(prop.id, room.id, room.status)}
                                       title={room.status === "ready" ? "Chuyển sang bảo trì" : "Chuyển sang sẵn sàng"}
@@ -1375,6 +1381,18 @@ export default function PropertiesPage() {
                                       >
                                         <PencilSimple size={12} />
                                         <span>Kiểm kê</span>
+                                      </motion.button>
+
+                                      <motion.button
+                                        type="button"
+                                        className="btn-ghost"
+                                        style={{ padding: "4px 6px", fontSize: "var(--text-xs)", color: room.isPublicListed ? "var(--color-success)" : "var(--color-fg-3)" }}
+                                        onClick={() => setEditingListingRoom({ room, property: prop })}
+                                        title={room.isPublicListed ? "Đang đăng tin Sàn Nhà Tốt (bấm để sửa)" : "Đăng tin lên Sàn Nhà Tốt"}
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                      >
+                                        <Megaphone size={13} weight={room.isPublicListed ? "fill" : "regular"} />
                                       </motion.button>
 
                                       <motion.button

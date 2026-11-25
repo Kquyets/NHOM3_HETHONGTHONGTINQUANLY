@@ -317,7 +317,7 @@ describe("AI Service (Phase 6 AI Assistant)", () => {
         ],
         utilityMeters: [],
         maintenanceRequests: [],
-      } as any);
+      } as unknown as Awaited<ReturnType<typeof getTenantPortalData>>);
 
       const result = await processAiQuery({
         userId: tenantCtx.userId,
@@ -375,7 +375,7 @@ describe("AI Service (Phase 6 AI Assistant)", () => {
         invoices: [],
         utilityMeters: [],
         maintenanceRequests: [],
-      } as any);
+      } as unknown as Awaited<ReturnType<typeof getTenantPortalData>>);
 
       const result = await processAiQuery({
         userId: tenantCtx.userId,
