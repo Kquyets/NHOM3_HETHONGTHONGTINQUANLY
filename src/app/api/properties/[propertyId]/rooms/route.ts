@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 import { AppError } from "../../../../../errors/app-error";
-import { getAuthContext } from "../../../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../../../lib/auth/with-auth";
 import { createRoom, listRooms } from "../../../../../modules/rooms/room.service";
 import { errorResponse, successResponse } from "../../../../../utils/api-response";
 
@@ -9,7 +9,7 @@ type Params = { params: Promise<{ propertyId: string }> };
 // GET /api/properties/:propertyId/rooms
 export async function GET(request: NextRequest, { params }: Params): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { propertyId } = await params;
     const data = await listRooms(ctx.userId, ctx.role, propertyId);
     return successResponse({ rooms: data, total: data.length });
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: Params): Promise<Res
 // POST /api/properties/:propertyId/rooms
 export async function POST(request: NextRequest, { params }: Params): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { propertyId } = await params;
     const body = await request.json().catch(() => null);
 

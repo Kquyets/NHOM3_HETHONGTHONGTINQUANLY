@@ -1,12 +1,12 @@
 import { type NextRequest } from "next/server";
-import { getAuthContext } from "../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../lib/auth/with-auth";
 import { listTransactions } from "../../../modules/transactions/transaction.service";
 import { errorResponse, successResponse } from "../../../utils/api-response";
 
 // GET /api/transactions — List transactions and cashflow stats
 export async function GET(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { searchParams } = new URL(request.url);
 
     const propertyId = searchParams.get("propertyId") || undefined;

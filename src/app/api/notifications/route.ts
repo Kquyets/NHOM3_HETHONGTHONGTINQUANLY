@@ -1,5 +1,5 @@
 import { type NextRequest } from "next/server";
-import { getAuthContext } from "../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../lib/auth/with-auth";
 import {
   listNotifications,
   markAllNotificationsAsRead,
@@ -9,7 +9,7 @@ import { errorResponse, successResponse } from "../../../utils/api-response";
 // GET /api/notifications — list user notifications
 export async function GET(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const result = await listNotifications(ctx.userId);
     return successResponse(result);
   } catch (error) {
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 // PATCH /api/notifications — mark all notifications as read
 export async function PATCH(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     await markAllNotificationsAsRead(ctx.userId);
     return successResponse({ message: "Đã đánh dấu tất cả là đã đọc." });
   } catch (error) {

@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 import { AppError } from "../../../errors/app-error";
-import { getAuthContext } from "../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../lib/auth/with-auth";
 import {
   createMeterReading,
   listMeterReadings,
@@ -13,7 +13,7 @@ import { errorResponse, successResponse } from "../../../utils/api-response";
 // GET /api/meters
 export async function GET(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { searchParams } = new URL(request.url);
     const propertyId = searchParams.get("propertyId") ?? undefined;
     const data = await listMeterReadings(ctx.userId, ctx.role, propertyId);
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 // POST /api/meters
 export async function POST(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {

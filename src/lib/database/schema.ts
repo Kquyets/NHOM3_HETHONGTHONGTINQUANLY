@@ -162,6 +162,7 @@ export const tenants = pgTable(
     emergencyContactPhone: text("emergency_contact_phone"),
     idCardFrontUrl: text("id_card_front_url"),
     idCardBackUrl: text("id_card_back_url"),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -170,6 +171,7 @@ export const tenants = pgTable(
     check("tenants_linked_user_role_check", sql`${table.linkedUserRole} = 'tenant'`),
     unique("tenants_user_id_unique").on(table.userId),
     index("tenants_full_name_idx").on(table.fullName),
+    index("tenants_created_by_user_id_idx").on(table.createdByUserId),
   ],
 );
 

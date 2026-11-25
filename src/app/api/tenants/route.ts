@@ -1,13 +1,13 @@
 import { type NextRequest } from "next/server";
 import { AppError } from "../../../errors/app-error";
-import { getAuthContext } from "../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../lib/auth/with-auth";
 import { createTenant, listTenants } from "../../../modules/tenants/tenant.service";
 import { errorResponse, successResponse } from "../../../utils/api-response";
 
 // GET /api/tenants — list all tenants (owner, manager only)
 export async function GET(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const data = await listTenants(ctx.userId, ctx.role);
     return successResponse({ tenants: data, total: data.length });
   } catch (error) {
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 // POST /api/tenants — create tenant profile (owner, manager only)
 export async function POST(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {

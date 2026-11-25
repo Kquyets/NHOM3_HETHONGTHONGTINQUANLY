@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 import { AppError } from "../../../../../../errors/app-error";
-import { getAuthContext } from "../../../../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../../../../lib/auth/with-auth";
 import { deleteRoom, getRoom, updateRoom } from "../../../../../../modules/rooms/room.service";
 import { errorResponse, successResponse } from "../../../../../../utils/api-response";
 
@@ -9,7 +9,7 @@ type Params = { params: Promise<{ propertyId: string; roomId: string }> };
 // GET /api/properties/:propertyId/rooms/:roomId
 export async function GET(request: NextRequest, { params }: Params): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { propertyId, roomId } = await params;
     const room = await getRoom(ctx.userId, ctx.role, propertyId, roomId);
     return successResponse({ room });
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: Params): Promise<Res
 // PATCH /api/properties/:propertyId/rooms/:roomId
 export async function PATCH(request: NextRequest, { params }: Params): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { propertyId, roomId } = await params;
     const body = await request.json().catch(() => null);
 
@@ -72,7 +72,7 @@ export async function PATCH(request: NextRequest, { params }: Params): Promise<R
 // DELETE /api/properties/:propertyId/rooms/:roomId
 export async function DELETE(request: NextRequest, { params }: Params): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { propertyId, roomId } = await params;
     await deleteRoom(ctx.userId, ctx.role, propertyId, roomId);
     return successResponse({ message: "Room deleted." });

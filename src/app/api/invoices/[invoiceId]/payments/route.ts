@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 import { AppError } from "../../../../../errors/app-error";
-import { getAuthContext } from "../../../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../../../lib/auth/with-auth";
 import {
   addPayment,
   type PaymentMethod,
@@ -12,7 +12,7 @@ type Params = { params: Promise<{ invoiceId: string }> };
 // POST /api/invoices/[invoiceId]/payments
 export async function POST(request: NextRequest, { params }: Params): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { invoiceId } = await params;
     const body = await request.json().catch(() => null);
 

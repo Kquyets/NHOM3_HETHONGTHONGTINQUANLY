@@ -97,7 +97,17 @@ export async function listTenants(userId: string, role: string): Promise<TenantR
       .leftJoin(contracts, eq(contracts.id, contractTenants.contractId))
       .leftJoin(rooms, eq(rooms.id, contracts.roomId))
       .leftJoin(properties, eq(properties.id, rooms.propertyId))
-      .where(or(eq(properties.ownerId, userId), isNull(contractTenants.contractId)))
+      .where(
+        or(
+          eq(properties.ownerId, userId),
+          and(isNull(contractTenants.contractId), eq(tenants.createdByUserId, userId)),
+          and(
+            isNull(contractTenants.contractId),
+            isNull(tenants.createdByUserId),
+            isNull(tenants.userId),
+          ),
+        ),
+      )
       .orderBy(asc(tenants.fullName));
   }
 
@@ -116,7 +126,17 @@ export async function listTenants(userId: string, role: string): Promise<TenantR
         eq(propertyMembers.status, "active"),
       ),
     )
-    .where(or(eq(propertyMembers.userId, userId), isNull(contractTenants.contractId)))
+    .where(
+      or(
+        eq(propertyMembers.userId, userId),
+        and(isNull(contractTenants.contractId), eq(tenants.createdByUserId, userId)),
+        and(
+          isNull(contractTenants.contractId),
+          isNull(tenants.createdByUserId),
+          isNull(tenants.userId),
+        ),
+      ),
+    )
     .orderBy(asc(tenants.fullName));
 }
 
@@ -133,6 +153,7 @@ export async function getTenant(
   const rows = await db
     .select({
       ...SELECT_COLUMNS,
+      createdByUserId: tenants.createdByUserId,
       propertyOwnerId: properties.ownerId,
       memberUserId: propertyMembers.userId,
       contractStatus: contracts.status,
@@ -157,7 +178,8 @@ export async function getTenant(
     throw new AppError("NOT_FOUND", "Không tìm thấy khách thuê.", []);
   }
 
-  // Enforce tenant property scoping whenever the tenant is attached to at least one property contract.
+  // Enforce tenant scoping on both contracted tenants and unlinked/self-registered profiles.
+  const first = rows[0];
   const linkedRows = rows.filter(
     (r) => r.propertyOwnerId !== undefined && r.propertyOwnerId !== null,
   );
@@ -168,9 +190,13 @@ export async function getTenant(
     if (!hasAccess) {
       throw new AppError("FORBIDDEN", "Bạn không có quyền truy cập hồ sơ khách thuê này.", []);
     }
+  } else if (first.createdByUserId !== undefined && first.createdByUserId !== null) {
+    if (first.createdByUserId !== userId) {
+      throw new AppError("FORBIDDEN", "Bạn không có quyền truy cập hồ sơ khách thuê này.", []);
+    }
+  } else if (first.userId !== null && first.userId !== userId) {
+    throw new AppError("FORBIDDEN", "Bạn không có quyền truy cập hồ sơ khách thuê tự đăng ký này.", []);
   }
-
-  const first = rows[0];
   return {
     id: first.id,
     userId: first.userId,
@@ -214,7 +240,7 @@ export async function createTenant(
     const [existingUser] = await db
       .select({ id: users.id })
       .from(users)
-      .where(eq(users.phone, rawPhone))
+      .where(and(eq(users.phone, rawPhone), eq(users.role, "tenant")))
       .limit(1);
     if (existingUser) {
       resolvedUserId = existingUser.id;
@@ -228,6 +254,7 @@ export async function createTenant(
       phone: input.phone?.trim() ?? null,
       birthDate: input.birthDate ?? null,
       userId: resolvedUserId,
+      createdByUserId: userId,
       nationalIdEncrypted: input.nationalId?.trim() ?? null,
       hometown: input.hometown?.trim() ?? null,
       vehicleNumber: input.vehicleNumber?.trim() ?? null,
@@ -328,9 +355,9 @@ export async function deleteTenant(
 ): Promise<void> {
   assertStaff(role);
 
-  // Verify exists first
+  const db = getDatabase();
+  // Verify access and existence via getTenant
   await getTenant(userId, role, tenantId);
 
-  const db = getDatabase();
   await db.delete(tenants).where(eq(tenants.id, tenantId));
 }

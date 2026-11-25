@@ -1,5 +1,5 @@
 import { type NextRequest } from "next/server";
-import { getAuthContext } from "../../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../../lib/auth/with-auth";
 import { markNotificationAsRead } from "../../../../modules/notifications/notification.service";
 import { errorResponse, successResponse } from "../../../../utils/api-response";
 
@@ -9,7 +9,7 @@ export async function PATCH(
   { params }: { params: Promise<{ notificationId: string }> },
 ): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { notificationId } = await params;
     await markNotificationAsRead(ctx.userId, notificationId);
     return successResponse({ message: "Đã đánh dấu là đã đọc." });

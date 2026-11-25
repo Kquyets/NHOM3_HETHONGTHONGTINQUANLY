@@ -1,12 +1,12 @@
 import { type NextRequest } from "next/server";
-import { getAuthContext } from "../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../lib/auth/with-auth";
 import { getDashboardSummary } from "../../../modules/dashboard/dashboard.service";
 import { errorResponse, successResponse } from "../../../utils/api-response";
 
 // GET /api/dashboard — retrieve aggregated dashboard summary
 export async function GET(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const searchParams = request.nextUrl.searchParams;
 
     const propertyId = searchParams.get("propertyId") || undefined;

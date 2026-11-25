@@ -17,6 +17,7 @@ vi.mock("../../lib/database/schema", () => ({
   tenants: {
     id: "id",
     userId: "userId",
+    createdByUserId: "createdByUserId",
     linkedUserRole: "linkedUserRole",
     fullName: "fullName",
     nationalIdEncrypted: "nationalIdEncrypted",
@@ -37,7 +38,7 @@ vi.mock("../../lib/database/schema", () => ({
   rooms: { id: "id", propertyId: "propertyId" },
   properties: { id: "id", ownerId: "ownerId" },
   propertyMembers: { propertyId: "propertyId", userId: "userId", status: "status" },
-  users: { id: "id", phone: "phone" },
+  users: { id: "id", phone: "phone", role: "role" },
 }));
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn().mockReturnValue({ type: "eq" }),
@@ -137,6 +138,24 @@ describe("getTenant", () => {
   it("throws FORBIDDEN when tenant belongs to another owner's property", async () => {
     mockDb.select.mockReturnValueOnce(
       chain([{ ...mockTenant, propertyOwnerId: "other-owner", memberUserId: null }]),
+    );
+    await expect(getTenant(OWNER.userId, OWNER.role, TENANT_ID)).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
+
+  it("throws FORBIDDEN when unlinked tenant was created by another landlord", async () => {
+    mockDb.select.mockReturnValueOnce(
+      chain([{ ...mockTenant, createdByUserId: "other-owner" }]),
+    );
+    await expect(getTenant(OWNER.userId, OWNER.role, TENANT_ID)).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
+
+  it("throws FORBIDDEN when unlinked tenant is a self-registered tenant account", async () => {
+    mockDb.select.mockReturnValueOnce(
+      chain([{ ...mockTenant, userId: "self-tenant-u1", createdByUserId: null }]),
     );
     await expect(getTenant(OWNER.userId, OWNER.role, TENANT_ID)).rejects.toMatchObject({
       code: "FORBIDDEN",

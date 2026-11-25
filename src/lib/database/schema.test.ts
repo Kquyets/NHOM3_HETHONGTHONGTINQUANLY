@@ -61,6 +61,7 @@ describe("core database schema", () => {
     const config = getTableConfig(tenants);
     expect(config.columns.map(({ name }) => name)).toContain("national_id_encrypted");
     expect(config.columns.map(({ name }) => name)).toContain("user_id");
+    expect(config.columns.map(({ name }) => name)).toContain("created_by_user_id");
     expect(config.uniqueConstraints.map(({ columns }) => columns.map(({ name }) => name))).toContainEqual([
       "user_id",
     ]);

@@ -1,13 +1,13 @@
 import { type NextRequest } from "next/server";
 import { AppError } from "../../../errors/app-error";
-import { getAuthContext } from "../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../lib/auth/with-auth";
 import { createProperty, listProperties } from "../../../modules/properties/property.service";
 import { errorResponse, successResponse } from "../../../utils/api-response";
 
 // GET /api/properties — list accessible properties
 export async function GET(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const data = await listProperties(ctx.userId, ctx.role);
     return successResponse({ properties: data, total: data.length });
   } catch (error) {
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 // POST /api/properties — create property (owner only)
 export async function POST(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {

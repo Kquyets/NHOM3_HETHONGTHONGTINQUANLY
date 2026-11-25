@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 import { AppError } from "../../../errors/app-error";
-import { getAuthContext } from "../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../lib/auth/with-auth";
 import {
   createInvoice,
   listInvoices,
@@ -11,7 +11,7 @@ import { errorResponse, successResponse } from "../../../utils/api-response";
 // GET /api/invoices
 export async function GET(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const data = await listInvoices(ctx.userId, ctx.role);
     return successResponse({ invoices: data, total: data.length });
   } catch (error) {
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 // POST /api/invoices
 export async function POST(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {

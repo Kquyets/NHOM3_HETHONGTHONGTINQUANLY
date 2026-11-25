@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 import { AppError } from "../../../../../errors/app-error";
-import { getAuthContext } from "../../../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../../../lib/auth/with-auth";
 import {
   addTenantToContract,
   removeTenantFromContract,
@@ -12,7 +12,7 @@ type Params = { params: Promise<{ contractId: string }> };
 // POST /api/contracts/[contractId]/tenants — Add tenant to contract
 export async function POST(request: NextRequest, { params }: Params): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { contractId } = await params;
     const body = await request.json().catch(() => null);
 
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest, { params }: Params): Promise<Re
 // DELETE /api/contracts/[contractId]/tenants — Remove tenant from contract
 export async function DELETE(request: NextRequest, { params }: Params): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { contractId } = await params;
     const { searchParams } = new URL(request.url);
     const tenantId = searchParams.get("tenantId");

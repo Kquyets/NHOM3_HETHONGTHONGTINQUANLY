@@ -1,5 +1,5 @@
 import { type NextRequest } from "next/server";
-import { getAuthContext } from "../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../lib/auth/with-auth";
 import {
   createMaintenanceRequest,
   listMaintenanceRequests,
@@ -12,7 +12,7 @@ import { errorResponse, successResponse } from "../../../utils/api-response";
 // GET /api/maintenance — list maintenance requests
 export async function GET(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const searchParams = request.nextUrl.searchParams;
 
     const propertyId = searchParams.get("propertyId") || undefined;
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 // POST /api/maintenance — create a new maintenance request
 export async function POST(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const body = await request.json();
 
     const created = await createMaintenanceRequest(ctx.userId, ctx.role, {

@@ -1,13 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-vi.mock("../../lib/auth/with-auth", () => ({
-  getAuthContext: vi.fn((req: NextRequest) => ({
+vi.mock("../../lib/auth/with-auth", () => {
+  const ctxFromReq = (req: NextRequest) => ({
     userId: req.headers.get("x-test-user") ?? "user-1",
     role: (req.headers.get("x-test-role") as "owner" | "manager" | "tenant") ?? "owner",
     email: "test@example.com",
-  })),
-}));
+  });
+  return {
+    getAuthContext: vi.fn(ctxFromReq),
+    requireAuthContext: vi.fn(async (req: NextRequest) => ctxFromReq(req)),
+  };
+});
 
 import { POST as loginPost } from "./auth/login/route";
 import { POST as registerPost } from "./auth/register/route";

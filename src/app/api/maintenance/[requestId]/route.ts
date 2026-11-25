@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 import { AppError } from "../../../../errors/app-error";
-import { getAuthContext } from "../../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../../lib/auth/with-auth";
 import {
   cancelTenantMaintenanceRequest,
   updateMaintenanceStatus,
@@ -14,7 +14,7 @@ export async function PATCH(
   { params }: { params: Promise<{ requestId: string }> },
 ): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { requestId } = await params;
     const body = await request.json().catch(() => null);
 
@@ -52,7 +52,7 @@ export async function DELETE(
   { params }: { params: Promise<{ requestId: string }> },
 ): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { requestId } = await params;
 
     const result = await cancelTenantMaintenanceRequest(ctx.userId, requestId);

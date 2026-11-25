@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 import { AppError } from "../../../errors/app-error";
-import { getAuthContext } from "../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../lib/auth/with-auth";
 import {
   listAllStaffForOwner,
   addPropertyMember,
@@ -12,7 +12,7 @@ import { errorResponse, successResponse } from "../../../utils/api-response";
 // GET /api/staff — List all staff across owner properties
 export async function GET(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const staff = await listAllStaffForOwner(ctx.userId, ctx.role);
     return successResponse({ staff, total: staff.length });
   } catch (error) {
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 // POST /api/staff — Assign or directly create staff member for properties
 export async function POST(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 // DELETE /api/staff — Revoke staff assignment from a property
 export async function DELETE(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { searchParams } = new URL(request.url);
     const propertyId = searchParams.get("propertyId");
     const memberId = searchParams.get("memberId");

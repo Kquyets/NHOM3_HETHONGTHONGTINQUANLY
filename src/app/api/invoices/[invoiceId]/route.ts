@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 import { AppError } from "../../../../errors/app-error";
-import { getAuthContext } from "../../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../../lib/auth/with-auth";
 import {
   deleteInvoice,
   getInvoice,
@@ -14,7 +14,7 @@ type Params = { params: Promise<{ invoiceId: string }> };
 // GET /api/invoices/[invoiceId]
 export async function GET(request: NextRequest, { params }: Params): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { invoiceId } = await params;
     const invoice = await getInvoice(ctx.userId, ctx.role, invoiceId);
     return successResponse({ invoice });
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, { params }: Params): Promise<Res
 // PATCH /api/invoices/[invoiceId]
 export async function PATCH(request: NextRequest, { params }: Params): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { invoiceId } = await params;
     const body = await request.json().catch(() => null);
 
@@ -59,7 +59,7 @@ export async function PATCH(request: NextRequest, { params }: Params): Promise<R
 // DELETE /api/invoices/[invoiceId]
 export async function DELETE(request: NextRequest, { params }: Params): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const { invoiceId } = await params;
     await deleteInvoice(ctx.userId, ctx.role, invoiceId);
     return successResponse({ deleted: true });

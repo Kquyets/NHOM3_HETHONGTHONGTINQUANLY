@@ -1,5 +1,8 @@
+import { eq } from "drizzle-orm";
 import { type NextRequest } from "next/server";
 import { AppError } from "../../errors/app-error";
+import { getDatabase } from "../database/client";
+import { users } from "../database/schema";
 import { type AccessTokenPayload, verifyAccessToken } from "./jwt";
 
 export type AuthContext = {
@@ -8,7 +11,7 @@ export type AuthContext = {
 };
 
 /**
- * Extract and verify Bearer token from the Authorization header.
+ * Extract and verify Bearer token from the Authorization header (stateless check).
  * Throws AppError("UNAUTHORIZED") if missing or invalid.
  */
 export function getAuthContext(request: NextRequest): AuthContext {
@@ -28,6 +31,26 @@ export function getAuthContext(request: NextRequest): AuthContext {
   }
 
   return { userId: payload.sub, role: payload.role };
+}
+
+/**
+ * Verify Bearer token AND validate user existence/active status in PostgreSQL
+ * so suspended or deleted users are rejected immediately instead of waiting for JWT expiry.
+ */
+export async function requireAuthContext(request: NextRequest): Promise<AuthContext> {
+  const stateless = getAuthContext(request);
+
+  const [user] = await getDatabase()
+    .select({ id: users.id, role: users.role, status: users.status })
+    .from(users)
+    .where(eq(users.id, stateless.userId))
+    .limit(1);
+
+  if (!user || user.status !== "active") {
+    throw new AppError("UNAUTHORIZED", "Account is unavailable or disabled.", []);
+  }
+
+  return { userId: user.id, role: user.role };
 }
 
 /**

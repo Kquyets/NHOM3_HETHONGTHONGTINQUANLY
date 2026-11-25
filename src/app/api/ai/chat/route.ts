@@ -1,5 +1,5 @@
 import { type NextRequest } from "next/server";
-import { getAuthContext } from "../../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../../lib/auth/with-auth";
 import { processAiQuery } from "../../../../modules/ai/ai.service";
 import { AppError } from "../../../../errors/app-error";
 import { errorResponse, successResponse } from "../../../../utils/api-response";
@@ -7,7 +7,7 @@ import { errorResponse, successResponse } from "../../../../utils/api-response";
 // POST /api/ai/chat — Process natural language query with AI assistant
 export async function POST(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
 
     if (ctx.role !== "owner" && ctx.role !== "manager" && ctx.role !== "tenant") {
       throw new AppError(

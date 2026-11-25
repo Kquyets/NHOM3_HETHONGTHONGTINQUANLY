@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 import { AppError } from "../../../../errors/app-error";
-import { getAuthContext } from "../../../../lib/auth/with-auth";
+import { requireAuthContext } from "../../../../lib/auth/with-auth";
 import {
   batchGenerateInvoices,
   type BatchGenerateInvoicesInput,
@@ -10,7 +10,7 @@ import { errorResponse, successResponse } from "../../../../utils/api-response";
 // POST /api/invoices/batch
 export async function POST(request: NextRequest): Promise<Response> {
   try {
-    const ctx = getAuthContext(request);
+    const ctx = await requireAuthContext(request);
     const body = await request.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
